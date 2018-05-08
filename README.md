@@ -4,7 +4,7 @@
 
 ```python
 
-from pysandman import TrainingSet
+from pyveda import TrainingSet
 
 td = TrainingSet('A Name for the Data', classes=['building', 'cars', 'planes'], source="maps_api", mlType="object_detection", bbox=[minx, miny, maxx, maxy])
 
@@ -24,7 +24,7 @@ td.save()
 
 ```python
 # find datasets
-from pysandman import search
+from pyveda import search
 datasets = search( { search params } )
 ```
 
