@@ -6,7 +6,7 @@
 
 from pyveda import TrainingSet
 
-td = TrainingSet('A Name for the Data', classes=['building', 'cars', 'planes'], source="maps_api", mlType="object_detection", bbox=[minx, miny, maxx, maxy])
+td = TrainingSet('A Name for the Data', classes=['building', 'cars', 'planes'], source="maps_api", mlType="classification", bbox=[minx, miny, maxx, maxy])
 
 mydata = [ ( CatalogImage, [0, 0, 1] ), ( CatalogImage, [1, 0, 1] ), ( CatalogImage, [0, 1, 0] )]
 
