@@ -206,7 +206,7 @@ class TrainingSet(BaseSet):
         self.links = kwargs.get('links')
         self.shape = kwargs.get('shape', None)
         self.dtype = kwargs.get('dtype', None)
-        self.percent_cached = kwargs.get('percent_cached', None)
+        self.percent_cached = kwargs.get('percent_cached', 0)
         self.sensors = kwargs.get('sensors', [])
         self._count = kwargs.get('count', defaultdict(int))
         self._cache = None
