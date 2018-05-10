@@ -50,13 +50,13 @@ class WrappedDataNode(WrappedDataArray):
         return WrappedDataArray(self._node.labels.detections)
 
     def __iter__(self, spec=slice(None)):
-        dlabels = [getattr(self, label) for label in self._trainer.focus]
-        dlabels.insert(0, self.images.__iter__(spec)).
+        data = [getattr(self, label) for label in self._trainer.focus]
+        data.insert(0, self.images).
         if isinstance(spec, slice):
-            for rec in zip([arr.__iter__(spec) for arr in dlabels]):
+            for rec in zip([arr.__iter__(spec) for arr in data]):
                 yield rec
         else:
-            for rec in zip([arr[spec] for arr in dlabels]):
+            for rec in zip([arr[spec] for arr in data]):
                 yield rec
 
     def __len__(self):
