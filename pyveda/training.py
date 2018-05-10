@@ -172,7 +172,7 @@ class BaseSet(object):
                     }
                     session.post(doc['links']['self']['href'], files=files)
 
-                    os.remove(temp.name)
+                os.remove(temp.name)
 
     def create(self, data):
         return self.conn.post(self.links["create"]["href"], json=data).json()
@@ -182,6 +182,7 @@ class BaseSet(object):
 
     def remove(self):
         self.conn.delete(self.links["delete"]["href"])
+
 
 
 
