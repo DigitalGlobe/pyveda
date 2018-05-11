@@ -118,29 +118,41 @@ class BaseSet(object):
         if total <= self._chunk_size:
             self.cache.close()
             doc = self._create_set(meta, h5=self.fname)
-            self._cache = h5py.File(self.fname, 'a')
+            self._cache = None
         else:
             doc = self._create_set(meta)
             self._send_chunks(doc)
 
         self.id = doc["data"]["id"]
         self.links = doc["links"]
-
+        self._cache = None
+        self._index = total
         return doc
 
     def _create_set(self, meta, h5=None):
         if h5 is None:
-            doc = self.conn.post(self._data_url, json={"metadata": meta}).json()
+            # Big dataset, create a doc, then post in chunks
+            if self.id is not None:
+                doc = self.conn.get(self.links['self']['href'])
+            else: 
+                doc = self.conn.post(self._data_url, json={"metadata": meta})
         else:
+            # Small file send all the data
             with open(h5, 'rb') as f:
                 mfile = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
                 files = {
                     'metadata': (None, json.dumps(meta), 'application/json'),
                     'file': (os.path.basename(h5), mfile, 'application/octet-stream')
                 }
-                doc = self.conn.post(self._data_url, files=files)
+                if self.links is not None:
+                    url = self.links['self']['href']
+                    meta.update({"update": True})
+                    files["metadata"] = (None, json.dumps(meta), 'application/json')
+                else:
+                    url = self._data_url
+                doc = self.conn.post(url, files=files)
                 mfile.close()
-        return doc
+        return doc.json()
 
     def _send_chunks(self, doc):
         """ Chunk up the HDF5 cache into chunks <= chunk_size and post with doc id """
@@ -150,7 +162,7 @@ class BaseSet(object):
         for group in groups:
             count = self._count[group]
             nchunks = math.ceil(count / self._chunk_size)
-            idx = 0
+            idx = self._index
             for chunk in range(nchunks):
                 temp = NamedTemporaryFile(prefix="veda", suffix='h5', delete=False)
                 chunk_h5 = h5py.File(temp.name, 'a')
@@ -161,7 +173,7 @@ class BaseSet(object):
                     try:
                         self.cache.copy('{}/X/{}'.format(group, str(idx)), xgrp)
                         self.cache.copy('{}/Y/{}'.format(group, str(idx)), ygrp)
-                    except:
+                    except Exception as err:
                         pass
                     idx += 1
 
@@ -170,6 +182,13 @@ class BaseSet(object):
                 files = {
                     'file': (os.path.basename(temp.name), f, 'application/octet-stream')
                 }
+                if self.id is not None:
+                    meta = {
+                        "count": dict(self._count),
+                        "sensors": self.sensors,
+                        "update": True
+                    }
+                    files['metadata'] = (None, json.dumps(meta), 'application/json')
                 p = session.post(doc['links']['self']['href'], files=files)
                 os.remove(temp.name)
 
@@ -205,6 +224,8 @@ class TrainingSet(BaseSet):
         self.id = kwargs.get('id', None)
         self.links = kwargs.get('links')
         self.shape = kwargs.get('shape', None)
+        if self.shape is not None:
+            self.shape = tuple(self.shape)
         self.dtype = kwargs.get('dtype', None)
         self.percent_cached = kwargs.get('percent_cached', 0)
         self.sensors = kwargs.get('sensors', [])
@@ -212,6 +233,7 @@ class TrainingSet(BaseSet):
         self._cache = None
         self._datapoints = None
         self.dasks = defaultdict(dict)
+        self._index = sum(list(self._count.values()))
 
         self.meta = {
             "source": source,
@@ -227,6 +249,13 @@ class TrainingSet(BaseSet):
         """ Helper method that converts a db doc to a TrainingSet """
         doc['data']['links'] = doc['links']
         return cls(**doc['data'])
+
+    @classmethod
+    def from_id(cls, _id):
+        """ Helper method that fetches an id into a TrainingSet """
+        url = "{}/data/{}".format(HOST, _id)
+        doc = requests.get(url, headers=headers).json()
+        return cls.from_doc(doc)
 
     @property
     def cache(self):
@@ -250,7 +279,8 @@ class TrainingSet(BaseSet):
         grp = self._cache.create_group(group)
         grp.create_group("X")
         grp.create_group("Y")
-        self._count[group] = 0
+        if group not in self._count:
+            self._count[group] = 0
 
     def feed(self, data, group="train", verbose=False):
         """
@@ -303,7 +333,7 @@ class TrainingSet(BaseSet):
             y = [str(Y).encode('utf8')]
 
         if idx is None:
-            idx = self.count[group]
+            idx = self.count[group] + self._index
             self.cache[group]["X"].create_dataset(str(idx), data=[x.encode('utf8') for x in X])
             self.cache[group]["Y"].create_dataset(str(idx), data=y)
             self._count[group] += 1
