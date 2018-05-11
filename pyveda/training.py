@@ -80,7 +80,7 @@ class BaseSet(object):
         self.id = id
         self._data_url = "{}/data".format(HOST)
         self._datapoint_url = "{}/datapoints".format(HOST)
-        self._chunk_size = 5000
+        self._chunk_size = os.environ.get('VEDA_CHUNK_SIZE', 5000)
         self.conn = requests.Session()
         self.conn.headers.update( headers )
 
@@ -140,7 +140,7 @@ class BaseSet(object):
                 }
                 doc = self.conn.post(self._data_url, files=files)
                 mfile.close()
-        return doc.json()
+        return doc
 
     def _send_chunks(self, doc):
         """ Chunk up the HDF5 cache into chunks <= chunk_size and post with doc id """
@@ -149,10 +149,10 @@ class BaseSet(object):
         groups = list(self.cache.keys())
         for group in groups:
             count = self._count[group]
-            nchunks = count / self._chunk_size
+            nchunks = math.ceil(count / self._chunk_size)
             idx = 0
-            for chunk in range(math.ceil(nchunks)):
-                temp = NamedTemporaryFile(prefix="sandman", suffix='h5', delete=False)
+            for chunk in range(nchunks):
+                temp = NamedTemporaryFile(prefix="veda", suffix='h5', delete=False)
                 chunk_h5 = h5py.File(temp.name, 'a')
                 grp = chunk_h5.create_group(group)
                 xgrp = grp.create_group("X")
@@ -164,14 +164,13 @@ class BaseSet(object):
                     except:
                         pass
                     idx += 1
+
                 chunk_h5.close()
-
-                with open(temp.name, 'rb') as f:
-                    files = {
-                        'file': (os.path.basename(temp.name), f, 'application/octet-stream')
-                    }
-                    session.post(doc['links']['self']['href'], files=files)
-
+                f = open(temp.name, 'rb')
+                files = {
+                    'file': (os.path.basename(temp.name), f, 'application/octet-stream')
+                }
+                p = session.post(doc['links']['self']['href'], files=files)
                 os.remove(temp.name)
 
     def create(self, data):
@@ -233,7 +232,7 @@ class TrainingSet(BaseSet):
     def cache(self):
         """ Looks for an existing cache file and creates it if doesnt exist """
         if self._cache is None:
-            temp = NamedTemporaryFile(prefix="sandman", suffix='h5', delete=False)
+            temp = NamedTemporaryFile(prefix="veda", suffix='h5', delete=False)
             self.fname = temp.name
             self._cache = h5py.File(temp.name, 'a')
         return self._cache
