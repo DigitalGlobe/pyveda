@@ -8,8 +8,7 @@ MLTYPES = {"TRAIN": "Data designated for model training",
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
-fname = "/Users/jamiepolackwich1/projects/veda-nbs/test.h5"
-dcmap = {"buildings": 1, "cars": 2, "zebras": 3}
+klass_map = {"buildings": 1, "cars": 2, "zebras": 3}
 
 class FrameworkNotSupported(NotImplementedError):
     pass
@@ -51,40 +50,43 @@ class WrappedDataNode(WrappedDataArray):
         return WrappedDataArray(self._node.labels.detections)
 
     def __iter__(self, spec=slice(None)):
+        data = [getattr(self, label) for label in self._trainer.focus]
+        data.insert(0, self.images).
         if isinstance(spec, slice):
-            for rec in self.images.__iter__(spec)
-                yield self._input_fn(rec)
+            for rec in zip([arr.__iter__(spec) for arr in data]):
+                yield rec
         else:
-            for rec in self._node.images[spec]:
-                yield self._input_fn(rec)
-
+            for rec in zip([arr[spec] for arr in data]):
+                yield rec
 
     def __len__(self):
         return len(self._node.images)
 
 class ImageTrainerH5(object):
-    def __init__(self, fname=fname, cmap=dcmap, groups=MLTYPES, framework=None):
+    def __init__(self, fname=fname, klass_map=klass_map, data_groups=MLTYPES, framework=None, title="Unknown"):
         self._framework = framework
         self._fw_loader = lambda x: x
-        self._fileh = tables.open_file(fname, mode="w", title="whatever")
-        Classifications = {klass: tables.UInt8Col(pos=idx + 2) for idx, (klass, _)
-                               in enumerate(sorted(cmap.items(), key=lambda x: x[1]))}
-        Classifications["image_chunk_index"] = tables.UInt8Col(shape=2, pos=1)
-        # create data groups
-        for name, desc in groups:
-            self._fileh.create_group("/", name.lower(), desc)
-        self._groups = {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
-        # assign arrays
-        #self._fileh.create_carray(self._g_train, "images")
-        for name, group in self._groups.items():
-            self._fileh.create_table(group, "hit_table", Classifications,
-                                     "Chip Index + Klass Hit Record", tables.Filters(0))
-            self._fileh.create_carray(group, "images", atom=tables.UInt8Atom(), shape=(3, 256, 256))
-            self._fileh.create_group(group, "labels", "Image label type array data")
-            self._fileh.create_carray("/{}/labels".format(name), "segmentations",
-                                      atom=tables.UInt8Atom(), shape=(256, 256))
-            self._fileh.create_vlarray("/{}/labels", "detections",
-                                      atom=tables.UInt8Atom())
+        if not os.path.exists(fname):
+            self._fileh = tables.open_file(fname, mode="w", title=title)
+            for name, desc in data_groups:
+                self._fileh.create_group("/", name.lower(), desc)
+
+            Classifications = {klass: tables.UInt8Col(pos=idx + 2) for idx, (klass, _)
+                                in enumerate(sorted(cmap.items(), key=lambda x: x[1]))}
+            Classifications["image_chunk_index"] = tables.UInt8Col(shape=2, pos=1)
+
+            groups = {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
+            for name, group in groups.items():
+                self._fileh.create_table(group, "hit_table", Classifications,
+                                        "Chip Index + Klass Hit Record", tables.Filters(0))
+                self._fileh.create_earray(group, "data", atom=tables.UInt8Atom(), shape=(3, 256, 256))
+                self._fileh.create_earray("/{}/labels".format(name), "segmentations",
+                                        atom=tables.UInt8Atom(), shape=(256, 256))
+                self._fileh.create_vlarray("/{}/labels", "detections",
+                                        atom=tables.UInt8Atom())
+
+        else:
+            self._fileh = tables.open_file(fname, mode="a", title=title)
 
     @property
     def focus(self):
@@ -115,10 +117,4 @@ class ImageTrainerH5(object):
     @property
     def validation(self):
         return WrappedArrayNode(self._fileh.root.validation)
-
-
-
-
-
-
 
