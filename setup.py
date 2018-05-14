@@ -8,6 +8,8 @@ setup(name='pyveda',
       packages=['pyveda'],
       zip_safe=False,
       install_requires=[
-          "gbdxtools"
+          "gbdxtools",
+          "h5py",
+          "tables"
         ]
       )
