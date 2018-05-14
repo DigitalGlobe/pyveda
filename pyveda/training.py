@@ -55,19 +55,23 @@ class DataPoint(object):
 
     @property
     def image(self):
+        """ Returns a delayed dask call for fetching the image for a data point """
         token = gbdx.gbdx_connection.access_token
         load = load_image(self.links["image"]["href"], token, self.shape, dtype=self.dtype)
         return da.from_delayed(load, shape=self.shape, dtype=self.dtype)
 
     def save(self, data):
+        """ Saves/updates the datapoint in the database """
         return self.conn.put(self.links["update"]["href"], json=data).json()
 
     def update(self, new_data, save=True):
+        """ Updates data for the datapoint in the database """
         self.data.update(new_data)
         if save:
             self.save(new_data)
 
     def remove(self):
+        """ Removes the datapoint from the set"""
         return self.conn.delete(self.links["delete"]["href"]).json()
 
     def __repr__(self):
@@ -85,6 +89,7 @@ class BaseSet(object):
         self.conn.headers.update( headers )
 
     def _querystring(self, limit, **kwargs):
+        """ Builds a qury string from kwargs for fetching points """
         qs = {
           "limit": limit,
           "includeLinks": True
@@ -93,19 +98,27 @@ class BaseSet(object):
         return urlencode(qs)
 
     def fetch_index(self, idx, group="train"):
+        """ Fetch a single data point at a given index in the dataset """
         qs = urlencode({"limit": 1, "offset": idx, "group": group, "includeLinks": True})
         p = self.conn.get("{}/data/{}/datapoints?{}".format(HOST, self.id, qs)).json()[0]
         return DataPoint(p, shape=self.shape, dtype=self.dtype)
 
     def fetch(self, _id):
+        """ Fetch a point for a given ID """
         return DataPoint(self.conn.get("{}/datapoints/{}".format(HOST, _id)).json(), shape=self.shape, dtype=self.dtype)
 
     def fetch_points(self, limit, **kwargs):
+        """ Fetch a list of datapoints """
         qs = self._querystring(limit, **kwargs)
         return [DataPoint(p, shape=self.shape, dtype=self.dtype) for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
 
     def save(self):
-        """ Saves a dataset in the DB """
+        """ 
+          Saves a dataset in the DB. Contains logic for determining whether 
+          the data should be posted as a single h5 cache or a series of smalled chunked files.
+
+          Upon save completing sets the _index property so that new datapoints are indexed correctly.
+        """
         meta = self.meta
         meta.update({
             "count": dict(self._count),
@@ -130,6 +143,9 @@ class BaseSet(object):
         return doc
 
     def _create_set(self, meta, h5=None):
+        """ 
+          Creates the set in the API/DB
+        """
         if h5 is None:
             # Big dataset, create a doc, then post in chunks
             if self.id is not None:
