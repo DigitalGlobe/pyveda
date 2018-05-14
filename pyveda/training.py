@@ -205,6 +205,7 @@ class BaseSet(object):
                         "update": True
                     }
                     files['metadata'] = (None, json.dumps(meta), 'application/json')
+                print('saving chunk', chunk+1)
                 p = session.post(doc['links']['self']['href'], files=files)
                 os.remove(temp.name)
 
