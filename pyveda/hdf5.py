@@ -51,7 +51,7 @@ class WrappedDataNode(WrappedDataArray):
 
     def __iter__(self, spec=slice(None)):
         data = [getattr(self, label) for label in self._trainer.focus]
-        data.insert(0, self.images).
+        data.insert(0, self.images)
         if isinstance(spec, slice):
             for rec in zip([arr.__iter__(spec) for arr in data]):
                 yield rec
@@ -63,7 +63,7 @@ class WrappedDataNode(WrappedDataArray):
         return len(self._node.images)
 
 class ImageTrainerH5(object):
-    def __init__(self, fname=fname, klass_map=klass_map, data_groups=MLTYPES, framework=None, title="Unknown"):
+    def __init__(self, fname="test.h5", klass_map=klass_map, data_groups=MLTYPES, framework=None, title="Unknown"):
         self._framework = framework
         self._fw_loader = lambda x: x
         if not os.path.exists(fname):
