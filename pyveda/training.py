@@ -176,8 +176,8 @@ class BaseSet(object):
         session.headers.update( headers )
         groups = list(self.cache.keys())
         for group in groups:
-            count = self._count[group]
-            nchunks = math.ceil(count / self._chunk_size)
+            count = float(self._count[group])
+            nchunks = math.ceil(count / float(self._chunk_size))
             idx = self._index
             for chunk in range(nchunks):
                 temp = NamedTemporaryFile(prefix="veda", suffix='h5', delete=False)
@@ -205,7 +205,6 @@ class BaseSet(object):
                         "update": True
                     }
                     files['metadata'] = (None, json.dumps(meta), 'application/json')
-                print('saving chunk', chunk+1)
                 p = session.post(doc['links']['self']['href'], files=files)
                 os.remove(temp.name)
 
