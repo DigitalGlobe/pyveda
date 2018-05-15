@@ -68,7 +68,7 @@ class ImageTrainerH5(object):
         self._fw_loader = lambda x: x
         if not os.path.exists(fname):
             self._fileh = tables.open_file(fname, mode="w", title=title)
-            for name, desc in data_groups:
+            for name, desc in data_groups.items():
                 self._fileh.create_group("/", name.lower(), desc)
 
             Classifications = {klass: tables.UInt8Col(pos=idx + 2) for idx, (klass, _)
