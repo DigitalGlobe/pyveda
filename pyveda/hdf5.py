@@ -14,9 +14,10 @@ class FrameworkNotSupported(NotImplementedError):
     pass
 
 class WrappedDataArray(object):
-    def __init__(self, node, trainer):
+    def __init__(self, node, trainer, input_fn=lambda x: x):
         self._arr = node
         self._trainer = trainer
+        self._input_fn = input_fn
 
     def __iter__(self, spec=slice(None)):
         if isinstance(spec, slice):
@@ -39,7 +40,7 @@ class WrappedDataNode(WrappedDataArray):
 
     @property
     def images(self):
-        return WrappedDataArray(self._node.images)
+        return WrappedDataArray(self._node.images, input_fn = self._trainer._fw_loader)
 
     @property
     def segmentations(self):
@@ -72,17 +73,18 @@ class ImageTrainerH5(object):
                 self._fileh.create_group("/", name.lower(), desc)
 
             Classifications = {klass: tables.UInt8Col(pos=idx + 2) for idx, (klass, _)
-                                in enumerate(sorted(cmap.items(), key=lambda x: x[1]))}
+                                in enumerate(sorted(data_groups.items(), key=lambda x: x[1]))}
             Classifications["image_chunk_index"] = tables.UInt8Col(shape=2, pos=1)
 
             groups = {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
             for name, group in groups.items():
+                labels = self._fileh.create_group(group, "labels", "Image Labels")
                 self._fileh.create_table(group, "hit_table", Classifications,
                                         "Chip Index + Klass Hit Record", tables.Filters(0))
-                self._fileh.create_earray(group, "data", atom=tables.UInt8Atom(), shape=(3, 256, 256))
-                self._fileh.create_earray("/{}/labels".format(name), "segmentations",
-                                        atom=tables.UInt8Atom(), shape=(256, 256))
-                self._fileh.create_vlarray("/{}/labels", "detections",
+                self._fileh.create_earray(group, "images", atom=tables.UInt8Atom(), shape=(0, 3, 256, 256))
+                self._fileh.create_earray(labels, "segmentations",
+                                        atom=tables.UInt8Atom(), shape=(0, 256, 256))
+                self._fileh.create_vlarray(labels, "detections",
                                         atom=tables.UInt8Atom())
 
         else:
