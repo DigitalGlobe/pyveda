@@ -110,13 +110,13 @@ class ImageTrainerH5(object):
 
     @property
     def train(self):
-        return WrappedDataNode(self._fileh.root.train)
+        return WrappedDataNode(self._fileh.root.train, self)
 
     @property
     def test(self):
-        return WrappedDataNode(self._fileh.root.test)
+        return WrappedDataNode(self._fileh.root.test, self)
 
     @property
     def validation(self):
-        return WrappedDataNode(self._fileh.root.validation)
+        return WrappedDataNode(self._fileh.root.validation, self)
 
