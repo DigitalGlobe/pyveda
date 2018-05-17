@@ -22,7 +22,7 @@ from skimage.io import imread
 import pycurl
 
 
-MAX_RETRIES = 1
+MAX_RETRIES = 2
 _curl_pool = defaultdict(pycurl.Curl)
 
 @delayed
@@ -53,7 +53,6 @@ def load_image(url, token, shape, dtype=np.float32):
                 success = True
                 return arr
             except Exception as e:
-                print(e)
                 _curl.close()
                 del _curl_pool[thread_id]
             finally:
