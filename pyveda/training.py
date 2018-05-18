@@ -83,6 +83,7 @@ class BaseSet(object):
     def __init__(self, id=None):
         self.id = id
         self._data_url = "{}/data".format(HOST)
+        self._cache_url = "{}/cache/{}".format(HOST, id)
         self._datapoint_url = "{}/datapoints".format(HOST)
         self._chunk_size = os.environ.get('VEDA_CHUNK_SIZE', 5000)
         self.conn = requests.Session()
@@ -112,9 +113,15 @@ class BaseSet(object):
         qs = self._querystring(limit, **kwargs)
         return [DataPoint(p, shape=self.shape, dtype=self.dtype) for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
 
+<<<<<<< HEAD
     def save(self):
         """
           Saves a dataset in the DB. Contains logic for determining whether
+=======
+    def save(self, auto_cache=True):
+        """ 
+          Saves a dataset in the DB. Contains logic for determining whether 
+>>>>>>> a0bcec66698eb5686d82745234fa3389f581da6e
           the data should be posted as a single h5 cache or a series of smalled chunked files.
 
           Upon save completing sets the _index property so that new datapoints are indexed correctly.
@@ -140,6 +147,10 @@ class BaseSet(object):
         self.links = doc["links"]
         self._cache = None
         self._index = total
+
+        if auto_cache: 
+            self.conn.post(self._cache_url, json={})
+
         return doc
 
     def _create_set(self, meta, h5=None):
@@ -206,6 +217,7 @@ class BaseSet(object):
                     }
                     files['metadata'] = (None, json.dumps(meta), 'application/json')
                 p = session.post(doc['links']['self']['href'], files=files)
+                p.result() # wait for it...
                 os.remove(temp.name)
 
     def create(self, data):
