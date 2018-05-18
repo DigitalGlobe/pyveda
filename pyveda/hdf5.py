@@ -33,6 +33,10 @@ class WrappedDataArray(object):
     def __len__(self):
         return len(self._arr)
 
+    def append(self, item):
+        dims = item.shape
+        self._arr.append(item.reshape(1, *dims))
+
 class WrappedDataNode(WrappedDataArray):
     def __init__(self, node, trainer):
         self._node = node
@@ -40,15 +44,15 @@ class WrappedDataNode(WrappedDataArray):
 
     @property
     def images(self):
-        return WrappedDataArray(self._node.images, input_fn = self._trainer._fw_loader)
+        return WrappedDataArray(self._node.images, self._trainer, input_fn = self._trainer._fw_loader)
 
     @property
     def segmentations(self):
-        return WrappedDataArray(self._node.labels.segmentations)
+        return WrappedDataArray(self._node.labels.segmentations, self._trainer)
 
     @property
     def detections(self):
-        return WrappedDataArray(self._node.labels.detections)
+        return WrappedDataArray(self._node.labels.detections, self._trainer)
 
     def __iter__(self, spec=slice(None)):
         data = [getattr(self, label) for label in self._trainer.focus]
@@ -63,7 +67,7 @@ class WrappedDataNode(WrappedDataArray):
     def __len__(self):
         return len(self._node.images)
 
-class ImageTrainerH5(object):
+class ImageTrainer(object):
     def __init__(self, fname="test.h5", klass_map=klass_map, data_groups=MLTYPES, framework=None, title="Unknown"):
         self._framework = framework
         self._fw_loader = lambda x: x

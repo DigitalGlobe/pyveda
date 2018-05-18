@@ -113,8 +113,8 @@ class BaseSet(object):
         return [DataPoint(p, shape=self.shape, dtype=self.dtype) for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
 
     def save(self):
-        """ 
-          Saves a dataset in the DB. Contains logic for determining whether 
+        """
+          Saves a dataset in the DB. Contains logic for determining whether
           the data should be posted as a single h5 cache or a series of smalled chunked files.
 
           Upon save completing sets the _index property so that new datapoints are indexed correctly.
@@ -143,14 +143,14 @@ class BaseSet(object):
         return doc
 
     def _create_set(self, meta, h5=None):
-        """ 
+        """
           Creates the set in the API/DB
         """
         if h5 is None:
             # Big dataset, create a doc, then post in chunks
             if self.id is not None:
                 doc = self.conn.get(self.links['self']['href'])
-            else: 
+            else:
                 doc = self.conn.post(self._data_url, json={"metadata": meta})
         else:
             # Small file send all the data
@@ -259,6 +259,8 @@ class TrainingSet(BaseSet):
             "nclasses": len(classes),
             "mlType": mlType
         }
+
+        self.db = None
 
     @classmethod
     def from_doc(cls, doc):
@@ -379,7 +381,7 @@ class TrainingSet(BaseSet):
         })
 
 
-    def batch(self, size, group="train", to_cache=False):
+    def batch(self, size, group="train", label_type="segmentation", to_cache=False):
         """
           Fetches a batch of randomly sampled pairs from either the set
           Args:
@@ -389,13 +391,18 @@ class TrainingSet(BaseSet):
               to_cache (bool): fetch the data directly to a h5 file on disk
         """
         points = self.fetch_points(size, shuffle=True, group=group)
-        X = da.stack([p.image for p in points])
-        Y = [p.y for p in points]
         if not to_cache:
+            X = da.stack([p.image for p in points])
+            Y = [p.y for p in points]
             return X.compute(get=threaded_get), np.array(Y)
         else:
-            # TODO: support saving to hdf5 file and return a class that can read data from it
-            pass
+            if not self.db:
+                self.db = ImageTrainer()
+                datagroup = getattr(self.db, group)
+                labelgroup = getattr(datagroup, label_type)
+                for p in points:
+                    datagroup.images.append(p.image.compute())
+                    labelgroup.append(p.y)
 
     def batch_generator(self, size, group="train"):
         """
