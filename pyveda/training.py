@@ -113,17 +113,10 @@ class BaseSet(object):
         qs = self._querystring(limit, **kwargs)
         return [DataPoint(p, shape=self.shape, dtype=self.dtype) for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
 
-<<<<<<< HEAD
-    def save(self):
+    def save(self, auto_cache=True):
         """
           Saves a dataset in the DB. Contains logic for determining whether
-=======
-    def save(self, auto_cache=True):
-        """ 
-          Saves a dataset in the DB. Contains logic for determining whether 
->>>>>>> a0bcec66698eb5686d82745234fa3389f581da6e
           the data should be posted as a single h5 cache or a series of smalled chunked files.
-
           Upon save completing sets the _index property so that new datapoints are indexed correctly.
         """
         meta = self.meta
@@ -148,7 +141,7 @@ class BaseSet(object):
         self._cache = None
         self._index = total
 
-        if auto_cache: 
+        if auto_cache:
             self.conn.post(self._cache_url, json={})
 
         return doc
