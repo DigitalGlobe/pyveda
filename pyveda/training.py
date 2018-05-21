@@ -83,7 +83,7 @@ class BaseSet(object):
     def __init__(self, id=None):
         self.id = id
         self._data_url = "{}/data".format(HOST)
-        self._cache_url = "{}/cache/{}".format(HOST, id)
+        self._cache_url = "{}/data/{}/cache"
         self._datapoint_url = "{}/datapoints".format(HOST)
         self._chunk_size = os.environ.get('VEDA_CHUNK_SIZE', 5000)
         self.conn = requests.Session()
@@ -142,7 +142,7 @@ class BaseSet(object):
         self._index = total
 
         if auto_cache:
-            self.conn.post(self._cache_url, json={})
+            self.conn.post(self._cache_url.format(HOST, self.id), json={})
 
         return doc
 
@@ -172,6 +172,8 @@ class BaseSet(object):
                     url = self._data_url
                 doc = self.conn.post(url, files=files)
                 mfile.close()
+
+        doc.raise_for_status()
         return doc.json()
 
     def _send_chunks(self, doc):
