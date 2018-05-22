@@ -45,6 +45,14 @@ class DataPoint(object):
         self.shape = tuple(shape)
         self.dtype = dtype
 
+        if HOST == "http://localhost:3002":
+            links = self.links.copy()
+            for key in links:
+                href = links[key]['href']
+                href.replace("host.docker.internal", "localhost")
+                links[key]['href'] = href
+
+
     @property
     def id(self):
         return self.data["id"]

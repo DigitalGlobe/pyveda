@@ -68,9 +68,16 @@ class WrappedDataNode(WrappedDataArray):
         return len(self._node.images)
 
 class ImageTrainer(object):
-    def __init__(self, fname="test.h5", klass_map=klass_map, data_groups=MLTYPES, framework=None, title="Unknown"):
+    """
+    An interface for consuming and reading local data intended to be used with machine learning training
+    """
+    def __init__(self, fname="test.h5", klass_map=klass_map, data_groups=MLTYPES, framework=None,
+                 title="Unknown", image_shape=(3, 256, 256)):
         self._framework = framework
         self._fw_loader = lambda x: x
+        self._imshape = tuple(list(image_shape).insert(0, 0))
+        self._segshape = tuple([s for idx, s in enumerate(image_shape) if idx > 0 else 0])
+        self.imshape = image_shape
         if not os.path.exists(fname):
             self._fileh = tables.open_file(fname, mode="w", title=title)
             for name, desc in data_groups.items():
@@ -85,9 +92,9 @@ class ImageTrainer(object):
                 labels = self._fileh.create_group(group, "labels", "Image Labels")
                 self._fileh.create_table(group, "hit_table", Classifications,
                                         "Chip Index + Klass Hit Record", tables.Filters(0))
-                self._fileh.create_earray(group, "images", atom=tables.UInt8Atom(), shape=(0, 3, 256, 256))
+                self._fileh.create_earray(group, "images", atom=tables.UInt8Atom(), shape=self._imshape)
                 self._fileh.create_earray(labels, "segmentations",
-                                        atom=tables.UInt8Atom(), shape=(0, 256, 256))
+                                        atom=tables.UInt8Atom(), shape=self._segshape)
                 self._fileh.create_vlarray(labels, "detections",
                                         atom=tables.UInt8Atom())
 
