@@ -45,14 +45,6 @@ class DataPoint(object):
         self.shape = tuple(shape)
         self.dtype = dtype
 
-        if HOST == "http://localhost:3002":
-            links = self.links.copy()
-            for key in links:
-                href = links[key]['href']
-                href.replace("host.docker.internal", "localhost")
-                links[key]['href'] = href
-        self.links = links
-
 
     @property
     def id(self):
@@ -147,6 +139,13 @@ class BaseSet(object):
 
         self.id = doc["data"]["id"]
         self.links = doc["links"]
+        if HOST == "http://localhost:3002":
+            links = self.links.copy()
+            for key in links:
+                href = links[key]['href']
+                href.replace("host.docker.internal", "localhost")
+                links[key]['href'] = href
+            self.links = links
         self._cache = None
         self._index = total
 
