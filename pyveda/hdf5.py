@@ -67,6 +67,7 @@ class WrappedDataNode(WrappedDataArray):
     def __len__(self):
         return len(self._node.images)
 
+
 class ImageTrainer(object):
     """
     An interface for consuming and reading local data intended to be used with machine learning training

@@ -51,6 +51,7 @@ class DataPoint(object):
                 href = links[key]['href']
                 href.replace("host.docker.internal", "localhost")
                 links[key]['href'] = href
+        self.links = links
 
 
     @property
