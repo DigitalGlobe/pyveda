@@ -94,6 +94,7 @@ class ImageTrainer(object):
         self._segshape = tuple([s if idx > 0 else 0 for idx, s in enumerate(image_shape)])
         self.imshape = image_shape
         self._focus = focus
+        self.klass_map = klass_map
         if not os.path.exists(fname):
             self._fileh = tables.open_file(fname, mode="w", title=title)
             for name, desc in data_groups.items():
@@ -109,7 +110,7 @@ class ImageTrainer(object):
                 self._fileh.create_table(group, "hit_table", Classifications,
                                         "Chip Index + Klass Hit Record", tables.Filters(0))
                 self._fileh.create_earray(group, "image", atom=tables.UInt8Atom(), shape=self._imshape)
-                self._fileh.create_earray(group, "classification", atom=tables.UInt8Atom(), shape=(0, 1, len(klass_map))
+                self._fileh.create_earray(group, "classification", atom=tables.UInt8Atom(), shape=(0, 1, len(klass_map)))
                 self._fileh.create_earray(labels, "segmentation",
                                         atom=tables.UInt8Atom(), shape=self._segshape)
                 self._fileh.create_vlarray(labels, "detection",
