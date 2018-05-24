@@ -415,12 +415,12 @@ class TrainingSet(BaseSet):
             return X.compute(get=threaded_get), np.array(Y)
         else:
             if not self.db:
-                klass_map = {idx: klass_name for klass_name in self.meta['classes']}
+                klass_map = {idx: klass_name for idx, klass_name in enumerate(self.meta['classes'])}
                 self.db = ImageTrainer(klass_map=klass_map, focus=label_type)
                 datagroup = getattr(self.db, group)
                 labelgroup = getattr(datagroup, label_type)
                 for p in points:
-                    datagroup.images.append(p.image.compute())
+                    datagroup.image.append(p.image.compute())
                     labelgroup.append(p.y)
             return self.db
 
