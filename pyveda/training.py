@@ -415,7 +415,7 @@ class TrainingSet(BaseSet):
             return X.compute(get=threaded_get), np.array(Y)
         else:
             if not self.db:
-                self.db = ImageTrainer()
+                self.db = ImageTrainer(focus=label_type)
                 datagroup = getattr(self.db, group)
                 labelgroup = getattr(datagroup, label_type)
                 for p in points:
