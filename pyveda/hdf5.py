@@ -51,6 +51,10 @@ class WrappedDataNode(WrappedDataArray):
         return WrappedDataArray(self._node.image, self._trainer, input_fn = self._trainer._fw_loader)
 
     @property
+    def classification(self):
+        return WrappedDataArray(self._node.classification, self._trainer)
+
+    @property
     def segmentation(self):
         return WrappedDataArray(self._node.labels.segmentation, self._trainer)
 
@@ -60,7 +64,7 @@ class WrappedDataNode(WrappedDataArray):
 
     def __getitem__(self, idx):
         assert isinstance(idx, int)
-
+        raise NotImplementedError # figure out correct way to get, iter over focus
 
     def __iter__(self, spec=slice(None)):
         data = [getattr(self, label) for label in self._trainer.focus]
@@ -81,7 +85,7 @@ class ImageTrainer(object):
     An interface for consuming and reading local data intended to be used with machine learning training
     """
     def __init__(self, fname="test.h5", klass_map=klass_map, data_groups=MLTYPES, framework=None,
-                 title="Unknown", image_shape=(3, 256, 256)):
+                 title="Unknown", image_shape=(3, 256, 256), focus="classification"):
         self._framework = framework
         self._fw_loader = lambda x: x
         imshape = list(image_shape)
@@ -89,6 +93,7 @@ class ImageTrainer(object):
         self._imshape = tuple(imshape)
         self._segshape = tuple([s if idx > 0 else 0 for idx, s in enumerate(image_shape)])
         self.imshape = image_shape
+        self._focus = focus
         if not os.path.exists(fname):
             self._fileh = tables.open_file(fname, mode="w", title=title)
             for name, desc in data_groups.items():
@@ -104,6 +109,7 @@ class ImageTrainer(object):
                 self._fileh.create_table(group, "hit_table", Classifications,
                                         "Chip Index + Klass Hit Record", tables.Filters(0))
                 self._fileh.create_earray(group, "image", atom=tables.UInt8Atom(), shape=self._imshape)
+                self._fileh.create_earray(group, "classification", atom=tables.UInt8Atom(), shape=(0, 1, len(klass_map))
                 self._fileh.create_earray(labels, "segmentation",
                                         atom=tables.UInt8Atom(), shape=self._segshape)
                 self._fileh.create_vlarray(labels, "detection",
