@@ -421,6 +421,7 @@ class TrainingSet(BaseSet):
                 for p in points:
                     datagroup.images.append(p.image.compute())
                     labelgroup.append(p.y)
+            return self.db
 
     def batch_generator(self, size, group="train"):
         """
