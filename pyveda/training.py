@@ -21,6 +21,9 @@ from .utils import transforms
 
 from functools import partial
 import dask
+
+from .hdf5 import ImageTrainer
+
 threaded_get = partial(dask.threaded.get, num_workers=64)
 
 gbdx = Interface()

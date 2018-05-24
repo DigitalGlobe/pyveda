@@ -77,7 +77,7 @@ class ImageTrainer(object):
         self._framework = framework
         self._fw_loader = lambda x: x
         self._imshape = tuple(list(image_shape).insert(0, 0))
-        self._segshape = tuple([s for idx, s in enumerate(image_shape) if idx > 0 else 0])
+        self._segshape = tuple([s if idx > 0 else 0 for idx, s in enumerate(image_shape)])
         self.imshape = image_shape
         if not os.path.exists(fname):
             self._fileh = tables.open_file(fname, mode="w", title=title)
