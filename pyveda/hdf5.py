@@ -27,6 +27,10 @@ class WrappedDataArray(object):
             for rec in self._arr.images[spec]:
                 yield self._input_fn(rec)
 
+    def __getitem__(self, idx):
+        assert isinstance(idx, int)
+        return self._arr[idx]
+
     def __setitem__(self, key, value):
         raise NotSupportedException("For your protection, overwriting raw data in ImageTrainer is not supported.")
 
@@ -43,7 +47,7 @@ class WrappedDataNode(WrappedDataArray):
         self._trainer = trainer
 
     @property
-    def images(self):
+    def image(self):
         return WrappedDataArray(self._node.images, self._trainer, input_fn = self._trainer._fw_loader)
 
     @property
@@ -51,8 +55,12 @@ class WrappedDataNode(WrappedDataArray):
         return WrappedDataArray(self._node.labels.segmentations, self._trainer)
 
     @property
-    def detections(self):
+    def detection(self):
         return WrappedDataArray(self._node.labels.detections, self._trainer)
+
+    def __getitem__(self, idx):
+        assert isinstance(idx, int)
+
 
     def __iter__(self, spec=slice(None)):
         data = [getattr(self, label) for label in self._trainer.focus]
