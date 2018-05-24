@@ -24,7 +24,7 @@ class WrappedDataArray(object):
             for rec in self._arr.iterrows(spec.start, spec.stop, spec.step):
                 yield self._input_fn(rec)
         else:
-            for rec in self._arr.images[spec]:
+            for rec in self._arr.image[spec]:
                 yield self._input_fn(rec)
 
     def __getitem__(self, idx):
@@ -48,15 +48,15 @@ class WrappedDataNode(WrappedDataArray):
 
     @property
     def image(self):
-        return WrappedDataArray(self._node.images, self._trainer, input_fn = self._trainer._fw_loader)
+        return WrappedDataArray(self._node.image, self._trainer, input_fn = self._trainer._fw_loader)
 
     @property
     def segmentation(self):
-        return WrappedDataArray(self._node.labels.segmentations, self._trainer)
+        return WrappedDataArray(self._node.labels.segmentation, self._trainer)
 
     @property
     def detection(self):
-        return WrappedDataArray(self._node.labels.detections, self._trainer)
+        return WrappedDataArray(self._node.labels.detection, self._trainer)
 
     def __getitem__(self, idx):
         assert isinstance(idx, int)
@@ -64,7 +64,7 @@ class WrappedDataNode(WrappedDataArray):
 
     def __iter__(self, spec=slice(None)):
         data = [getattr(self, label) for label in self._trainer.focus]
-        data.insert(0, self.images)
+        data.insert(0, self.image)
         if isinstance(spec, slice):
             for rec in zip([arr.__iter__(spec) for arr in data]):
                 yield rec
@@ -73,7 +73,7 @@ class WrappedDataNode(WrappedDataArray):
                 yield rec
 
     def __len__(self):
-        return len(self._node.images)
+        return len(self._node.image)
 
 
 class ImageTrainer(object):
@@ -103,10 +103,10 @@ class ImageTrainer(object):
                 labels = self._fileh.create_group(group, "labels", "Image Labels")
                 self._fileh.create_table(group, "hit_table", Classifications,
                                         "Chip Index + Klass Hit Record", tables.Filters(0))
-                self._fileh.create_earray(group, "images", atom=tables.UInt8Atom(), shape=self._imshape)
-                self._fileh.create_earray(labels, "segmentations",
+                self._fileh.create_earray(group, "image", atom=tables.UInt8Atom(), shape=self._imshape)
+                self._fileh.create_earray(labels, "segmentation",
                                         atom=tables.UInt8Atom(), shape=self._segshape)
-                self._fileh.create_vlarray(labels, "detections",
+                self._fileh.create_vlarray(labels, "detection",
                                         atom=tables.UInt8Atom())
 
         else:
