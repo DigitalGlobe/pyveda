@@ -47,7 +47,7 @@ class WrappedDataNode(WrappedDataArray):
         return WrappedDataArray(self._node.images, self._trainer, input_fn = self._trainer._fw_loader)
 
     @property
-    def segmentations(self):
+    def segmentation(self):
         return WrappedDataArray(self._node.labels.segmentations, self._trainer)
 
     @property
@@ -76,7 +76,9 @@ class ImageTrainer(object):
                  title="Unknown", image_shape=(3, 256, 256)):
         self._framework = framework
         self._fw_loader = lambda x: x
-        self._imshape = tuple(list(image_shape).insert(0, 0))
+        imshape = list(image_shape)
+        imshape.insert(0,0)
+        self._imshape = tuple(imshape)
         self._segshape = tuple([s if idx > 0 else 0 for idx, s in enumerate(image_shape)])
         self.imshape = image_shape
         if not os.path.exists(fname):
