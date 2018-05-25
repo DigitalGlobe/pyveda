@@ -156,6 +156,9 @@ class ImageTrainer(object):
     def validation(self):
         return WrappedDataNode(self._fileh.root.validation, self)
 
+    def close(self):
+        self._fileh.close()
+
     def __repr__(self):
         return self._fileh.__str__()
 
