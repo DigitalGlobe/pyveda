@@ -123,7 +123,7 @@ class ImageTrainer(object):
         if not self._focus:
             return self._focus
         return [task for task, leaf in self._fileh.root.train.labels._v_children.items()
-                if isinstance(tables.array.Array)]
+                if isinstance(leaf, tables.array.Array)]
 
     @property
     def framework(self):
