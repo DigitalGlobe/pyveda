@@ -54,7 +54,7 @@ class WrappedDataNode(WrappedDataArray):
 
     @property
     def classification(self):
-        return WrappedDataArray(self._node.classification, self._trainer)
+        return WrappedDataArray(self._node.labels.classification, self._trainer)
 
     @property
     def segmentation(self):
