@@ -10,6 +10,9 @@ FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
 klass_map = {"buildings": 1, "cars": 2, "zebras": 3}
 
+class LabelNotSupported(NotImplementedError):
+    pass
+
 class FrameworkNotSupported(NotImplementedError):
     pass
 
@@ -62,14 +65,14 @@ class WrappedDataNode(WrappedDataArray):
         return WrappedDataArray(self._node.labels.detection, self._trainer)
 
     def __getitem__(self, idx):
-        assert isinstance(idx, int)
-        raise NotImplementedError # figure out correct way to get, iter over focus
+        label_data = getattr(self, self._trainer.focus)
+        return list(zip(self.image[idx], label_data[idx]))
 
     def __iter__(self, spec=slice(None)):
         data = [getattr(self, label) for label in self._trainer.focus]
         data.insert(0, self.image)
         if isinstance(spec, slice):
-            for rec in zip([arr.__iter__(spec) for arr in data]):
+            for rec in zip([arr[spec] for arr in data]):
                 yield rec
         else:
             for rec in zip([arr[spec] for arr in data]):
@@ -120,10 +123,15 @@ class ImageTrainer(object):
 
     @property
     def focus(self):
-        if not self._focus:
-            return self._focus
-        return [task for task, leaf in self._fileh.root.train.labels._v_children.items()
-                if isinstance(leaf, tables.array.Array)]
+        return self._focus
+#        return [task for task, leaf in self._fileh.root.train.labels._v_children.items()
+#                if isinstance(leaf, tables.array.Array)]
+
+    @focus.setter
+    def focus(self, foc):
+        if foc not in ['classification', 'segmentation', 'detection']:
+            raise LabelNotSupported("Focus must be classification, segmentation or detection")
+        self._focus = foc
 
     @property
     def framework(self):
