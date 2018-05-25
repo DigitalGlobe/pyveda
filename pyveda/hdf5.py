@@ -122,7 +122,7 @@ class ImageTrainer(object):
     def focus(self):
         if not self._focus:
             return self._focus
-        return [task for task, leaf in self._fileh.root.images.labels._v_children.items()
+        return [task for task, leaf in self._fileh.root.train.labels._v_children.items()
                 if isinstance(tables.array.Array)]
 
     @property
@@ -147,4 +147,7 @@ class ImageTrainer(object):
     @property
     def validation(self):
         return WrappedDataNode(self._fileh.root.validation, self)
+
+    def __repr__(self):
+        return self._fileh.__str__()
 
