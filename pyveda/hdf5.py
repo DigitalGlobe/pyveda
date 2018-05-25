@@ -28,7 +28,6 @@ class WrappedDataArray(object):
                 yield self._input_fn(rec)
 
     def __getitem__(self, idx):
-        assert isinstance(idx, int)
         return self._arr[idx]
 
     def __setitem__(self, key, value):
