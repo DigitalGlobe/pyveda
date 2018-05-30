@@ -34,10 +34,10 @@ class WrappedDataArray(object):
                 yield self._read_transform(self._output_fn(rec))
         else:
             for rec in self._arr.image[spec]:
-                yield self._output_fn(rec)
+                yield self._read_trainsform(self._output_fn(rec))
 
     def __getitem__(self, idx):
-        return self._output_fn(self._arr[idx])
+        return self._read_transform(self._arr[idx])
 
     def __setitem__(self, key, value):
         raise NotSupportedException("For your protection, overwriting raw data in ImageTrainer is not supported.")
@@ -190,6 +190,13 @@ class ImageTrainer(object):
     def close(self):
         self._fileh.close()
 
+    def remove(self):
+
+
     def __repr__(self):
         return self._fileh.__str__()
+
+    def __del__(self):
+        self.close()
+
 
