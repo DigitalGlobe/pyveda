@@ -33,11 +33,16 @@ class WrappedDataArray(object):
             for rec in self._arr.iterrows(spec.start, spec.stop, spec.step):
                 yield self._read_transform(self._output_fn(rec))
         else:
-            for rec in self._arr.image[spec]:
-                yield self._read_trainsform(self._output_fn(rec))
+            for rec in self._arr[spec]:
+                yield self._read_transform(self._output_fn(rec))
 
-    def __getitem__(self, idx):
-        return self._read_transform(self._arr[idx])
+    def __getitem__(self, spec):
+        if isinstance(spec, slice):
+            return [self._read_transform(self._output_fn(rec)) for rec in self._arr[spec]]
+        elif isinstance(spec, int):
+            return self._read_transform(self._output_fn(self._arr[spec]))
+        else:
+            return self._arr[spec] # let pytables throw the error
 
     def __setitem__(self, key, value):
         raise NotSupportedException("For your protection, overwriting raw data in ImageTrainer is not supported.")
@@ -191,7 +196,7 @@ class ImageTrainer(object):
         self._fileh.close()
 
     def remove(self):
-
+        raise NotImplementedError
 
     def __repr__(self):
         return self._fileh.__str__()
