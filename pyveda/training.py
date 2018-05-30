@@ -266,7 +266,6 @@ class TrainingSet(BaseSet):
         self._count = kwargs.get('count', defaultdict(int))
         self._cache = None
         self._datapoints = None
-        self.dasks = defaultdict(dict)
         self._index = sum(list(self._count.values()))
 
         self.meta = {
@@ -275,8 +274,12 @@ class TrainingSet(BaseSet):
             "bbox": bbox,
             "classes": classes,
             "nclasses": len(classes),
-            "mlType": mlType
+            "mlType": mlType,
+            "public": kwargs.get("public", False)
         }
+
+        for k,v in self.meta.items():
+            setattr(self, k, v)
 
         self.db = None
 
