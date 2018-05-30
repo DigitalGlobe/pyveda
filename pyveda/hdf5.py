@@ -17,21 +17,27 @@ class FrameworkNotSupported(NotImplementedError):
     pass
 
 class WrappedDataArray(object):
-    def __init__(self, node, trainer, input_fn=lambda x: x):
+    def __init__(self, node, trainer, output_transform=lambda x: x):
         self._arr = node
         self._trainer = trainer
-        self._input_fn = input_fn
+        self._read_transform = output_transform
+
+    def _input_fn(self, item):
+        return item
+
+    def _output_fn(self, item):
+        return item
 
     def __iter__(self, spec=slice(None)):
         if isinstance(spec, slice):
             for rec in self._arr.iterrows(spec.start, spec.stop, spec.step):
-                yield self._input_fn(rec)
+                yield self._read_transform(self._output_fn(rec))
         else:
             for rec in self._arr.image[spec]:
-                yield self._input_fn(rec)
+                yield self._output_fn(rec)
 
     def __getitem__(self, idx):
-        return self._arr[idx]
+        return self._output_fn(self._arr[idx])
 
     def __setitem__(self, key, value):
         raise NotSupportedException("For your protection, overwriting raw data in ImageTrainer is not supported.")
@@ -40,29 +46,54 @@ class WrappedDataArray(object):
         return len(self._arr)
 
     def append(self, item):
-        dims = item.shape
-        self._arr.append(item.reshape(1, *dims))
+        self._arr.append(self._input_fn(item))
 
-class WrappedDataNode(WrappedDataArray):
+
+class ImageArray(WrappedDataArray):
+    def _input_fn(self, item):
+        dims = item.shape
+        return item.reshape(1, *dims)
+
+
+class ClassificationArray(WrappedDataArray):
+    pass
+
+
+class SegmentationArray(ImageArray):
+    pass
+
+
+class DetectionArray(WrappedDataArray):
+    def _input_fn(self, item):
+        assert item.shape[1] == 4
+        # Detection Bboxes are np arrays of shape (N, 4)
+        return item.flatten()
+
+    def _output_fn(self, item):
+        op_shape = (int(len(item) / 4), 4)
+        return item.reshape(op_shape)
+
+
+class WrappedDataNode(object):
     def __init__(self, node, trainer):
         self._node = node
         self._trainer = trainer
 
     @property
     def image(self):
-        return WrappedDataArray(self._node.image, self._trainer, input_fn = self._trainer._fw_loader)
+        return ImageArray(self._node.image, self._trainer, output_transform = self._trainer._fw_loader)
 
     @property
     def classification(self):
-        return WrappedDataArray(self._node.labels.classification, self._trainer)
+        return ClassificationArray(self._node.labels.classification, self._trainer)
 
     @property
     def segmentation(self):
-        return WrappedDataArray(self._node.labels.segmentation, self._trainer)
+        return SegmentationArray(self._node.labels.segmentation, self._trainer)
 
     @property
     def detection(self):
-        return WrappedDataArray(self._node.labels.detection, self._trainer)
+        return DetectionArray(self._node.labels.detection, self._trainer)
 
     def __getitem__(self, idx):
         label_data = getattr(self, self._trainer.focus)
