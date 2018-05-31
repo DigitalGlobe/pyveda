@@ -61,7 +61,9 @@ class ImageArray(WrappedDataArray):
 
 
 class ClassificationArray(WrappedDataArray):
-    pass
+    def _input_fn(self, item):
+        dims = item.shape
+        return item.reshape(1, *dims)
 
 
 class SegmentationArray(ImageArray):
@@ -148,7 +150,8 @@ class ImageTrainer(object):
                 self._fileh.create_table(group, "hit_table", Classifications,
                                         "Chip Index + Klass Hit Record", tables.Filters(0))
                 self._fileh.create_earray(group, "image", atom=tables.UInt8Atom(), shape=self._imshape)
-                self._fileh.create_earray(group, "classification", atom=tables.UInt8Atom(), shape=(0, 1, len(klass_map)))
+                self._fileh.create_earray(labels, "classification",
+                                        atom=tables.UInt8Atom(), shape=(0, len(klass_map)))
                 self._fileh.create_earray(labels, "segmentation",
                                         atom=tables.UInt8Atom(), shape=self._segshape)
                 self._fileh.create_vlarray(labels, "detection",
