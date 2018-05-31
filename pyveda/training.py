@@ -417,7 +417,7 @@ class TrainingSet(BaseSet):
         else:
             klass_map = {idx: klass_name for idx, klass_name in enumerate(self.meta['classes'])}
             db = ImageTrainer(klass_map=klass_map, focus=self.mlType)
-            datagroup = getattr(self.db, group)
+            datagroup = getattr(db, group)
             labelgroup = getattr(datagroup, self.mlType)
             for p in points:
                 datagroup.image.append(p.image.compute())
