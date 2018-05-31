@@ -281,8 +281,6 @@ class TrainingSet(BaseSet):
         for k,v in self.meta.items():
             setattr(self, k, v)
 
-        self.db = None
-
     @classmethod
     def from_doc(cls, doc):
         """ Helper method that converts a db doc to a TrainingSet """
@@ -402,7 +400,7 @@ class TrainingSet(BaseSet):
         })
 
 
-    def batch(self, size, group="train", label_type="segmentation", to_cache=False):
+    def batch(self, size, group="train", to_cache=False):
         """
           Fetches a batch of randomly sampled pairs from either the set
           Args:
@@ -417,15 +415,14 @@ class TrainingSet(BaseSet):
             Y = [p.y for p in points]
             return X.compute(get=threaded_get), np.array(Y)
         else:
-            if not self.db:
-                klass_map = {idx: klass_name for idx, klass_name in enumerate(self.meta['classes'])}
-                self.db = ImageTrainer(klass_map=klass_map, focus=label_type)
-                datagroup = getattr(self.db, group)
-                labelgroup = getattr(datagroup, label_type)
-                for p in points:
-                    datagroup.image.append(p.image.compute())
-                    labelgroup.append(p.y)
-            return self.db
+            klass_map = {idx: klass_name for idx, klass_name in enumerate(self.meta['classes'])}
+            db = ImageTrainer(klass_map=klass_map, focus=self.mlType)
+            datagroup = getattr(self.db, group)
+            labelgroup = getattr(datagroup, self.mlType)
+            for p in points:
+                datagroup.image.append(p.image.compute())
+                labelgroup.append(p.y)
+            return db
 
     def batch_generator(self, size, group="train"):
         """
