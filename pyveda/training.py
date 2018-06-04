@@ -400,7 +400,7 @@ class TrainingSet(BaseSet):
         })
 
 
-    def batch(self, size, group="train", to_cache=False):
+    def batch(self, size, group="train", to_cache=False, name=None, **kwargs):
         """
           Fetches a batch of randomly sampled pairs from either the set
           Args:
@@ -415,14 +415,16 @@ class TrainingSet(BaseSet):
             Y = [p.y for p in points]
             return X.compute(get=threaded_get), np.array(Y)
         else:
+            fname = "{}.h5".format(name) if name is not None else None
             klass_map = {idx: klass_name for idx, klass_name in enumerate(self.meta['classes'])}
-            db = ImageTrainer(klass_map=klass_map, focus=self.mlType)
-            datagroup = getattr(db, group)
+            cache = ImageTrainer(klass_map=klass_map, focus=self.mlType, 
+                              image_shape=self.shape, fname=fname)
+            datagroup = getattr(cache, group)
             labelgroup = getattr(datagroup, self.mlType)
             for p in points:
                 datagroup.image.append(p.image.compute())
                 labelgroup.append(p.y)
-            return db
+            return cache
 
     def batch_generator(self, size, group="train"):
         """

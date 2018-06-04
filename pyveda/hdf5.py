@@ -1,5 +1,6 @@
 import os
 import tables
+from tempfile import NamedTemporaryFile
 
 MLTYPES = {"TRAIN": "Data designated for model training",
            "TEST": "Data designated for model testing",
@@ -124,8 +125,15 @@ class ImageTrainer(object):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
-    def __init__(self, fname="test.h5", klass_map=klass_map, data_groups=MLTYPES, framework=None,
+    def __init__(self, fname=None, klass_map=klass_map, data_groups=MLTYPES, framework=None,
                  title="Unknown", image_shape=(3, 256, 256), focus="classification"):
+
+        if fname is None:
+            temp = NamedTemporaryFile(prefix="veda", suffix='h5', delete=False)
+            fname = temp.name
+
+        print('fname', fname)
+
         self._framework = framework
         self._fw_loader = lambda x: x
         imshape = list(image_shape)
@@ -135,7 +143,9 @@ class ImageTrainer(object):
         self.imshape = image_shape
         self._focus = focus
         self.klass_map = klass_map
-        if not os.path.exists(fname):
+        if os.path.exists(fname):
+            os.remove(fname)
+        else:
             self._fileh = tables.open_file(fname, mode="w", title=title)
             for name, desc in data_groups.items():
                 self._fileh.create_group("/", name.lower(), desc)
@@ -157,8 +167,9 @@ class ImageTrainer(object):
                 self._fileh.create_vlarray(labels, "detection",
                                         atom=tables.UInt8Atom())
 
-        else:
-            self._fileh = tables.open_file(fname, mode="a", title=title)
+        # chelm: is there a case where we want to append to an existing cache?
+        #else:
+        #    self._fileh = tables.open_file(fname, mode="a", title=title)
 
     @property
     def focus(self):
