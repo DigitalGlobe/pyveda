@@ -41,7 +41,7 @@ else:
     conn.headers.update(headers)
 
 def search(params={}):
-    r = requests.post('{}/{}'.format(HOST, "search"), json=params, headers=headers)
+    r = conn.post('{}/{}'.format(HOST, "search"), json=params)
     return [TrainingSet.from_doc(s) for s in r.json()]
 
 class DataPoint(object):
@@ -296,7 +296,7 @@ class TrainingSet(BaseSet):
     def from_id(cls, _id):
         """ Helper method that fetches an id into a TrainingSet """
         url = "{}/data/{}".format(HOST, _id)
-        doc = requests.get(url, headers=headers).json()
+        doc = conn.get(url).json()
         return cls.from_doc(doc)
 
     @property
