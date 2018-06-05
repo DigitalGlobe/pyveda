@@ -33,6 +33,7 @@ HOST = os.environ.get('SANDMAN_API')
 if not HOST:
     HOST = "http://localhost:3002"
 
+
 def search(params={}):
     r = requests.post('{}/{}'.format(HOST, "search"), json=params, headers=headers)
     return [TrainingSet.from_doc(s) for s in r.json()]
@@ -421,9 +422,16 @@ class TrainingSet(BaseSet):
                               image_shape=self.shape, fname=fname)
             datagroup = getattr(cache, group)
             labelgroup = getattr(datagroup, self.mlType)
+
+            #@delayed 
+            #def group_append(img):
+            #    datagroup.image.append(img)
+
             for p in points:
+                #X = da.stack(da.from_delayed(group_append(p.image), shape=self.shape, dtype=self.dtype))
                 datagroup.image.append(p.image.compute())
                 labelgroup.append(p.y)
+            #X.compute(get=threaded_get)
             return cache
 
     def batch_generator(self, size, group="train"):

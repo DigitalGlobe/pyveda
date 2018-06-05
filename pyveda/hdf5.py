@@ -126,13 +126,10 @@ class ImageTrainer(object):
     An interface for consuming and reading local data intended to be used with machine learning training
     """
     def __init__(self, fname=None, klass_map=klass_map, data_groups=MLTYPES, framework=None,
-                 title="Unknown", image_shape=(3, 256, 256), focus="classification"):
-
+                 title="Unknown", image_shape=(3, 256, 256), focus="classification", append=False):
         if fname is None:
             temp = NamedTemporaryFile(prefix="veda", suffix='h5', delete=False)
             fname = temp.name
-
-        print('fname', fname)
 
         self._framework = framework
         self._fw_loader = lambda x: x
@@ -143,33 +140,30 @@ class ImageTrainer(object):
         self.imshape = image_shape
         self._focus = focus
         self.klass_map = klass_map
-        if os.path.exists(fname):
+
+        if os.path.exists(fname) and not append:
             os.remove(fname)
-        else:
-            self._fileh = tables.open_file(fname, mode="w", title=title)
-            for name, desc in data_groups.items():
-                self._fileh.create_group("/", name.lower(), desc)
+       
+        self._fileh = tables.open_file(fname, mode="a", title=title)
+        for name, desc in data_groups.items():
+            self._fileh.create_group("/", name.lower(), desc)
 
-            Classifications = {klass: tables.UInt8Col(pos=idx + 2) for idx, (klass, _)
-                                in enumerate(sorted(data_groups.items(), key=lambda x: x[1]))}
-            Classifications["image_chunk_index"] = tables.UInt8Col(shape=2, pos=1)
+        Classifications = {klass: tables.UInt8Col(pos=idx + 2) for idx, (klass, _)
+                            in enumerate(sorted(data_groups.items(), key=lambda x: x[1]))}
+        Classifications["image_chunk_index"] = tables.UInt8Col(shape=2, pos=1)
 
-            groups = {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
-            for name, group in groups.items():
-                labels = self._fileh.create_group(group, "labels", "Image Labels")
-                self._fileh.create_table(group, "hit_table", Classifications,
-                                        "Chip Index + Klass Hit Record", tables.Filters(0))
-                self._fileh.create_earray(group, "image", atom=tables.UInt8Atom(), shape=self._imshape)
-                self._fileh.create_earray(labels, "classification",
-                                        atom=tables.UInt8Atom(), shape=(0, len(klass_map)))
-                self._fileh.create_earray(labels, "segmentation",
-                                        atom=tables.UInt8Atom(), shape=self._segshape)
-                self._fileh.create_vlarray(labels, "detection",
-                                        atom=tables.UInt8Atom())
-
-        # chelm: is there a case where we want to append to an existing cache?
-        #else:
-        #    self._fileh = tables.open_file(fname, mode="a", title=title)
+        groups = {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
+        for name, group in groups.items():
+            labels = self._fileh.create_group(group, "labels", "Image Labels")
+            self._fileh.create_table(group, "hit_table", Classifications,
+                                    "Chip Index + Klass Hit Record", tables.Filters(0))
+            self._fileh.create_earray(group, "image", atom=tables.UInt8Atom(), shape=self._imshape)
+            self._fileh.create_earray(labels, "classification",
+                                    atom=tables.UInt8Atom(), shape=(0, len(klass_map)))
+            self._fileh.create_earray(labels, "segmentation",
+                                    atom=tables.UInt8Atom(), shape=self._segshape)
+            self._fileh.create_vlarray(labels, "detection",
+                                    atom=tables.UInt8Atom())
 
     @property
     def focus(self):
