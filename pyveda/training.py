@@ -194,8 +194,7 @@ class BaseSet(object):
 
     def _send_chunks(self, doc):
         """ Chunk up the HDF5 cache into chunks <= chunk_size and post with doc id """
-        session = FuturesSession()
-        session.headers.update( headers )
+        session = FuturesSession(session=conn)
         groups = list(self.cache.keys())
         for group in groups:
             count = float(self._count[group])
