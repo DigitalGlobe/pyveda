@@ -1,4 +1,3 @@
-import requests
 import numpy as np
 import dask.array as da
 from dask import delayed
@@ -62,37 +61,3 @@ def load_image(url, token, shape, dtype=np.float32):
     if success is False:
         arr = np.zeros(shape, dtype=dtype)
     return arr
-
-@delayed
-def load_label(url, shape, dtype=np.float32):
-    success = False
-    for i in range(MAX_RETRIES):
-        thread_id = threading.current_thread().ident
-        _curl = _curl_pool[thread_id]
-        _curl.setopt(_curl.URL, url)
-        _curl.setopt(pycurl.NOSIGNAL, 1)
-        with NamedTemporaryFile(prefix="sandman", suffix='json', delete=False) as temp: # TODO: apply correct file extension
-            _curl.setopt(_curl.WRITEDATA, temp.file)
-            _curl.perform()
-            code = _curl.getinfo(pycurl.HTTP_CODE)
-            try:
-                if(code != 200):
-                    raise TypeError("Request for {} returned unexpected error code: {}".format(url, code))
-                temp.file.flush()
-                temp.close()
-                with open(temp.name) as fh:
-                    data = json.load(fh)
-                    arr  = np.array(data['y'])
-                return arr
-            except Exception as e:
-                print(e)
-                _curl.close()
-                del _curl_pool[thread_id]
-            finally:
-                temp.close()
-                os.remove(temp.name)
-
-    if success is False:
-        arr = np.zeros(shape, dtype=dtype)
-    return arr
-
