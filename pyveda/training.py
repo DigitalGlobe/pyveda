@@ -33,15 +33,21 @@ HOST = os.environ.get('SANDMAN_API')
 if not HOST:
     HOST = "http://localhost:3002"
 
+if 'https:' in HOST:
+    conn = gbdx.gbdx_connection
+else:
+    headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
+    conn = requests.Session()
+    conn.headers.update(headers)
+
 def search(params={}):
-    r = requests.post('{}/{}'.format(HOST, "search"), json=params, headers=headers)
+    r = conn.post('{}/{}'.format(HOST, "search"), json=params)
     return [TrainingSet.from_doc(s) for s in r.json()]
 
 class DataPoint(object):
     """ Methods for accessing training data pairs """
     def __init__(self, item, shape=(3,256,256), dtype="uint8"):
-        self.conn = requests.Session()
-        self.conn.headers.update( headers )
+        self.conn = conn
         self.data = item["data"]
         self.data['y'] = np.array(self.data['y'])
         self.links = item["links"]
@@ -90,8 +96,7 @@ class BaseSet(object):
         self._cache_url = "{}/data/{}/cache"
         self._datapoint_url = "{}/datapoints".format(HOST)
         self._chunk_size = os.environ.get('VEDA_CHUNK_SIZE', 5000)
-        self.conn = requests.Session()
-        self.conn.headers.update( headers )
+        self.conn = conn
 
     def _querystring(self, limit, **kwargs):
         """ Builds a qury string from kwargs for fetching points """
@@ -189,8 +194,7 @@ class BaseSet(object):
 
     def _send_chunks(self, doc):
         """ Chunk up the HDF5 cache into chunks <= chunk_size and post with doc id """
-        session = FuturesSession()
-        session.headers.update( headers )
+        session = FuturesSession(session=conn)
         groups = list(self.cache.keys())
         for group in groups:
             count = float(self._count[group])
@@ -291,7 +295,7 @@ class TrainingSet(BaseSet):
     def from_id(cls, _id):
         """ Helper method that fetches an id into a TrainingSet """
         url = "{}/data/{}".format(HOST, _id)
-        doc = requests.get(url, headers=headers).json()
+        doc = conn.get(url).json()
         return cls.from_doc(doc)
 
     @property
@@ -417,7 +421,7 @@ class TrainingSet(BaseSet):
         else:
             fname = "{}.h5".format(name) if name is not None else None
             klass_map = {idx: klass_name for idx, klass_name in enumerate(self.meta['classes'])}
-            cache = ImageTrainer(klass_map=klass_map, focus=self.mlType, 
+            cache = ImageTrainer(klass_map=klass_map, focus=self.mlType,
                               image_shape=self.shape, fname=fname)
             datagroup = getattr(cache, group)
             labelgroup = getattr(datagroup, self.mlType)
