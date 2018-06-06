@@ -241,6 +241,11 @@ class BaseSet(object):
     def remove(self):
         self.conn.delete(self.links["delete"]["href"])
 
+    def _publish(self):
+        return self.conn.put(self.links["publish"]["href"], json={"public": True}).json()
+
+    def _unpublish(self):
+        return self.conn.put(self.links["publish"]["href"], json={"public": False}).json()
 
 
 
@@ -498,12 +503,12 @@ class TrainingSet(BaseSet):
     def publish(self):
         """ Make a saved TrainingSet publicly searchable and consumable """
         assert self.id is not None, 'You can only publish a saved TrainingSet. Call the save method first.'
-        return self.update({"public": True})
+        return self._publish()
 
     def unpublish(self):
         """ Unpublish a saved TraininSet (make it private) """
         assert self.id is not None, 'You can only publish a saved TrainingSet. Call the save method first.'
-        return self.update({"public": False})
+        return self._unpublish()
 
     def __getitem__(self, slc):
         """ Enable slicing of the TrainingSet by index/slice """
