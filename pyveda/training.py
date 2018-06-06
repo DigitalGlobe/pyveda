@@ -18,13 +18,16 @@ from gbdxtools import Interface
 from tempfile import NamedTemporaryFile
 from .loaders import load_image
 from .utils import transforms
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from functools import partial
 import dask
 
 from .hdf5 import ImageTrainer
 
-threaded_get = partial(dask.threaded.get, num_workers=64)
+threads = int(os.environ.get('GBDX_THREADS', 64))
+pool = ThreadPoolExecutor(threads)
+threaded_get = partial(dask.threaded.get, num_workers=threads)
 
 gbdx = Interface()
 
@@ -425,15 +428,18 @@ class TrainingSet(BaseSet):
             datagroup = getattr(cache, group)
             labelgroup = getattr(datagroup, self.mlType)
 
-            #@delayed 
-            #def group_append(img):
-            #    datagroup.image.append(img)
+            def group_append(dsk):
+                datagroup.image.append(dsk.compute())
 
+            futures = []
             for p in points:
-                #X = da.stack(da.from_delayed(group_append(p.image), shape=self.shape, dtype=self.dtype))
-                datagroup.image.append(p.image.compute())
+                futures.append(pool.submit(group_append, p.image))
                 labelgroup.append(p.y)
-            #X.compute(get=threaded_get)
+
+            finished = []
+            for f in as_completed(futures):
+                finished.append(f.result())
+
             return cache
 
     def batch_generator(self, size, group="train"):
