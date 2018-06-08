@@ -54,14 +54,3 @@ def request_tracer(results_collector):
         results_collector['is_redirect'].append(is_redirect)
 
     trace_config = aiohttp.TraceConfig()
-
-    trace_config.on_request_start.append(on_request_start)
-    trace_config.on_request_redirect.append(on_request_redirect)
-    trace_config.on_dns_resolvehost_start.append(on_dns_resolvehost_start)
-    trace_config.on_dns_resolvehost_end.append(on_dns_resolvehost_end)
-    trace_config.on_connection_create_start.append(on_connection_create_start)
-    trace_config.on_connection_create_end.append(on_connection_create_end)
-    trace_config.on_request_end.append(on_request_end)
-    trace_config.on_request_chunk_sent.append(on_request_chunk_sent)
-
-    return trace_config

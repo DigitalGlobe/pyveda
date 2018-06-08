@@ -9,7 +9,6 @@ MLTYPES = {"TRAIN": "Data designated for model training",
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
-klass_map = {"buildings": 1, "cars": 2, "zebras": 3}
 
 class LabelNotSupported(NotImplementedError):
     pass
@@ -125,7 +124,7 @@ class ImageTrainer(object):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
-    def __init__(self, fname=None, klass_map=klass_map, data_groups=MLTYPES, framework=None,
+    def __init__(self, fname=None, klass_map=None, data_groups=MLTYPES, framework=None,
                  title="Unknown", image_shape=(3, 256, 256), focus="classification", append=False):
         if fname is None:
             temp = NamedTemporaryFile(prefix="veda", suffix='h5', delete=False)
@@ -143,7 +142,7 @@ class ImageTrainer(object):
 
         if os.path.exists(fname) and not append:
             os.remove(fname)
-       
+
         self._fileh = tables.open_file(fname, mode="a", title=title)
         for name, desc in data_groups.items():
             self._fileh.create_group("/", name.lower(), desc)
