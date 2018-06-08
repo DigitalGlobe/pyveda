@@ -1,4 +1,23 @@
 import json
+import datetime
+import os
+import uuid
+
+def mklogfilename(prefix, suffix="json", path=None):
+    timestamp = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+    basename = "_".join([prefix, timestamp]) # e.g. 'mylogfile_120508_171442'
+    filename = ".".join([basename, suffix])
+    if path:
+        filename = os.path.join(path, filename)
+    return filename
+
+def mktempfilename(prefix, suffix="h5", path=None):
+    idstr = str(uuid.uuid4())
+    basename = "_".join([prefix, idstr])
+    filename = ".".join([basename, suffix])
+    if path:
+        filename = os.path.join(path, filename)
+    return filename
 
 def rda(dsk):
     return [json.dumps({
