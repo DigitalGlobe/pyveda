@@ -19,6 +19,20 @@ def mktempfilename(prefix, suffix="h5", path=None):
         filename = os.path.join(path, filename)
     return filename
 
+def extract_load_tasks(dsk):
+    """
+    Given a veda image dask, extract request data into
+    (url, token) tuple
+    """
+    d = dict(dsk)
+    for k in d:
+        if isinstance(k, str) and k.startswith("load_image"):
+            task = d[k]
+            url = task[2][0]
+            token = task[2][1]
+            return (url, token)
+    return None
+
 def rda(dsk):
     return [json.dumps({
       'graph': dsk.ipe_id,
