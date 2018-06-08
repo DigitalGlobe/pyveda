@@ -96,9 +96,9 @@ async def fetch(reqs, session, nconn, batch_size=2000, nprocs=5):
     done, pending = await asyncio.wait(processors)
     return results
 
-async def run_fetch(reqs, nconn, headers, loop, tracer_config=[]):
+async def run_fetch(reqs, nconn, headers, loop, tracer_configs=[]):
     async with aiohttp.ClientSession(loop=loop, connector=aiohttp.TCPConnector(limit=nconn),
-                                     headers=headers, tracer_config=tracer_config) as session:
+                                     headers=headers, tracer_configs=tracer_configs) as session:
         results = await fetch(reqs, session, nconn)
         return results
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     parser.add_argument("--debug", help="display runtime stats to stdout, ouput profile tracer stats", default=False)
     args = parser.parse_args()
 
-    tracer_config = []
+    tracer_configs = []
     if args.debug:
         import sys
         import timeit
@@ -123,7 +123,7 @@ if __name__ == "__main__":
         trace = collections.defaultdict(list)
         try:
             from pyveda.fetch.diagnostics.aiohttp_tracer import request_tracer
-            tracer_config.append(request_tracer(trace))
+            tracer_configs.append(request_tracer(trace))
         except ImportError:
             trace = None
 
@@ -144,7 +144,7 @@ if __name__ == "__main__":
     headers = {"Authorization": "Bearer {}".format(token)}
     loop = asyncio.get_event_loop()
 
-    results = loop.run_until_complete(run_fetch(reqs, nconn, headers, loop, tracer_config=tracer_config))
+    results = loop.run_until_complete(run_fetch(reqs, nconn, headers, loop, tracer_configs=tracer_configs))
     loop.run_until_complete(asyncio.sleep(0))
 
     if args.debug:
