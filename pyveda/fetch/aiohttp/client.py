@@ -51,9 +51,11 @@ async def consume_reqs(qreq, qres, session, max_tries=5):
                 bstring = await response.read()
                 await qres.put([index, bstring])
                 qreq.task_done()
+                await response.release()
         except CancelledError as ce:
             break
         except Exception as e:
+            print(e)
             if tries < max_tries:
                 await asyncio.sleep(0.1)
                 await qreq.put([url, index, tries])
@@ -120,10 +122,10 @@ if __name__ == "__main__":
 
         import collections
         from pyveda.utils import mklogfilename
-        trace = collections.defaultdict(list)
         try:
-            from pyveda.fetch.diagnostics.aiohttp_tracer import request_tracer
-            trace_configs.append(request_tracer(trace))
+            from pyveda.fetch.diagnostics.aiohttp_tracer import batch_fetch_tracer
+            trace, trace_config = batch_fetch_tracer()
+            trace_configs.append(trace_config)
         except ImportError:
             trace = None
 
@@ -155,11 +157,10 @@ if __name__ == "__main__":
         sys.stdout.write("Total running time: %d:%d:%d.\n" % (hours, mins, secs))
         if trace:
             basepath, inputfile = os.path.split(args.file)
-            basename = "_".join([inputfile.split(".")[0], "n={}".format(args.num)])
+            basename = "_".join([inputfile.split(".")[0], "n{}".format(args.num)])
             filename = mklogfilename(basename, suffix="json", path=basepath)
             with open(filename, "w") as f:
-                json.dump(trace, f)
+                json.dump(trace.cache, f)
             sys.stdout.write("Tracer stats output file written to {}".format(filename))
-
     loop.close()
 
