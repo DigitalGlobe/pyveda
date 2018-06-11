@@ -13,96 +13,122 @@ from skimage.io import imread
 from tempfile import NamedTemporaryFile
 import os
 
-MAX_RETRIES = 5
-MAX_CONNECTIONS = 100
-TIMEOUT = 20
+import concurrent.futures
 
+#executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
 def on_fail(shape=(8, 256, 256), dtype=np.float32):
     return np.zeros(shape, dtype=dtype)
 
-def bytes_to_array(bstring):
-    if bstring is None:
-        return onfail()
-    try:
-        fd = NamedTemporaryFile(prefix='gbdxtools', suffix='.tif', delete=False)
-        fd.file.write(bstring)
-        fd.file.flush()
-        fd.close()
-        arr = imread(fd.name)
-        if len(arr.shape) == 3:
-            arr = np.rollaxis(arr, 2, 0)
-        else:
-            arr = np.expand_dims(arr, axis=0)
-    except Exception as e:
-        arr = on_fail()
-    finally:
-        fd.close()
-        os.remove(fd.name)
-    return arr
+class AsyncBatchFetcher(object):
+    def __init__(self, reqs, token, max_retries=5, timeout=20, session=None, session_limit=30,
+                 reqs_limit=500, pproc_poolsize=10, trace_configs=[],
+                 connector=aiohttp.TCPConnector, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10)):
+        self.reqs = reqs
+        self.headers = {"Authorization": "Bearer {}".format(token)}
+        self.reqs_limit = min(len(reqs), reqs_limit)
+        self.max_retries = max_retries
+        self.timeout = timeout
+        self.session = session
+        self.session_limit = session_limit
+        self.pproc_poolsize = pproc_poolsize
+        self.trace_configs = trace_configs
+        self.connector = connector
+        self.executor = executor
+        self.results = {}
 
-async def consume_reqs(qreq, qres, session, max_tries=5):
-    await asyncio.sleep(0.1)
-    while True:
+    def bytes_to_array(self, bstring):
+        if bstring is None:
+            return onfail()
         try:
-            url, index, tries = await qreq.get()
-            tries += 1
-            async with session.get(url) as response:
-                response.raise_for_status()
-                bstring = await response.read()
-                await qres.put([index, bstring])
-                qreq.task_done()
-                await response.release()
-        except CancelledError as ce:
-            break
+            fd = NamedTemporaryFile(prefix='gbdxtools', suffix='.tif', delete=False)
+            fd.file.write(bstring)
+            fd.file.flush()
+            fd.close()
+            arr = imread(fd.name)
+            if len(arr.shape) == 3:
+                arr = np.rollaxis(arr, 2, 0)
+            else:
+                arr = np.expand_dims(arr, axis=0)
         except Exception as e:
-            print(e)
-            if tries < max_tries:
-                await asyncio.sleep(0.1)
-                await qreq.put([url, index, tries])
-                qreq.task_done()
-            else:
-                await qres.put([index, None])
-                qreq.task_done()
+            arr = on_fail()
+        finally:
+            fd.close()
+            os.remove(fd.name)
+        return arr
 
-async def produce_reqs(qreq, reqs):
-    for req in reqs:
-        await qreq.put(req)
+    async def consume_reqs(self, session):
+        await asyncio.sleep(0.0)
+        while True:
+            try:
+                url, index, tries = await self._qreq.get()
+                tries += 1
+                async with session.get(url) as response:
+                    response.raise_for_status()
+                    bstring = await response.read()
+                    await self._qres.put([index, bstring])
+                    self._qreq.task_done()
+                    await response.release()
+            except CancelledError as ce:
+                break
+            except Exception as e:
+                if tries < self.max_retries:
+                    await asyncio.sleep(0.0)
+                    await self._qreq.put([url, index, tries])
+                    self._qreq.task_done()
+                else:
+                    await self._qres.put([index, None])
+                    self._qreq.task_done()
 
-async def process(qres, results):
-    while True:
-        try:
-            index, payload = await qres.get()
-            if not payload:
-                arr = on_fail()
-                arr = False
-            else:
-                arr = await loop.run_in_executor(None, bytes_to_array, payload)
-            results[index] = arr
-            qres.task_done()
-        except CancelledError as ce:
-            break
-    return True
+    async def produce_reqs(self):
+        for req in self.reqs:
+            await self._qreq.put(req)
 
-async def fetch(reqs, session, nconn, batch_size=2000, nprocs=5):
-    results = {}
-    qreq, qres = asyncio.Queue(maxsize=batch_size), asyncio.Queue()
-    consumers = [asyncio.ensure_future(consume_reqs(qreq, qres, session)) for _ in range(nconn)]
-    producer = await produce_reqs(qreq, reqs)
-    processors = [asyncio.ensure_future(process(qres, results)) for _ in range(nprocs)]
-    await qreq.join()
-    await qres.join()
-    for fut in consumers:
-        fut.cancel()
-    for fut in processors:
-        fut.cancel()
-    done, pending = await asyncio.wait(processors)
-    return results
+    async def process(self, loop):
+        while True:
+            try:
+                index, payload = await self._qres.get()
+                if not payload:
+                    arr = on_fail()
+                else:
+                    arr = await loop.run_in_executor(self.executor, self.bytes_to_array, payload)
+                self.results[index] = arr
+                self._qres.task_done()
+            except CancelledError as ce:
+                break
+        return True
 
-async def run_fetch(reqs, nconn, headers, loop, trace_configs=[]):
-    async with aiohttp.ClientSession(loop=loop, connector=aiohttp.TCPConnector(limit=nconn),
-                                     headers=headers, trace_configs=trace_configs) as session:
-        results = await fetch(reqs, session, nconn)
-        return results
+    async def fetch(self, session, loop):
+        self.results = {}
+        self._qreq, self._qres = asyncio.Queue(maxsize=self.reqs_limit), asyncio.Queue()
+        consumers = [asyncio.ensure_future(self.consume_reqs(session)) for _ in range(self.reqs_limit)]
+        producer = await self.produce_reqs()
+        processors = [asyncio.ensure_future(self.process(loop)) for _ in range(self.pproc_poolsize)]
+        await self._qreq.join()
+        await self._qres.join()
+        for fut in consumers:
+            fut.cancel()
+        for fut in processors:
+            fut.cancel()
+        done, pending = await asyncio.wait(processors)
+        return self.results
+
+    async def run_fetch(self, loop):
+        async with aiohttp.ClientSession(loop=loop, connector=self.connector(limit=self.session_limit),
+                                        headers=self.headers, trace_configs=self.trace_configs) as session:
+            results = await self.fetch(session, loop)
+            return results
+
+    def run(self, loop=None):
+        if loop:
+            do_shutdown = False
+        else:
+            loop = asyncio.get_event_loop()
+            do_shutdown = True
+        results = loop.run_until_complete(self.run_fetch(loop))
+        loop.run_until_complete(asyncio.sleep(0.250))
+        if do_shutdown:
+            loop.close()
+#        return results
 
 
 if __name__ == "__main__":
@@ -144,10 +170,10 @@ if __name__ == "__main__":
     for url, token, index in coll:
         reqs.append([url, tuple(index), 0])
     headers = {"Authorization": "Bearer {}".format(token)}
+    abf = AsyncBatchFetcher(reqs, token, trace_configs=trace_configs)
     loop = asyncio.get_event_loop()
-
-    results = loop.run_until_complete(run_fetch(reqs, nconn, headers, loop, trace_configs=trace_configs))
-    loop.run_until_complete(asyncio.sleep(0))
+#    results = loop.run_until_complete(run_fetch(reqs, nconn, headers, loop, trace_configs=trace_configs))
+    abf.run(loop=loop)
 
     if args.debug:
         stop = timeit.default_timer()
@@ -162,5 +188,6 @@ if __name__ == "__main__":
             with open(filename, "w") as f:
                 json.dump(trace.cache, f)
             sys.stdout.write("Tracer stats output file written to {}".format(filename))
+#    trainer.close()
     loop.close()
 
