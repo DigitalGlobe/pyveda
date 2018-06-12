@@ -12,19 +12,45 @@ from skimage.io import imread
 
 from tempfile import NamedTemporaryFile
 import os
+import functools
 
+import threading
 import concurrent.futures
 
-#executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
+
 def on_fail(shape=(8, 256, 256), dtype=np.float32):
     return np.zeros(shape, dtype=dtype)
 
+
+class ThreadedAsyncioRunner(object):
+    def __init__(self, method, loop=None):
+        if not loop:
+            loop = asyncio.new_event_loop()
+        self._loop = loop
+        self._method = method
+        self._thread = threading.Thread(target=self._loop.run_forever)
+        self._thread.start()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self._loop.call_soon_threadsafe(self._loop.stop)
+        self._thread.join()
+        self._loop.close()
+
+    def __call__(self, *args, **kwargs):
+        f = asyncio.run_coroutine_threadsafe(self._method(*args, **kwargs), self._loop)
+        return f.result()
+
+
 class AsyncBatchFetcher(object):
-    def __init__(self, reqs, token, max_retries=5, timeout=20, session=None, session_limit=30,
+    def __init__(self, reqs=[], token=None, max_retries=5, timeout=20, session=None, session_limit=30,
                  reqs_limit=500, pproc_poolsize=10, trace_configs=[],
-                 connector=aiohttp.TCPConnector, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10)):
+                 connector=aiohttp.TCPConnector, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10),
+                 on_result = lambda x: x):
         self.reqs = reqs
-        self.headers = {"Authorization": "Bearer {}".format(token)}
+        self._token = token
         self.reqs_limit = min(len(reqs), reqs_limit)
         self.max_retries = max_retries
         self.timeout = timeout
@@ -34,7 +60,14 @@ class AsyncBatchFetcher(object):
         self.trace_configs = trace_configs
         self.connector = connector
         self.executor = executor
+        self.on_result = on_result
         self.results = {}
+
+    @property
+    def headers(self):
+        if not self._token:
+            raise AttributeError("Provide an auth token on init or as an argument to run")
+        return {"Authorization": "Bearer {}".format(self._token)}
 
     def bytes_to_array(self, bstring):
         if bstring is None:
@@ -54,18 +87,20 @@ class AsyncBatchFetcher(object):
         finally:
             fd.close()
             os.remove(fd.name)
+            self.on_result(arr)
+
         return arr
 
     async def consume_reqs(self, session):
         await asyncio.sleep(0.0)
         while True:
             try:
-                url, index, tries = await self._qreq.get()
+                url, tries = await self._qreq.get()
                 tries += 1
                 async with session.get(url) as response:
                     response.raise_for_status()
                     bstring = await response.read()
-                    await self._qres.put([index, bstring])
+                    await self._qres.put([url, bstring])
                     self._qreq.task_done()
                     await response.release()
             except CancelledError as ce:
@@ -73,25 +108,24 @@ class AsyncBatchFetcher(object):
             except Exception as e:
                 if tries < self.max_retries:
                     await asyncio.sleep(0.0)
-                    await self._qreq.put([url, index, tries])
+                    await self._qreq.put([url, tries])
                     self._qreq.task_done()
                 else:
-                    await self._qres.put([index, None])
+                    await self._qres.put([url, None])
                     self._qreq.task_done()
 
     async def produce_reqs(self):
         for req in self.reqs:
-            await self._qreq.put(req)
+            await self._qreq.put((req[0], 0))
 
     async def process(self, loop):
         while True:
             try:
-                index, payload = await self._qres.get()
+                url, payload = await self._qres.get()
                 if not payload:
                     arr = on_fail()
                 else:
                     arr = await loop.run_in_executor(self.executor, self.bytes_to_array, payload)
-                self.results[index] = arr
                 self._qres.task_done()
             except CancelledError as ce:
                 break
@@ -118,17 +152,19 @@ class AsyncBatchFetcher(object):
             results = await self.fetch(session, loop)
             return results
 
-    def run(self, loop=None):
-        if loop:
-            do_shutdown = False
-        else:
+    async def run(self, reqs=None, token=None, loop=None):
+        if not loop:
             loop = asyncio.get_event_loop()
-            do_shutdown = True
-        results = loop.run_until_complete(self.run_fetch(loop))
-        loop.run_until_complete(asyncio.sleep(0.250))
-        if do_shutdown:
-            loop.close()
-#        return results
+        if reqs:
+            self.reqs = reqs
+        else:
+            assert(len(self.reqs) > 0)
+        if token:
+            self._token = token
+
+        fut = await self.run_fetch(loop)
+        await asyncio.sleep(0.250)
+        return fut
 
 
 if __name__ == "__main__":
@@ -168,12 +204,11 @@ if __name__ == "__main__":
 
     reqs = []
     for url, token, index in coll:
-        reqs.append([url, tuple(index), 0])
-    headers = {"Authorization": "Bearer {}".format(token)}
-    abf = AsyncBatchFetcher(reqs, token, trace_configs=trace_configs)
-    loop = asyncio.get_event_loop()
-#    results = loop.run_until_complete(run_fetch(reqs, nconn, headers, loop, trace_configs=trace_configs))
-    abf.run(loop=loop)
+        reqs.append([url])
+
+    abf = AsyncBatchFetcher(reqs=reqs, token=token, trace_configs=trace_configs)
+    with ThreadedAsyncioRunner(abf.run) as tar:
+        tar(loop=tar._loop)
 
     if args.debug:
         stop = timeit.default_timer()
@@ -188,6 +223,4 @@ if __name__ == "__main__":
             with open(filename, "w") as f:
                 json.dump(trace.cache, f)
             sys.stdout.write("Tracer stats output file written to {}".format(filename))
-#    trainer.close()
-    loop.close()
 
