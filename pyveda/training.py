@@ -249,7 +249,11 @@ class BaseSet(object):
     def remove(self):
         self.conn.delete(self.links["delete"]["href"])
 
-
+    def __del__(self):
+        try:
+            self._temp_gen.remove()
+        except Exception:
+            pass
 
 
 class TrainingSet(BaseSet):
