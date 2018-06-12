@@ -1,6 +1,6 @@
 import os
 import tables
-from tempfile import NamedTemporaryFile
+from pyveda.utils import mktempfilename
 
 MLTYPES = {"TRAIN": "Data designated for model training",
            "TEST": "Data designated for model testing",
@@ -109,12 +109,8 @@ class WrappedDataNode(object):
     def __iter__(self, spec=slice(None)):
         data = [getattr(self, label) for label in self._trainer.focus]
         data.insert(0, self.image)
-        if isinstance(spec, slice):
-            for rec in zip([arr[spec] for arr in data]):
-                yield rec
-        else:
-            for rec in zip([arr[spec] for arr in data]):
-                yield rec
+        for rec in zip([arr[spec] for arr in data]):
+            yield rec
 
     def __len__(self):
         return len(self._node.image)
@@ -127,8 +123,7 @@ class ImageTrainer(object):
     def __init__(self, fname=None, klass_map=None, data_groups=MLTYPES, framework=None,
                  title="Unknown", image_shape=(3, 256, 256), focus="classification", append=False):
         if fname is None:
-            temp = NamedTemporaryFile(prefix="veda", suffix='h5', delete=False)
-            fname = temp.name
+            fname = mktempfilename(prefix="veda", suffix='h5')
 
         self._framework = framework
         self._fw_loader = lambda x: x
@@ -198,6 +193,9 @@ class ImageTrainer(object):
     @property
     def validation(self):
         return WrappedDataNode(self._fileh.root.validation, self)
+
+    def flush(self):
+        self._fileh.flush()
 
     def close(self):
         self._fileh.close()
