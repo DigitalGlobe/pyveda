@@ -18,16 +18,16 @@ from gbdxtools import Interface
 from tempfile import NamedTemporaryFile
 from .loaders import load_image
 from .utils import transforms
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import as_completed
 
 from functools import partial
 import dask
 
-from .hdf5 import ImageTrainer
+import threading
 
-threads = int(os.environ.get('GBDX_THREADS', 64))
-pool = ThreadPoolExecutor(threads)
-threaded_get = partial(dask.threaded.get, num_workers=threads)
+from .hdf5 import ImageTrainer
+from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, AsyncBatchFetcher
+from pyveda.utils import extract_load_tasks, mktempfilename
 
 gbdx = Interface()
 
@@ -428,18 +428,17 @@ class TrainingSet(BaseSet):
             datagroup = getattr(cache, group)
             labelgroup = getattr(datagroup, self.mlType)
 
-            def group_append(dsk):
-                datagroup.image.append(dsk.compute())
-
-            futures = []
+            reqs = []
             for p in points:
-                futures.append(pool.submit(group_append, p.image))
+                url, token = extract_load_tasks(p.image.dask)
+                reqs.append([url])
                 labelgroup.append(p.y)
 
-            finished = []
-            for f in as_completed(futures):
-                finished.append(f.result())
+            abf = AsyncBatchFetcher(reqs=reqs, token=token, on_result=datagroup.image.append)
+            with ThreadedAsyncioRunner(abf.run) as tar:
+                tar(loop=tar._loop)
 
+            cache.flush()
             return cache
 
     def batch_generator(self, size, group="train"):
