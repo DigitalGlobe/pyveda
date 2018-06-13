@@ -5,21 +5,21 @@ class BatchFetchTracer(object):
     def __init__(self, cache=None):
         if not cache:
             cache = collections.defaultdict(list)
-        self.cache = cache
+        self._trace_cache = cache
 
     async def on_dns_resolvehost_start(self, session, context, params):
         context.start = session.loop.time()
 
     async def on_dns_resolvehost_end(self, session, context, params):
         elapsed = session.loop.time() - context.start
-        self.cache["dns_resolution_time"].append(elapsed)
+        self._trace_cache["dns_resolution_time"].append(elapsed)
 
     async def on_request_start(self, session, context, params):
         context.start = session.loop.time()
 
     async def on_request_end(self, session, context, params):
         elapsed = session.loop.time() - context.start
-        self.cache["request_times"].append(elapsed)
+        self._trace_cache["request_times"].append(elapsed)
 
     async def on_request_exception(self, session, context, params):
         pass
@@ -35,22 +35,18 @@ class BatchFetchTracer(object):
 
     async def on_connection_create_end(self, session, context, params):
         elapsed = session.loop.time() - context.start
-        self.cache["connection_lifetimes"].append(elapsed)
+        self._trace_cache["connection_lifetimes"].append(elapsed)
 
-
-def batch_fetch_tracer(trace_config=None):
-    if not trace_config:
+    def _configure_tracer(self):
         trace_config = aiohttp.TraceConfig()
-    bft = BatchFetchTracer()
-    trace_config.on_dns_resolvehost_start.append(bft.on_dns_resolvehost_start)
-    trace_config.on_dns_resolvehost_end.append(bft.on_dns_resolvehost_end)
-    trace_config.on_request_start.append(bft.on_request_start)
-    trace_config.on_request_end.append(bft.on_request_end)
-    trace_config.on_request_exception.append(bft.on_request_exception)
-    trace_config.on_connection_queued_start.append(bft.on_connection_queued_start)
-    trace_config.on_connection_queued_end.append(bft.on_connection_queued_end)
-    trace_config.on_connection_create_start.append(bft.on_connection_create_start)
-    trace_config.on_connection_create_end.append(bft.on_connection_create_end)
-
-    return bft, trace_config
+        trace_config.on_dns_resolvehost_start.append(self.on_dns_resolvehost_start)
+        trace_config.on_dns_resolvehost_end.append(self.on_dns_resolvehost_end)
+        trace_config.on_request_start.append(self.on_request_start)
+        trace_config.on_request_end.append(self.on_request_end)
+        trace_config.on_request_exception.append(self.on_request_exception)
+        trace_config.on_connection_queued_start.append(self.on_connection_queued_start)
+        trace_config.on_connection_queued_end.append(self.on_connection_queued_end)
+        trace_config.on_connection_create_start.append(self.on_connection_create_start)
+        trace_config.on_connection_create_end.append(self.on_connection_create_end)
+        return trace_config
 

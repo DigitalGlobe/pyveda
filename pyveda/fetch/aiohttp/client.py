@@ -5,7 +5,9 @@ try:
 except ImportError:
     pass
 import aiohttp
+import concurrent.futures
 from concurrent.futures import CancelledError, TimeoutError
+import threading
 
 import numpy as np
 from skimage.io import imread
@@ -13,9 +15,9 @@ from skimage.io import imread
 from tempfile import NamedTemporaryFile
 import os
 import functools
+import logging
 
-import threading
-import concurrent.futures
+from pyveda.fetch.diagnostics import BatchFetchTracer
 
 
 def on_fail(shape=(8, 256, 256), dtype=np.float32):
@@ -44,11 +46,13 @@ class ThreadedAsyncioRunner(object):
         return f.result()
 
 
-class AsyncBatchFetcher(object):
+class AsyncBatchFetcher(BatchFetchTracer):
     def __init__(self, reqs=[], token=None, max_retries=5, timeout=20, session=None, session_limit=30,
-                 reqs_limit=500, pproc_poolsize=10, trace_configs=[],
+                 reqs_limit=500, proc_poolsize=10, trace_configs=[],
                  connector=aiohttp.TCPConnector, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10),
-                 on_result = lambda x: x):
+                 on_result = lambda x: x, run_tracer=False, **kwargs):
+
+        super(AsyncBatchFetcher, self).__init__(**kwargs)
         self.reqs = reqs
         self._token = token
         self.reqs_limit = min(len(reqs), reqs_limit)
@@ -56,11 +60,16 @@ class AsyncBatchFetcher(object):
         self.timeout = timeout
         self.session = session
         self.session_limit = session_limit
-        self.pproc_poolsize = pproc_poolsize
-        self.trace_configs = trace_configs
-        self.connector = connector
-        self.executor = executor
+        self.proc_poolsize = proc_poolsize
+        self._trace_configs = trace_configs
+        self._connector = connector
+        self._executor = executor
+        self._run_tracer = run_tracer
         self.on_result = on_result
+        if run_tracer:
+            trace_config = self._configure_tracer()
+            self._trace_configs.append(trace_config)
+
         self.results = {}
 
     @property
