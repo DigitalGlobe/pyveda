@@ -19,6 +19,7 @@ from tempfile import NamedTemporaryFile
 from .loaders import load_image
 from .utils import transforms
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from rasterio.features import rasterize
 
 from functools import partial
 import dask
@@ -45,6 +46,13 @@ else:
 def search(params={}):
     r = conn.post('{}/{}'.format(HOST, "search"), json=params)
     return [TrainingSet.from_doc(s) for s in r.json()]
+
+def vec_to_raster(vectors, shape):
+    try:
+        arr = rasterize(((json.loads(g), 1) for g in vectors), out_shape=shape[1:])
+    except Exception as err:
+        arr = np.zeros(shape[1:])
+    return np.array(arr)
 
 class DataPoint(object):
     """ Methods for accessing training data pairs """
@@ -122,7 +130,12 @@ class BaseSet(object):
     def fetch_points(self, limit, **kwargs):
         """ Fetch a list of datapoints """
         qs = self._querystring(limit, **kwargs)
-        return [DataPoint(p, shape=self.shape, dtype=self.dtype) for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
+        points = [DataPoint(p, shape=self.shape, dtype=self.dtype) for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
+        if self.mlType == 'segmentation':
+            # convert yseg into arrays
+            for p in points:
+                p.data['y'] = vec_to_raster(p.data['yseg'], self.shape)
+        return points
 
     def save(self, auto_cache=True):
         """
@@ -277,7 +290,10 @@ class TrainingSet(BaseSet):
         self._count = kwargs.get('count', defaultdict(int))
         self._cache = None
         self._datapoints = None
-        self._index = sum(list(self._count.values()))
+        try: 
+            self._index = sum(list(self._count.values()))
+        except:
+            self._index = 0
 
         self.meta = {
             "source": source,
@@ -379,7 +395,7 @@ class TrainingSet(BaseSet):
             y = [str(Y.tolist()).encode('utf8')]
         except:
             y = [str(Y).encode('utf8')]
-
+            
         if idx is None:
             idx = self.count[group] + self._index
             self.cache[group]["X"].create_dataset(str(idx), data=[x.encode('utf8') for x in X])
@@ -474,7 +490,7 @@ class TrainingSet(BaseSet):
             Y = self.cache[group]["Y"][str(idx)]
             data = {
                 "x": [x.decode('utf8') for x in X.value.tolist()],
-                "y": json.loads([y.decode('utf8') for y in Y.value.tolist()][0]),
+                "y": json.loads([y.decode('utf8').replace("'", '"') for y in Y.value.tolist()][0]),
                 "group": group
             }
             return data
