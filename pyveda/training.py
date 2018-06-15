@@ -20,6 +20,8 @@ from .loaders import load_image
 from .utils import transforms
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rasterio.features import rasterize
+from shapely.geometry import shape, mapping
+from shapely import ops
 
 from functools import partial
 import dask
@@ -121,11 +123,17 @@ class BaseSet(object):
         """ Fetch a single data point at a given index in the dataset """
         qs = urlencode({"limit": 1, "offset": idx, "group": group, "includeLinks": True})
         p = self.conn.get("{}/data/{}/datapoints?{}".format(HOST, self.id, qs)).json()[0]
-        return DataPoint(p, shape=self.shape, dtype=self.dtype)
+        point = DataPoint(p, shape=self.shape, dtype=self.dtype)
+        if self.mlType == 'segmentation':
+            point.data['y'] = vec_to_raster(point.data['yseg'], self.shape)
+        return point
 
     def fetch(self, _id):
         """ Fetch a point for a given ID """
-        return DataPoint(self.conn.get("{}/datapoints/{}".format(HOST, _id)).json(), shape=self.shape, dtype=self.dtype)
+        point = DataPoint(self.conn.get("{}/datapoints/{}".format(HOST, _id)).json(), shape=self.shape, dtype=self.dtype)
+        if self.mlType == 'segmentation':
+            point.data['y'] = vec_to_raster(point.data['yseg'], self.shape)
+        return point
 
     def fetch_points(self, limit, **kwargs):
         """ Fetch a list of datapoints """
@@ -376,6 +384,8 @@ class TrainingSet(BaseSet):
 
             if dsk.shape == self.shape:
                 X = transforms(self.source)(dsk)
+                if self.mlType == 'segmentation':
+                    labels = [json.loads(json.dumps((mapping(ops.transform(dsk.__geo_transform__.rev, shape(s)))))) for s in labels]
                 self.add_to_cache(X, labels, group=group)
             elif verbose:
                 print('Could not add image to set, shape mismatch {} != {}'.format(dsk.shape, self.shape))
