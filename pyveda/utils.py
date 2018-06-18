@@ -4,6 +4,7 @@ import os
 import uuid
 import tempfile
 import shutil
+import h5py
 
 def mklogfilename(prefix, suffix="json", path=None):
     timestamp = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
