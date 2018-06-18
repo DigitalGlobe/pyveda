@@ -21,6 +21,14 @@ def mktempfilename(prefix, suffix="h5", path=None):
         filename = os.path.join(path, filename)
     return filename
 
+def write_trace_profile(fname, nreqs, trace_cache):
+    basepath, inputfile = os.path.split(fname)
+    basename = "_".join([inputfile.split(".")[0], "n{}".format(nreqs)])
+    filename = mklogfilename(basename, suffix="json", path=basepath)
+    with open(filename, "w") as f:
+        json.dump(trace_cache, f)
+    return filename
+
 class NamedTemporaryHDF5File(object):
     def __init__(self, prefix="veda", suffix="h5", path=None, delete=True):
         self.name = mktempfilename(prefix, suffix=suffix, path=path)

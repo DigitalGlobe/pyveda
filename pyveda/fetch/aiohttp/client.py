@@ -14,11 +14,13 @@ from skimage.io import imread
 
 from tempfile import NamedTemporaryFile
 import os
+import sys
 import functools
+import json
 import logging
 
 from pyveda.fetch.diagnostics import BatchFetchTracer
-
+from pyveda.utils import write_trace_profile
 
 def on_fail(shape=(8, 256, 256), dtype=np.float32):
     return np.zeros(shape, dtype=dtype)
@@ -47,10 +49,10 @@ class ThreadedAsyncioRunner(object):
 
 
 class AsyncBatchFetcher(BatchFetchTracer):
-    def __init__(self, reqs=[], token=None, max_retries=5, timeout=20, session=None, session_limit=30,
-                 reqs_limit=500, proc_poolsize=10, trace_configs=[],
-                 connector=aiohttp.TCPConnector, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10),
-                 on_result = lambda x: x, run_tracer=False, **kwargs):
+    def __init__(self, reqs=[], token=None, max_retries=5, timeout=20, session=None,
+                 session_limit=30, reqs_limit=500, proc_poolsize=10, connector=aiohttp.TCPConnector,
+                 executor=concurrent.futures.ThreadPoolExecutor(max_workers=10), on_result = lambda x: x,
+                 run_tracer=False, **kwargs):
 
         super(AsyncBatchFetcher, self).__init__(**kwargs)
         self.reqs = reqs
@@ -61,7 +63,7 @@ class AsyncBatchFetcher(BatchFetchTracer):
         self.session = session
         self.session_limit = session_limit
         self.proc_poolsize = proc_poolsize
-        self._trace_configs = trace_configs
+        self._trace_configs = []
         self._connector = connector
         self._executor = executor
         self._run_tracer = run_tracer
@@ -156,8 +158,10 @@ class AsyncBatchFetcher(BatchFetchTracer):
         return self.results
 
     async def run_fetch(self, loop):
-        async with aiohttp.ClientSession(loop=loop, connector=self.connector(limit=self.session_limit),
-                                        headers=self.headers, trace_configs=self.trace_configs) as session:
+        async with aiohttp.ClientSession(loop=loop,
+                                         connector=self.connector(limit=self.session_limit),
+                                         headers=self.headers,
+                                         trace_configs=self.trace_configs) as session:
             results = await self.fetch(session, loop)
             return results
 
@@ -182,7 +186,9 @@ if __name__ == "__main__":
     parser.add_argument("--file", help="json file list of urls", default="boatset_coll.json")
     parser.add_argument("--num", help="number of urls from file to process", default=None)
     parser.add_argument("--nconn", help="max number of concurrent connections", default=None)
-    parser.add_argument("--debug", help="display runtime stats to stdout, ouput profile tracer stats", default=False)
+    parser.add_argument("--run-trace", help="run and ouput request tracer profile stats", default=False)
+    parser.add_argument("--verbose", help="output info log", default=False)
+    parser.add_argument("--debug", help="output debug log", default=False)
     args = parser.parse_args()
 
     trace_configs = []
@@ -218,18 +224,4 @@ if __name__ == "__main__":
     abf = AsyncBatchFetcher(reqs=reqs, token=token, trace_configs=trace_configs)
     with ThreadedAsyncioRunner(abf.run) as tar:
         tar(loop=tar._loop)
-
-    if args.debug:
-        stop = timeit.default_timer()
-        total_time = stop - start
-        mins, secs = divmod(total_time, 60)
-        hours, mins = divmod(mins, 60)
-        sys.stdout.write("Total running time: %d:%d:%d.\n" % (hours, mins, secs))
-        if trace:
-            basepath, inputfile = os.path.split(args.file)
-            basename = "_".join([inputfile.split(".")[0], "n{}".format(args.num)])
-            filename = mklogfilename(basename, suffix="json", path=basepath)
-            with open(filename, "w") as f:
-                json.dump(trace.cache, f)
-            sys.stdout.write("Tracer stats output file written to {}".format(filename))
 
