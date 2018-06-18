@@ -1,6 +1,6 @@
 import os
 import tables
-from tempfile import NamedTemporaryFile
+from pyveda.utils import mktempfilename
 
 MLTYPES = {"TRAIN": "Data designated for model training",
            "TEST": "Data designated for model testing",
@@ -9,7 +9,6 @@ MLTYPES = {"TRAIN": "Data designated for model training",
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
-klass_map = {"buildings": 1, "cars": 2, "zebras": 3}
 
 class LabelNotSupported(NotImplementedError):
     pass
@@ -110,12 +109,8 @@ class WrappedDataNode(object):
     def __iter__(self, spec=slice(None)):
         data = [getattr(self, label) for label in self._trainer.focus]
         data.insert(0, self.image)
-        if isinstance(spec, slice):
-            for rec in zip([arr[spec] for arr in data]):
-                yield rec
-        else:
-            for rec in zip([arr[spec] for arr in data]):
-                yield rec
+        for rec in zip([arr[spec] for arr in data]):
+            yield rec
 
     def __len__(self):
         return len(self._node.image)
@@ -125,11 +120,10 @@ class ImageTrainer(object):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
-    def __init__(self, fname=None, klass_map=klass_map, data_groups=MLTYPES, framework=None,
+    def __init__(self, fname=None, klass_map=None, data_groups=MLTYPES, framework=None,
                  title="Unknown", image_shape=(3, 256, 256), focus="classification", append=False):
         if fname is None:
-            temp = NamedTemporaryFile(prefix="veda", suffix='h5', delete=False)
-            fname = temp.name
+            fname = mktempfilename(prefix="veda", suffix='h5')
 
         self._framework = framework
         self._fw_loader = lambda x: x
@@ -143,7 +137,7 @@ class ImageTrainer(object):
 
         if os.path.exists(fname) and not append:
             os.remove(fname)
-       
+
         self._fileh = tables.open_file(fname, mode="a", title=title)
         for name, desc in data_groups.items():
             self._fileh.create_group("/", name.lower(), desc)
@@ -199,6 +193,9 @@ class ImageTrainer(object):
     @property
     def validation(self):
         return WrappedDataNode(self._fileh.root.validation, self)
+
+    def flush(self):
+        self._fileh.flush()
 
     def close(self):
         self._fileh.close()

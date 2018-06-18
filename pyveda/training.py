@@ -15,22 +15,21 @@ import numpy as np
 from dask import delayed
 import dask.array as da
 from gbdxtools import Interface
-from tempfile import NamedTemporaryFile
 from .loaders import load_image
 from .utils import transforms
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from rasterio.features import rasterize
 from shapely.geometry import shape, mapping
 from shapely import ops
+from concurrent.futures import as_completed
 
 from functools import partial
 import dask
 
-from .hdf5 import ImageTrainer
+import threading
 
-threads = int(os.environ.get('GBDX_THREADS', 64))
-pool = ThreadPoolExecutor(threads)
-threaded_get = partial(dask.threaded.get, num_workers=threads)
+from .hdf5 import ImageTrainer
+from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, AsyncBatchFetcher
+from pyveda.utils import extract_load_tasks, NamedTemporaryHDF5Generator
 
 gbdx = Interface()
 
@@ -108,7 +107,17 @@ class BaseSet(object):
         self._cache_url = "{}/data/{}/cache"
         self._datapoint_url = "{}/datapoints".format(HOST)
         self._chunk_size = os.environ.get('VEDA_CHUNK_SIZE', 5000)
+        self._temp_gen = NamedTemporaryHDF5Generator()
         self.conn = conn
+
+    @property
+    def _tempGen(self):
+        if self._temp_gen is not None:
+            if os.path.exists(self._temp_gen.dirpath):
+                return self._temp_gen
+        self._temp_gen = NamedTemporaryHDF5Generator()
+        return self._temp_gen
+
 
     def _querystring(self, limit, **kwargs):
         """ Builds a qury string from kwargs for fetching points """
@@ -163,7 +172,6 @@ class BaseSet(object):
         if total <= self._chunk_size:
             self.cache.close()
             doc = self._create_set(meta, h5=self.fname)
-            self._cache = None
         else:
             doc = self._create_set(meta)
             self._send_chunks(doc)
@@ -177,6 +185,8 @@ class BaseSet(object):
                 href.replace("host.docker.internal", "localhost")
                 links[key]['href'] = href
             self.links = links
+
+        self._temp_gen.remove()
         self._cache = None
         self._index = total
 
@@ -223,35 +233,33 @@ class BaseSet(object):
             count = float(self._count[group])
             nchunks = math.ceil(count / float(self._chunk_size))
             idx = self._index
-            for chunk in range(nchunks):
-                temp = NamedTemporaryFile(prefix="veda", suffix='h5', delete=False)
-                chunk_h5 = h5py.File(temp.name, 'a')
-                grp = chunk_h5.create_group(group)
-                xgrp = grp.create_group("X")
-                ygrp = grp.create_group("Y")
-                for i in range(self._chunk_size):
-                    try:
-                        self.cache.copy('{}/X/{}'.format(group, str(idx)), xgrp)
-                        self.cache.copy('{}/Y/{}'.format(group, str(idx)), ygrp)
-                    except Exception as err:
-                        pass
-                    idx += 1
+            with NamedTemporaryHDF5Generator() as h5gen:
+                for chunk in range(nchunks):
+                    with h5py.File(h5gen.mktempfilename(), "a") as temp:
+                        grp = temp.create_group(group)
+                        xgrp = grp.create_group("X")
+                        ygrp = grp.create_group("Y")
+                        for i in range(self._chunk_size):
+                            try:
+                                self.cache.copy('{}/X/{}'.format(group, str(idx)), xgrp)
+                                self.cache.copy('{}/Y/{}'.format(group, str(idx)), ygrp)
+                            except Exception as err:
+                                pass
+                            idx += 1
 
-                chunk_h5.close()
-                f = open(temp.name, 'rb')
-                files = {
-                    'file': (os.path.basename(temp.name), f, 'application/octet-stream')
-                }
-                if self.id is not None:
-                    meta = {
-                        "count": dict(self._count),
-                        "sensors": self.sensors,
-                        "update": True
-                    }
-                    files['metadata'] = (None, json.dumps(meta), 'application/json')
-                p = session.post(doc['links']['self']['href'], files=files)
-                p.result() # wait for it...
-                os.remove(temp.name)
+                    with open(temp.filename, 'rb') as f:
+                        files = {
+                            'file': (os.path.basename(temp.filename), f, 'application/octet-stream')
+                        }
+                        if self.id is not None:
+                            meta = {
+                                "count": dict(self._count),
+                                "sensors": self.sensors,
+                                "update": True
+                            }
+                            files['metadata'] = (None, json.dumps(meta), 'application/json')
+                        p = session.post(doc['links']['self']['href'], files=files)
+                        p.result() # wait for it...
 
     def create(self, data):
         return self.conn.post(self.links["create"]["href"], json=data).json()
@@ -268,6 +276,11 @@ class BaseSet(object):
     def _unpublish(self):
         return self.conn.put(self.links["publish"]["href"], json={"public": False}).json()
 
+    def __del__(self):
+        try:
+            self._temp_gen.remove()
+        except Exception:
+            pass
 
 
 class TrainingSet(BaseSet):
@@ -298,10 +311,12 @@ class TrainingSet(BaseSet):
         self._count = kwargs.get('count', defaultdict(int))
         self._cache = None
         self._datapoints = None
-        try: 
+        try:
             self._index = sum(list(self._count.values()))
         except:
             self._index = 0
+        self._index = sum(list(self._count.values()))
+        self._temp_gen = NamedTemporaryHDF5Generator()
 
         self.meta = {
             "source": source,
@@ -333,9 +348,7 @@ class TrainingSet(BaseSet):
     def cache(self):
         """ Looks for an existing cache file and creates it if doesnt exist """
         if self._cache is None:
-            temp = NamedTemporaryFile(prefix="veda", suffix='h5', delete=False)
-            self.fname = temp.name
-            self._cache = h5py.File(temp.name, 'a')
+            self._cache, self.fname = self._tempGen.mktemp(delete=False)
         return self._cache
 
     @property
@@ -405,7 +418,6 @@ class TrainingSet(BaseSet):
             y = [str(Y.tolist()).encode('utf8')]
         except:
             y = [str(Y).encode('utf8')]
-            
         if idx is None:
             idx = self.count[group] + self._index
             self.cache[group]["X"].create_dataset(str(idx), data=[x.encode('utf8') for x in X])
@@ -459,18 +471,17 @@ class TrainingSet(BaseSet):
             datagroup = getattr(cache, group)
             labelgroup = getattr(datagroup, self.mlType)
 
-            def group_append(dsk):
-                datagroup.image.append(dsk.compute())
-
-            futures = []
+            reqs = []
             for p in points:
-                futures.append(pool.submit(group_append, p.image))
+                url, token = extract_load_tasks(p.image.dask)
+                reqs.append([url])
                 labelgroup.append(p.y)
 
-            finished = []
-            for f in as_completed(futures):
-                finished.append(f.result())
+            abf = AsyncBatchFetcher(reqs=reqs, token=token, on_result=datagroup.image.append)
+            with ThreadedAsyncioRunner(abf.run) as tar:
+                tar(loop=tar._loop)
 
+            cache.flush()
             return cache
 
     def batch_generator(self, size, group="train"):
