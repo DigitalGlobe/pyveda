@@ -440,7 +440,7 @@ class TrainingSet(BaseSet):
         assert self.id is not None, 'Can only call add on existing Sets, try calling `feed`.'
         assert dsk.shape == self.shape, 'Mismatching shapes, cannot add {} to set with shape {}'.format(dsk.shape, self.shape)
         self._update_sensors(dsk)
-        X = transforms(self.source)(dsk)
+        x = transforms(self.source)(dsk)
         return self.create({
           'x': x,
           'y': labels.tolist(),
