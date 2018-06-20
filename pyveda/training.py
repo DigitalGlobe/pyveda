@@ -50,20 +50,24 @@ def search(params={}):
 
 def vec_to_raster(vectors, shape):
     try:
-        arr = rasterize(((json.loads(g), 1) for g in vectors), out_shape=shape[1:])
+        arr = rasterize(((g, 1) for g in vectors), out_shape=shape[1:])
     except Exception as err:
+        print(err)
         arr = np.zeros(shape[1:])
     return np.array(arr)
 
 class DataPoint(object):
     """ Methods for accessing training data pairs """
-    def __init__(self, item, shape=(3,256,256), dtype="uint8"):
+    def __init__(self, item, shape=(3,256,256), dtype="uint8", **kwargs):
         self.conn = conn
         self.data = item["data"]
         self.data['y'] = np.array(self.data['y'])
         self.links = item["links"]
         self.shape = tuple(shape)
         self.dtype = dtype
+
+        if 'mlType' in kwargs and kwargs['mlType'] == 'segmentation':
+            self.data['y'] = vec_to_raster(self.data['y'], self.shape)
 
 
     @property
@@ -132,26 +136,18 @@ class BaseSet(object):
         """ Fetch a single data point at a given index in the dataset """
         qs = urlencode({"limit": 1, "offset": idx, "group": group, "includeLinks": True})
         p = self.conn.get("{}/data/{}/datapoints?{}".format(HOST, self.id, qs)).json()[0]
-        point = DataPoint(p, shape=self.shape, dtype=self.dtype)
-        if self.mlType == 'segmentation':
-            point.data['y'] = vec_to_raster(point.data['yseg'], self.shape)
-        return point
+        return DataPoint(p, shape=self.shape, dtype=self.dtype, mlType=self.mlType)
 
     def fetch(self, _id):
         """ Fetch a point for a given ID """
-        point = DataPoint(self.conn.get("{}/datapoints/{}".format(HOST, _id)).json(), shape=self.shape, dtype=self.dtype)
-        if self.mlType == 'segmentation':
-            point.data['y'] = vec_to_raster(point.data['yseg'], self.shape)
-        return point
+        return DataPoint(self.conn.get("{}/datapoints/{}".format(HOST, _id)).json(), 
+                  shape=self.shape, dtype=self.dtype, mlType=self.mlType)
 
     def fetch_points(self, limit, **kwargs):
         """ Fetch a list of datapoints """
         qs = self._querystring(limit, **kwargs)
-        points = [DataPoint(p, shape=self.shape, dtype=self.dtype) for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
-        if self.mlType == 'segmentation':
-            # convert yseg into arrays
-            for p in points:
-                p.data['y'] = vec_to_raster(p.data['yseg'], self.shape)
+        points = [DataPoint(p, shape=self.shape, dtype=self.dtype, mlType=self.mlType) 
+                      for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
         return points
 
     def save(self, auto_cache=True):
