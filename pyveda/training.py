@@ -437,11 +437,15 @@ class TrainingSet(BaseSet):
         assert dsk.shape == self.shape, 'Mismatching shapes, cannot add {} to set with shape {}'.format(dsk.shape, self.shape)
         self._update_sensors(dsk)
         x = transforms(self.source)(dsk)
+        if type(labels) != list:
+            labels = labels.tolist()
+        if self.mlType == 'classification':
+            labels = [labels]
         return self.create({
           'x': x,
-          'y': labels.tolist(),
+          'y': labels,
           'group': group,
-          'dataset': self.id
+          'dataset_id': self.id
         })
 
 
