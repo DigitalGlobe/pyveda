@@ -441,6 +441,8 @@ class TrainingSet(BaseSet):
             labels = labels.tolist()
         if self.mlType == 'classification':
             labels = [labels]
+        elif self.mlType == 'segmentation':
+            labels = [json.loads(json.dumps((mapping(ops.transform(dsk.__geo_transform__.rev, shape(s)))))) for s in labels]
         return self.create({
           'x': x,
           'y': labels,
