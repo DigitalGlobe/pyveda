@@ -22,9 +22,17 @@ import logging
 from pyveda.fetch.diagnostics import BatchFetchTracer
 from pyveda.utils import write_trace_profile
 
+logger = logging.getLogger(__name__)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger.setLevel(logging.INFO)
+fh = logging.FileHandler('fetcher.log')
+fh.setLevel(logging.DEBUG)
+fh.setFormatter(formatter)
+logger.addHandler(fh)
+
+
 def on_fail(shape=(8, 256, 256), dtype=np.float32):
     return np.zeros(shape, dtype=dtype)
-
 
 class ThreadedAsyncioRunner(object):
     def __init__(self, method, loop=None):
@@ -36,6 +44,7 @@ class ThreadedAsyncioRunner(object):
         self._thread.start()
 
     def __enter__(self):
+        logger.info("Entering Threaded Loop")
         return self
 
     def __exit__(self, *args):
@@ -99,6 +108,7 @@ class AsyncBatchFetcher(BatchFetchTracer):
             fd.close()
             os.remove(fd.name)
             self.on_result(arr)
+            logger.info("got shit wrote")
 
         return arr
 
@@ -111,6 +121,7 @@ class AsyncBatchFetcher(BatchFetchTracer):
                 async with session.get(url) as response:
                     response.raise_for_status()
                     bstring = await response.read()
+                    logger.info("read url {}".format(url))
                     await self._qres.put([url, bstring])
                     self._qreq.task_done()
                     await response.release()
@@ -136,7 +147,7 @@ class AsyncBatchFetcher(BatchFetchTracer):
                 if not payload:
                     arr = on_fail()
                 else:
-                    arr = await loop.run_in_executor(self.executor, self.bytes_to_array, payload)
+                    arr = await loop.run_in_executor(self._executor, self.bytes_to_array, payload)
                 self._qres.task_done()
             except CancelledError as ce:
                 break
@@ -147,7 +158,7 @@ class AsyncBatchFetcher(BatchFetchTracer):
         self._qreq, self._qres = asyncio.Queue(maxsize=self.reqs_limit), asyncio.Queue()
         consumers = [asyncio.ensure_future(self.consume_reqs(session)) for _ in range(self.reqs_limit)]
         producer = await self.produce_reqs()
-        processors = [asyncio.ensure_future(self.process(loop)) for _ in range(self.pproc_poolsize)]
+        processors = [asyncio.ensure_future(self.process(loop)) for _ in range(self.proc_poolsize)]
         await self._qreq.join()
         await self._qres.join()
         for fut in consumers:
@@ -159,10 +170,12 @@ class AsyncBatchFetcher(BatchFetchTracer):
 
     async def run_fetch(self, loop):
         async with aiohttp.ClientSession(loop=loop,
-                                         connector=self.connector(limit=self.session_limit),
+                                         connector=self._connector(limit=self.session_limit),
                                          headers=self.headers,
-                                         trace_configs=self.trace_configs) as session:
+                                         trace_configs=self._trace_configs) as session:
+            logger.info("starting fetch")
             results = await self.fetch(session, loop)
+            logger.info("done fetch")
             return results
 
     async def run(self, reqs=None, token=None, loop=None):
