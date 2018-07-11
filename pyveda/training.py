@@ -1,3 +1,4 @@
+import six
 import os, shutil, json, math
 import time
 import sys
@@ -15,38 +16,64 @@ import numpy as np
 from dask import delayed
 import dask.array as da
 from gbdxtools import Interface
-from tempfile import NamedTemporaryFile
 from .loaders import load_image
 from .utils import transforms
+from rasterio.features import rasterize
+from shapely.geometry import shape, mapping
+from shapely import ops
 
 from functools import partial
 import dask
 
-from .hdf5 import ImageTrainer
+import threading
 
-threaded_get = partial(dask.threaded.get, num_workers=64)
+from .hdf5 import ImageTrainer
+from pyveda.utils import NamedTemporaryHDF5Generator
+from pyveda.fetch.compat import write_fetch
 
 gbdx = Interface()
-headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
 
 HOST = os.environ.get('SANDMAN_API')
 if not HOST:
     HOST = "http://localhost:3002"
 
+if 'https:' in HOST:
+    conn = gbdx.gbdx_connection
+else:
+    headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
+    conn = requests.Session()
+    conn.headers.update(headers)
+
+valid_mltypes = ['classification', 'object_detection', 'segmentation']
+
 def search(params={}):
-    r = requests.post('{}/{}'.format(HOST, "search"), json=params, headers=headers)
-    return [TrainingSet.from_doc(s) for s in r.json()]
+    r = conn.post('{}/{}'.format(HOST, "search"), json=params)
+    try: 
+        results = r.json()
+        return [TrainingSet.from_doc(s) for s in r.json()]
+    except:
+        return []
+
+def vec_to_raster(vectors, shape):
+    try:
+        arr = rasterize(((g, 1) for g in vectors), out_shape=shape[1:])
+    except Exception as err:
+        print(err)
+        arr = np.zeros(shape[1:])
+    return np.array(arr)
 
 class DataPoint(object):
     """ Methods for accessing training data pairs """
-    def __init__(self, item, shape=(3,256,256), dtype="uint8"):
-        self.conn = requests.Session()
-        self.conn.headers.update( headers )
+    def __init__(self, item, shape=(3,256,256), dtype="uint8", **kwargs):
+        self.conn = conn
         self.data = item["data"]
         self.data['y'] = np.array(self.data['y'])
         self.links = item["links"]
         self.shape = tuple(shape)
         self.dtype = dtype
+
+        if 'mlType' in kwargs and kwargs['mlType'] == 'segmentation':
+            self.data['y'] = vec_to_raster(self.data['y'], self.shape)
 
 
     @property
@@ -90,8 +117,17 @@ class BaseSet(object):
         self._cache_url = "{}/data/{}/cache"
         self._datapoint_url = "{}/datapoints".format(HOST)
         self._chunk_size = os.environ.get('VEDA_CHUNK_SIZE', 5000)
-        self.conn = requests.Session()
-        self.conn.headers.update( headers )
+        self._temp_gen = NamedTemporaryHDF5Generator()
+        self.conn = conn
+
+    @property
+    def _tempGen(self):
+        if self._temp_gen is not None:
+            if os.path.exists(self._temp_gen.dirpath):
+                return self._temp_gen
+        self._temp_gen = NamedTemporaryHDF5Generator()
+        return self._temp_gen
+
 
     def _querystring(self, limit, **kwargs):
         """ Builds a qury string from kwargs for fetching points """
@@ -106,16 +142,19 @@ class BaseSet(object):
         """ Fetch a single data point at a given index in the dataset """
         qs = urlencode({"limit": 1, "offset": idx, "group": group, "includeLinks": True})
         p = self.conn.get("{}/data/{}/datapoints?{}".format(HOST, self.id, qs)).json()[0]
-        return DataPoint(p, shape=self.shape, dtype=self.dtype)
+        return DataPoint(p, shape=self.shape, dtype=self.dtype, mlType=self.mlType)
 
     def fetch(self, _id):
         """ Fetch a point for a given ID """
-        return DataPoint(self.conn.get("{}/datapoints/{}".format(HOST, _id)).json(), shape=self.shape, dtype=self.dtype)
+        return DataPoint(self.conn.get("{}/datapoints/{}".format(HOST, _id)).json(),
+                  shape=self.shape, dtype=self.dtype, mlType=self.mlType)
 
     def fetch_points(self, limit, **kwargs):
         """ Fetch a list of datapoints """
         qs = self._querystring(limit, **kwargs)
-        return [DataPoint(p, shape=self.shape, dtype=self.dtype) for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
+        points = [DataPoint(p, shape=self.shape, dtype=self.dtype, mlType=self.mlType)
+                      for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
+        return points
 
     def save(self, auto_cache=True):
         """
@@ -135,7 +174,6 @@ class BaseSet(object):
         if total <= self._chunk_size:
             self.cache.close()
             doc = self._create_set(meta, h5=self.fname)
-            self._cache = None
         else:
             doc = self._create_set(meta)
             self._send_chunks(doc)
@@ -149,6 +187,8 @@ class BaseSet(object):
                 href.replace("host.docker.internal", "localhost")
                 links[key]['href'] = href
             self.links = links
+
+        self._temp_gen.remove()
         self._cache = None
         self._index = total
 
@@ -189,42 +229,39 @@ class BaseSet(object):
 
     def _send_chunks(self, doc):
         """ Chunk up the HDF5 cache into chunks <= chunk_size and post with doc id """
-        session = FuturesSession()
-        session.headers.update( headers )
+        session = FuturesSession(session=conn)
         groups = list(self.cache.keys())
         for group in groups:
             count = float(self._count[group])
             nchunks = math.ceil(count / float(self._chunk_size))
             idx = self._index
-            for chunk in range(nchunks):
-                temp = NamedTemporaryFile(prefix="veda", suffix='h5', delete=False)
-                chunk_h5 = h5py.File(temp.name, 'a')
-                grp = chunk_h5.create_group(group)
-                xgrp = grp.create_group("X")
-                ygrp = grp.create_group("Y")
-                for i in range(self._chunk_size):
-                    try:
-                        self.cache.copy('{}/X/{}'.format(group, str(idx)), xgrp)
-                        self.cache.copy('{}/Y/{}'.format(group, str(idx)), ygrp)
-                    except Exception as err:
-                        pass
-                    idx += 1
+            with NamedTemporaryHDF5Generator() as h5gen:
+                for chunk in range(nchunks):
+                    with h5py.File(h5gen.mktempfilename(), "a") as temp:
+                        grp = temp.create_group(group)
+                        xgrp = grp.create_group("X")
+                        ygrp = grp.create_group("Y")
+                        for i in range(self._chunk_size):
+                            try:
+                                self.cache.copy('{}/X/{}'.format(group, str(idx)), xgrp)
+                                self.cache.copy('{}/Y/{}'.format(group, str(idx)), ygrp)
+                            except Exception as err:
+                                pass
+                            idx += 1
 
-                chunk_h5.close()
-                f = open(temp.name, 'rb')
-                files = {
-                    'file': (os.path.basename(temp.name), f, 'application/octet-stream')
-                }
-                if self.id is not None:
-                    meta = {
-                        "count": dict(self._count),
-                        "sensors": self.sensors,
-                        "update": True
-                    }
-                    files['metadata'] = (None, json.dumps(meta), 'application/json')
-                p = session.post(doc['links']['self']['href'], files=files)
-                p.result() # wait for it...
-                os.remove(temp.name)
+                    with open(temp.filename, 'rb') as f:
+                        files = {
+                            'file': (os.path.basename(temp.filename), f, 'application/octet-stream')
+                        }
+                        if self.id is not None:
+                            meta = {
+                                "count": dict(self._count),
+                                "sensors": self.sensors,
+                                "update": True
+                            }
+                            files['metadata'] = (None, json.dumps(meta), 'application/json')
+                        p = session.post(doc['links']['self']['href'], files=files)
+                        p.result() # wait for it...
 
     def create(self, data):
         return self.conn.post(self.links["create"]["href"], json=data).json()
@@ -235,7 +272,17 @@ class BaseSet(object):
     def remove(self):
         self.conn.delete(self.links["delete"]["href"])
 
+    def _publish(self):
+        return self.conn.put(self.links["publish"]["href"], json={"public": True}).json()
 
+    def _unpublish(self):
+        return self.conn.put(self.links["publish"]["href"], json={"public": False}).json()
+
+    def __del__(self):
+        try:
+            self._temp_gen.remove()
+        except Exception:
+            pass
 
 
 class TrainingSet(BaseSet):
@@ -253,6 +300,7 @@ class TrainingSet(BaseSet):
           dtype (str): the dtype of the imergy (ie int8, uint16, float32, etc)
     """
     def __init__(self, name, mlType="classification", bbox=[], classes=[], source="rda", **kwargs):
+        assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
         super(TrainingSet, self).__init__()
         self.source = source
         self.id = kwargs.get('id', None)
@@ -266,8 +314,12 @@ class TrainingSet(BaseSet):
         self._count = kwargs.get('count', defaultdict(int))
         self._cache = None
         self._datapoints = None
-        self.dasks = defaultdict(dict)
+        try:
+            self._index = sum(list(self._count.values()))
+        except:
+            self._index = 0
         self._index = sum(list(self._count.values()))
+        self._temp_gen = NamedTemporaryHDF5Generator()
 
         self.meta = {
             "source": source,
@@ -275,10 +327,12 @@ class TrainingSet(BaseSet):
             "bbox": bbox,
             "classes": classes,
             "nclasses": len(classes),
-            "mlType": mlType
+            "mlType": mlType,
+            "public": kwargs.get("public", False)
         }
 
-        self.db = None
+        for k,v in self.meta.items():
+            setattr(self, k, v)
 
     @classmethod
     def from_doc(cls, doc):
@@ -290,16 +344,14 @@ class TrainingSet(BaseSet):
     def from_id(cls, _id):
         """ Helper method that fetches an id into a TrainingSet """
         url = "{}/data/{}".format(HOST, _id)
-        doc = requests.get(url, headers=headers).json()
+        doc = conn.get(url).json()
         return cls.from_doc(doc)
 
     @property
     def cache(self):
         """ Looks for an existing cache file and creates it if doesnt exist """
         if self._cache is None:
-            temp = NamedTemporaryFile(prefix="veda", suffix='h5', delete=False)
-            self.fname = temp.name
-            self._cache = h5py.File(temp.name, 'a')
+            self._cache, self.fname = self._tempGen.mktemp(delete=False)
         return self._cache
 
     @property
@@ -348,6 +400,8 @@ class TrainingSet(BaseSet):
 
             if dsk.shape == self.shape:
                 X = transforms(self.source)(dsk)
+                if self.mlType == 'segmentation':
+                    labels = [json.loads(json.dumps((mapping(ops.transform(dsk.__geo_transform__.rev, shape(s)))))) for s in labels]
                 self.add_to_cache(X, labels, group=group)
             elif verbose:
                 print('Could not add image to set, shape mismatch {} != {}'.format(dsk.shape, self.shape))
@@ -367,7 +421,6 @@ class TrainingSet(BaseSet):
             y = [str(Y.tolist()).encode('utf8')]
         except:
             y = [str(Y).encode('utf8')]
-
         if idx is None:
             idx = self.count[group] + self._index
             self.cache[group]["X"].create_dataset(str(idx), data=[x.encode('utf8') for x in X])
@@ -390,16 +443,22 @@ class TrainingSet(BaseSet):
         assert self.id is not None, 'Can only call add on existing Sets, try calling `feed`.'
         assert dsk.shape == self.shape, 'Mismatching shapes, cannot add {} to set with shape {}'.format(dsk.shape, self.shape)
         self._update_sensors(dsk)
-        X = transforms(self.source)(dsk)
+        x = transforms(self.source)(dsk)
+        if type(labels) != list:
+            labels = labels.tolist()
+        if self.mlType == 'classification':
+            labels = [labels]
+        elif self.mlType == 'segmentation':
+            labels = [json.loads(json.dumps((mapping(ops.transform(dsk.__geo_transform__.rev, shape(s)))))) for s in labels]
         return self.create({
           'x': x,
-          'y': labels.tolist(),
+          'y': labels,
           'group': group,
-          'dataset': self.id
+          'dataset_id': self.id
         })
 
 
-    def batch(self, size, group="train", label_type="segmentation", to_cache=False):
+    def batch(self, size, group="train", to_cache=False, name=None, **kwargs):
         """
           Fetches a batch of randomly sampled pairs from either the set
           Args:
@@ -414,15 +473,17 @@ class TrainingSet(BaseSet):
             Y = [p.y for p in points]
             return X.compute(get=threaded_get), np.array(Y)
         else:
-            if not self.db:
-                klass_map = {idx: klass_name for idx, klass_name in enumerate(self.meta['classes'])}
-                self.db = ImageTrainer(klass_map=klass_map, focus=label_type)
-                datagroup = getattr(self.db, group)
-                labelgroup = getattr(datagroup, label_type)
-                for p in points:
-                    datagroup.image.append(p.image.compute())
-                    labelgroup.append(p.y)
-            return self.db
+            fname = "{}.h5".format(name) if name is not None else None
+            klass_map = {idx: klass_name for idx, klass_name in enumerate(self.meta['classes'])}
+            cache = ImageTrainer(klass_map=klass_map, focus=self.mlType,
+                              image_shape=self.shape, fname=fname)
+            datagroup = getattr(cache, group)
+            labelgroup = getattr(datagroup, self.mlType)
+
+            write_fetch(points, labelgroup, datagroup)
+
+            cache.flush()
+            return cache
 
     def batch_generator(self, size, group="train"):
         """
@@ -451,7 +512,7 @@ class TrainingSet(BaseSet):
             Y = self.cache[group]["Y"][str(idx)]
             data = {
                 "x": [x.decode('utf8') for x in X.value.tolist()],
-                "y": json.loads([y.decode('utf8') for y in Y.value.tolist()][0]),
+                "y": json.loads([y.decode('utf8').replace("'", '"') for y in Y.value.tolist()][0]),
                 "group": group
             }
             return data
@@ -480,12 +541,12 @@ class TrainingSet(BaseSet):
     def publish(self):
         """ Make a saved TrainingSet publicly searchable and consumable """
         assert self.id is not None, 'You can only publish a saved TrainingSet. Call the save method first.'
-        return self.update({"public": True})
+        return self._publish()
 
     def unpublish(self):
         """ Unpublish a saved TraininSet (make it private) """
         assert self.id is not None, 'You can only publish a saved TrainingSet. Call the save method first.'
-        return self.update({"public": False})
+        return self._unpublish()
 
     def __getitem__(self, slc):
         """ Enable slicing of the TrainingSet by index/slice """
