@@ -21,7 +21,6 @@ from .utils import transforms
 from rasterio.features import rasterize
 from shapely.geometry import shape, mapping
 from shapely import ops
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from functools import partial
 import dask
@@ -29,37 +28,8 @@ import dask
 import threading
 
 from .hdf5 import ImageTrainer
-from pyveda.utils import extract_load_tasks, NamedTemporaryHDF5Generator
-
-if six.PY3:
-    from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, AsyncBatchFetcher
-    def write_fetch(points, labelgroup, datagroup, **kwargs):
-        reqs = []
-        for p in points:
-            url, token = extract_load_tasks(p.image.dask)
-            reqs.append([url])
-            labelgroup.append(p.y)
-
-        abf = AsyncBatchFetcher(reqs=reqs, token=token, on_result=datagroup.image.append)
-        with ThreadAsyncioRunner(abf.run) as tar:
-            tar(loop=tar._loop)
-
-else:
-    threads = int(os.environ.et('GBDX_THREADS', 64))
-    pool = ThreadPoolExecutor(threads)
-    threaded_get = partial(dask.threaded.get, num_workers=threads)
-    def write_fetch(points, labelgroup, datagroup, **kwargs):
-        def group_append(dsk):
-            datagroup.image.append(dsk.compute())
-
-        futures = []
-        for p in points:
-            futures.append(pool.submit(group_append, p.image))
-            labelgroup.append(p.y)
-
-        finished = []
-        for f in as_completed(futures):
-            finished.append(f.result())
+from pyveda.utils import NamedTemporaryHDF5Generator
+from pyveda.fetch.compat import write_fetch
 
 gbdx = Interface()
 
