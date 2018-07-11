@@ -1,3 +1,4 @@
+import six
 import os, shutil, json, math
 import time
 import sys
@@ -20,7 +21,7 @@ from .utils import transforms
 from rasterio.features import rasterize
 from shapely.geometry import shape, mapping
 from shapely import ops
-from concurrent.futures import as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from functools import partial
 import dask
@@ -28,8 +29,37 @@ import dask
 import threading
 
 from .hdf5 import ImageTrainer
-from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, AsyncBatchFetcher
 from pyveda.utils import extract_load_tasks, NamedTemporaryHDF5Generator
+
+if six.PY3:
+    from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, AsyncBatchFetcher
+    def write_fetch(points, labelgroup, datagroup, **kwargs):
+        reqs = []
+        for p in points:
+            url, token = extract_load_tasks(p.image.dask)
+            reqs.append([url])
+            labelgroup.append(p.y)
+
+        abf = AsyncBatchFetcher(reqs=reqs, token=token, on_result=datagroup.image.append)
+        with ThreadAsyncioRunner(abf.run) as tar:
+            tar(loop=tar._loop)
+
+else:
+    threads = int(os.environ.et('GBDX_THREADS', 64))
+    pool = ThreadPoolExecutor(threads)
+    threaded_get = partial(dask.threaded.get, num_workers=threads)
+    def write_fetch(points, labelgroup, datagroup, **kwargs):
+        def group_append(dsk):
+            datagroup.image.append(dsk.compute())
+
+        futures = []
+        for p in points:
+            futures.append(pool.submit(group_append, p.image))
+            labelgroup.append(p.y)
+
+        finished = []
+        for f in as_completed(futures):
+            finished.append(f.result())
 
 gbdx = Interface()
 
@@ -140,13 +170,13 @@ class BaseSet(object):
 
     def fetch(self, _id):
         """ Fetch a point for a given ID """
-        return DataPoint(self.conn.get("{}/datapoints/{}".format(HOST, _id)).json(), 
+        return DataPoint(self.conn.get("{}/datapoints/{}".format(HOST, _id)).json(),
                   shape=self.shape, dtype=self.dtype, mlType=self.mlType)
 
     def fetch_points(self, limit, **kwargs):
         """ Fetch a list of datapoints """
         qs = self._querystring(limit, **kwargs)
-        points = [DataPoint(p, shape=self.shape, dtype=self.dtype, mlType=self.mlType) 
+        points = [DataPoint(p, shape=self.shape, dtype=self.dtype, mlType=self.mlType)
                       for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
         return points
 
@@ -473,15 +503,7 @@ class TrainingSet(BaseSet):
             datagroup = getattr(cache, group)
             labelgroup = getattr(datagroup, self.mlType)
 
-            reqs = []
-            for p in points:
-                url, token = extract_load_tasks(p.image.dask)
-                reqs.append([url])
-                labelgroup.append(p.y)
-
-            abf = AsyncBatchFetcher(reqs=reqs, token=token, on_result=datagroup.image.append)
-            with ThreadedAsyncioRunner(abf.run) as tar:
-                tar(loop=tar._loop)
+            write_fetch(points, labelgroup, datagroup)
 
             cache.flush()
             return cache
