@@ -1,6 +1,6 @@
-import six
+import sys
 
-if six.PY3:
+if sys.version_info[0:2] < (3,4):
     from pyveda.fetch.compat.fetchpy3 import write_fetch
-if six.PY2:
+else:
     from pyveda.fetch.compat.fetchpy2 import write_fetch
