@@ -44,9 +44,15 @@ else:
     conn = requests.Session()
     conn.headers.update(headers)
 
+valid_mltypes = ['classification', 'object_detection', 'segmentation']
+
 def search(params={}):
     r = conn.post('{}/{}'.format(HOST, "search"), json=params)
-    return [TrainingSet.from_doc(s) for s in r.json()]
+    try: 
+        results = r.json()
+        return [TrainingSet.from_doc(s) for s in r.json()]
+    except:
+        return []
 
 def vec_to_raster(vectors, shape):
     try:
@@ -294,6 +300,7 @@ class TrainingSet(BaseSet):
           dtype (str): the dtype of the imergy (ie int8, uint16, float32, etc)
     """
     def __init__(self, name, mlType="classification", bbox=[], classes=[], source="rda", **kwargs):
+        assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
         super(TrainingSet, self).__init__()
         self.source = source
         self.id = kwargs.get('id', None)
