@@ -5,7 +5,7 @@ setup(name='pyveda',
       description='Python API for interfacing with veda',
       url='https://github.com/DigitalGlobe/pyveda',
       license='MIT',
-      packages=['pyveda', "pyveda.fetch"],
+      packages=['pyveda', "pyveda.fetch", "pyveda.fetch.compat"],
       zip_safe=False,
       install_requires=[
           "gbdxtools",
