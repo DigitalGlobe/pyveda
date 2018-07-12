@@ -31,6 +31,8 @@ from .hdf5 import ImageTrainer
 from pyveda.utils import NamedTemporaryHDF5Generator
 from pyveda.fetch.compat import write_fetch
 
+threads = int(os.environ.get('GBDX_THREADS', 64))
+threaded_get = partial(dask.threaded.get, num_workers=threads)
 gbdx = Interface()
 
 HOST = os.environ.get('SANDMAN_API')
@@ -48,7 +50,7 @@ valid_mltypes = ['classification', 'object_detection', 'segmentation']
 
 def search(params={}):
     r = conn.post('{}/{}'.format(HOST, "search"), json=params)
-    try: 
+    try:
         results = r.json()
         return [TrainingSet.from_doc(s) for s in r.json()]
     except:
