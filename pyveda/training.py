@@ -482,7 +482,7 @@ class TrainingSet(BaseSet):
             datagroup = getattr(cache, group)
             labelgroup = getattr(datagroup, self.mlType)
 
-            write_fetch(points, labelgroup, datagroup)
+            write_fetch(points, labelgroup, datagroup, **kwargs)
 
             cache.flush()
             return cache
