@@ -37,7 +37,7 @@ gbdx = Interface()
 
 HOST = os.environ.get('SANDMAN_API')
 if not HOST:
-    HOST = "http://localhost:3002"
+    HOST = "http://veda.timbr.io"
 
 if 'https:' in HOST:
     conn = gbdx.gbdx_connection
