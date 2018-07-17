@@ -37,7 +37,7 @@ gbdx = Interface()
 
 HOST = os.environ.get('SANDMAN_API')
 if not HOST:
-    HOST = "http://veda.timbr.io"
+    HOST = "https://veda.timbr.io"
 
 if 'https:' in HOST:
     conn = gbdx.gbdx_connection
@@ -279,6 +279,11 @@ class BaseSet(object):
 
     def _unpublish(self):
         return self.conn.put(self.links["publish"]["href"], json={"public": False}).json()
+
+    def _release(self, version):
+        r = self.conn.put(self.links["release"]["href"], json={"version": version})
+        r.raise_for_status()
+        return r.json()
 
     def __del__(self):
         try:
@@ -549,6 +554,11 @@ class TrainingSet(BaseSet):
         """ Unpublish a saved TraininSet (make it private) """
         assert self.id is not None, 'You can only publish a saved TrainingSet. Call the save method first.'
         return self._unpublish()
+
+    def release(self, version):
+        """ Create a released version of this training set. Publishes the entire set to s3."""
+        assert self.id is not None, 'You can only release a saved TrainingSet. Call the save method first.'
+        return self._release()
 
     def __getitem__(self, slc):
         """ Enable slicing of the TrainingSet by index/slice """
