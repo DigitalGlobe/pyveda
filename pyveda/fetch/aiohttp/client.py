@@ -59,8 +59,8 @@ class ThreadedAsyncioRunner(object):
 
 class AsyncBatchFetcher(BatchFetchTracer):
     def __init__(self, reqs=[], token=None, max_retries=5, timeout=20, session=None,
-                 session_limit=30, reqs_limit=500, proc_poolsize=10, connector=aiohttp.TCPConnector,
-                 executor=concurrent.futures.ThreadPoolExecutor(max_workers=10), on_result = lambda x: x,
+                 session_limit=30, reqs_limit=500, proc_poolsize=1, connector=aiohttp.TCPConnector,
+                 executor=concurrent.futures.ThreadPoolExecutor(max_workers=1), on_result = lambda x: x,
                  run_tracer=False, **kwargs):
 
         super(AsyncBatchFetcher, self).__init__(**kwargs)
