@@ -60,7 +60,7 @@ def vec_to_raster(vectors, shape):
     try:
         arr = rasterize(((g, 1) for g in vectors), out_shape=shape[1:])
     except Exception as err:
-        print(err)
+#        print(err)
         arr = np.zeros(shape[1:])
     return np.array(arr)
 
