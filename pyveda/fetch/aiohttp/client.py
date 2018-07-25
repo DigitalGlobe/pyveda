@@ -66,7 +66,6 @@ class ThreadedAsyncioRunner(object):
         self._thread.start()
 
     def __enter__(self):
-        logger.info("Entering Threaded Loop")
         return self
 
     def __exit__(self, *args):
@@ -155,8 +154,8 @@ class AsyncBaseFetcher(BatchFetchTracer):
                     arr = on_fail()
                 else:
                     arr = await loop.run_in_executor(self._payload_executor, self._payload_handler, payload)
-                self._qres.task_done()
                 await self.on_result(arr)
+                self._qres.task_done()
             except CancelledError as ce:
                 break
         return True
@@ -209,7 +208,8 @@ class AsyncArrayFetcher(AsyncBaseFetcher):
     def __init__(self, write_fn=lambda x: x, payload_handler=bytes_to_array, max_memarrays=200,
                  num_write_workers=1, num_write_threads=1, *args, **kwargs):
 
-        super(AsyncArrayFetcher, self).__init__(*args, **kwargs)
+        super(AsyncArrayFetcher, self).__init__(payload_handler=payload_handler, *args, **kwargs)
+        self.write_fn = write_fn
         self._n_write_workers = num_write_workers
         self._n_write_threads = num_write_threads
         self._max_memarrs = int(np.floor(max_memarrays / float(num_write_workers)))
@@ -219,21 +219,22 @@ class AsyncArrayFetcher(AsyncBaseFetcher):
         await self._qwrite.put(arr)
 
     async def write_stack(self, loop):
+        arrs = []
         while True:
-            arrs = []
             try:
                 arr = await self._qwrite.get()
                 arrs.append(arr)
-                self._qwrite.task_done()
                 if len(arrs) == self._max_memarrs:
                     arrs = np.array(arrs)
                     async with self._write_lock:
                         await loop.run_in_executor(self._write_executor, self.write_fn, arrs)
-                        arrs = []
+                    arrs = []
+                self._qwrite.task_done()
             except CancelledError as ce: # Write out anything remaining
                 if len(arrs) > 0:
+                    arrs = np.array(arrs)
                     async with self._write_lock:
-                        await loop.run_in_executor(self._write_executor, self.write_fn, self._arrs)
+                        await loop.run_in_executor(self._write_executor, self.write_fn, arrs)
                 break
         return True
 
