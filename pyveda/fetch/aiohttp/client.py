@@ -34,6 +34,28 @@ logger.addHandler(fh)
 def on_fail(shape=(8, 256, 256), dtype=np.float32):
     return np.zeros(shape, dtype=dtype)
 
+def bytes_to_array(bstring):
+    if bstring is None:
+        return on_fail()
+    try:
+        fd = NamedTemporaryFile(prefix='gbdxtools', suffix='.tif', delete=False)
+        fd.file.write(bstring)
+        fd.file.flush()
+        fd.close()
+        arr = imread(fd.name)
+        if len(arr.shape) == 3:
+            arr = np.rollaxis(arr, 2, 0)
+        else:
+            arr = np.expand_dims(arr, axis=0)
+    except Exception as e:
+        arr = on_fail()
+    finally:
+        fd.close()
+        os.remove(fd.name)
+
+    return arr
+
+
 class ThreadedAsyncioRunner(object):
     def __init__(self, method, loop=None):
         if not loop:
@@ -57,26 +79,30 @@ class ThreadedAsyncioRunner(object):
         return f.result()
 
 
-class AsyncBatchFetcher(BatchFetchTracer):
-    def __init__(self, reqs=[], token=None, max_retries=5, timeout=20, session=None,
-                 session_limit=30, reqs_limit=500, proc_poolsize=1, connector=aiohttp.TCPConnector,
-                 executor=concurrent.futures.ThreadPoolExecutor(max_workers=1), on_result = lambda x: x,
+class AsyncBaseFetcher(BatchFetchTracer):
+    def __init__(self, reqs=[], token=None, payload_handler=lambda x: x, max_retries=5,
+                 timeout=20, session=None, session_limit=30, max_concurrent_requests=500,
+                 num_payload_workers=10, num_payload_threads=None, connector=aiohttp.TCPConnector,
                  run_tracer=False, **kwargs):
 
         super(AsyncBatchFetcher, self).__init__(**kwargs)
         self.reqs = reqs
         self._token = token
-        self.reqs_limit = min(len(reqs), reqs_limit)
+        self.max_concurrent_reqs = min(len(reqs), max_concurrent_requests)
         self.max_retries = max_retries
         self.timeout = timeout
         self.session = session
         self.session_limit = session_limit
-        self.proc_poolsize = proc_poolsize
+        self._payload_handler = payload_handler
+        self._n_payload_handlers = num_payload_handlers
+        if not num_payload_threads:
+            num_payload_threads = num_payload_handlers
+        self._n_payload_threads = num_payload_threads
+        self._payload_executor = concurent.futures.ThreadPoolExecutor(max_workers=num_payload_threads)
+        self._connector = connector
         self._trace_configs = []
         self._connector = connector
-        self._executor = executor
         self._run_tracer = run_tracer
-        self.on_result = on_result
         if run_tracer:
             trace_config = self._configure_tracer()
             self._trace_configs.append(trace_config)
@@ -89,27 +115,8 @@ class AsyncBatchFetcher(BatchFetchTracer):
             raise AttributeError("Provide an auth token on init or as an argument to run")
         return {"Authorization": "Bearer {}".format(self._token)}
 
-    def bytes_to_array(self, bstring):
-        if bstring is None:
-            return onfail()
-        try:
-            fd = NamedTemporaryFile(prefix='gbdxtools', suffix='.tif', delete=False)
-            fd.file.write(bstring)
-            fd.file.flush()
-            fd.close()
-            arr = imread(fd.name)
-            if len(arr.shape) == 3:
-                arr = np.rollaxis(arr, 2, 0)
-            else:
-                arr = np.expand_dims(arr, axis=0)
-        except Exception as e:
-            arr = on_fail()
-        finally:
-            fd.close()
-            os.remove(fd.name)
-            self.on_result(arr)
-
-        return arr
+    async def on_result(self, *args, **kwargs):
+        await asyncio.sleep(0.0)
 
     async def consume_reqs(self, session):
         await asyncio.sleep(0.0)
@@ -127,6 +134,7 @@ class AsyncBatchFetcher(BatchFetchTracer):
             except CancelledError as ce:
                 break
             except Exception as e:
+                logger.info("    URL READ FAIL: {}".format(url))
                 if tries < self.max_retries:
                     await asyncio.sleep(0.0)
                     await self._qreq.put([url, tries])
@@ -139,32 +147,37 @@ class AsyncBatchFetcher(BatchFetchTracer):
         for req in self.reqs:
             await self._qreq.put((req[0], 0))
 
-    async def process(self, loop):
+    async def handle_payload(self, loop):
         while True:
             try:
                 url, payload = await self._qres.get()
                 if not payload:
                     arr = on_fail()
                 else:
-                    arr = await loop.run_in_executor(self._executor, self.bytes_to_array, payload)
+                    arr = await loop.run_in_executor(self._payload_executor, self._payload_handler, payload)
                 self._qres.task_done()
+                await self.on_result(arr)
             except CancelledError as ce:
                 break
         return True
 
-    async def fetch(self, session, loop):
+    def _configure(self, session, loop):
         self.results = {}
-        self._qreq, self._qres = asyncio.Queue(maxsize=self.reqs_limit), asyncio.Queue()
-        consumers = [asyncio.ensure_future(self.consume_reqs(session)) for _ in range(self.reqs_limit)]
+        self._qreq = asyncio.Queue(maxsize=self.max_concurrent_reqs)
+        self._qres = asyncio.Queue()
+        self._consumers = [asyncio.ensure_future(self.consume_reqs(session)) for _ in range(self.max_concurrent_reqs)]
+        self._handlers = [asyncio.ensure_future(self.handle_payload(loop)) for _ in range(self._n_payload_handlers)]
+
+    async def fetch(self, session, loop):
+        self._configure(session, loop)
         producer = await self.produce_reqs()
-        processors = [asyncio.ensure_future(self.process(loop)) for _ in range(self.proc_poolsize)]
         await self._qreq.join()
         await self._qres.join()
-        for fut in consumers:
+        for fut in self._consumers:
             fut.cancel()
-        for fut in processors:
+        for fut in self._handlers:
             fut.cancel()
-        done, pending = await asyncio.wait(processors)
+        done, pending = asyncio.wait(self._handlers)
         return self.results
 
     async def run_fetch(self, loop):
@@ -190,6 +203,60 @@ class AsyncBatchFetcher(BatchFetchTracer):
         fut = await self.run_fetch(loop)
         await asyncio.sleep(0.250)
         return fut
+
+
+class AsyncArrayFetcher(AsyncBaseFetcher):
+    def __init__(self, write_fn=lambda x: x, payload_handler=bytes_to_array, max_memarrays=200,
+                 num_write_workers=1, num_write_threads=1, *args, **kwargs):
+
+        super(AsyncArrayFetcher, self).__init__(*args, **kwargs)
+        self._n_write_workers = num_write_workers
+        self._n_write_threads = num_write_threads
+        self._max_memarrs = int(np.floor(max_memarrays / float(num_write_workers)))
+        self._write_executor = concurrent.futures.ThreadPoolExecutor(num_workers=num_write_threads)
+
+    async def on_result(self, arr):
+        await self._qwrite.put(arr)
+
+    async def write_stack(self, loop):
+        while True:
+            arrs = []
+            try:
+                arr = await self._qwrite.get()
+                arrs.append(arr)
+                self._qwrite.task_done()
+                if len(arrs) == self._max_memarrs:
+                    arrs = np.array(arrs)
+                    async with self._write_lock:
+                        await loop.run_in_executor(self._write_executor, self.write_fn, arrs)
+                        arrs = []
+            except CancelledError as ce: # Write out anything remaining
+                if len(arrs) > 0:
+                    async with self._write_lock:
+                        await loop.run_in_executor(self._write_executor, self.write_fn, self._arrs)
+                break
+        return True
+
+    def _configure(self, session, loop):
+        super(AsyncArrayFetcher, self)._configure(session, loop)
+        self._write_lock = asyncio.Lock()
+        self._qwrite = asyncio.Queue()
+        self._writers = [asyncio.ensure_future(self.write_stack(loop)) for _ in range(self._n_write_workers)]
+
+    async def fetch(self, session, loop):
+        self._configure(session, loop)
+        producer = await self.produce_reqs()
+        await self._qreq.join()
+        await self._qres.join()
+        await self._qwrite.join()
+        for fut in self._consumers:
+            fut.cancel()
+        for fut in self._handlers:
+            fut.cancel()
+        for fut in self._writers:
+            fut.cancel()
+        done, pending = await asyncio.wait(self._writers)
+        return self.results
 
 
 if __name__ == "__main__":
