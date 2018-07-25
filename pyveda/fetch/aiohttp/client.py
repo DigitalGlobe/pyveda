@@ -85,7 +85,7 @@ class AsyncBaseFetcher(BatchFetchTracer):
                  num_payload_workers=10, num_payload_threads=None, connector=aiohttp.TCPConnector,
                  run_tracer=False, **kwargs):
 
-        super(AsyncBatchFetcher, self).__init__(**kwargs)
+        super(AsyncBaseFetcher, self).__init__(**kwargs)
         self.reqs = reqs
         self._token = token
         self.max_concurrent_reqs = min(len(reqs), max_concurrent_requests)
@@ -94,11 +94,11 @@ class AsyncBaseFetcher(BatchFetchTracer):
         self.session = session
         self.session_limit = session_limit
         self._payload_handler = payload_handler
-        self._n_payload_handlers = num_payload_handlers
+        self._n_payload_workers = num_payload_workers
         if not num_payload_threads:
-            num_payload_threads = num_payload_handlers
+            num_payload_threads = num_payload_workers
         self._n_payload_threads = num_payload_threads
-        self._payload_executor = concurent.futures.ThreadPoolExecutor(max_workers=num_payload_threads)
+        self._payload_executor = concurrent.futures.ThreadPoolExecutor(max_workers=num_payload_threads)
         self._connector = connector
         self._trace_configs = []
         self._connector = connector
@@ -166,7 +166,7 @@ class AsyncBaseFetcher(BatchFetchTracer):
         self._qreq = asyncio.Queue(maxsize=self.max_concurrent_reqs)
         self._qres = asyncio.Queue()
         self._consumers = [asyncio.ensure_future(self.consume_reqs(session)) for _ in range(self.max_concurrent_reqs)]
-        self._handlers = [asyncio.ensure_future(self.handle_payload(loop)) for _ in range(self._n_payload_handlers)]
+        self._handlers = [asyncio.ensure_future(self.handle_payload(loop)) for _ in range(self._n_payload_workers)]
 
     async def fetch(self, session, loop):
         self._configure(session, loop)
@@ -213,7 +213,7 @@ class AsyncArrayFetcher(AsyncBaseFetcher):
         self._n_write_workers = num_write_workers
         self._n_write_threads = num_write_threads
         self._max_memarrs = int(np.floor(max_memarrays / float(num_write_workers)))
-        self._write_executor = concurrent.futures.ThreadPoolExecutor(num_workers=num_write_threads)
+        self._write_executor = concurrent.futures.ThreadPoolExecutor(max_workers=num_write_threads)
 
     async def on_result(self, arr):
         await self._qwrite.put(arr)
@@ -300,7 +300,7 @@ if __name__ == "__main__":
     for url, token, index in coll:
         reqs.append([url])
 
-    abf = AsyncBatchFetcher(reqs=reqs, token=token, trace_configs=trace_configs)
+    abf = AsyncBaseFetcher(reqs=reqs, token=token, trace_configs=trace_configs)
     with ThreadedAsyncioRunner(abf.run) as tar:
         tar(loop=tar._loop)
 
