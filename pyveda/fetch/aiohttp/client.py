@@ -108,7 +108,6 @@ class AsyncBatchFetcher(BatchFetchTracer):
             fd.close()
             os.remove(fd.name)
             self.on_result(arr)
-            logger.info("got shit wrote")
 
         return arr
 
@@ -121,7 +120,7 @@ class AsyncBatchFetcher(BatchFetchTracer):
                 async with session.get(url) as response:
                     response.raise_for_status()
                     bstring = await response.read()
-                    logger.info("read url {}".format(url))
+                    logger.info("  URL READ SUCCESS: {}".format(url))
                     await self._qres.put([url, bstring])
                     self._qreq.task_done()
                     await response.release()
@@ -173,9 +172,9 @@ class AsyncBatchFetcher(BatchFetchTracer):
                                          connector=self._connector(limit=self.session_limit),
                                          headers=self.headers,
                                          trace_configs=self._trace_configs) as session:
-            logger.info("starting fetch")
+            logger.info("BATCH FETCH START")
             results = await self.fetch(session, loop)
-            logger.info("done fetch")
+            logger.info("BATCH FETCH COMPLETE")
             return results
 
     async def run(self, reqs=None, token=None, loop=None):
