@@ -57,7 +57,10 @@ class WrappedDataArray(object):
 class ImageArray(WrappedDataArray):
     def _input_fn(self, item):
         dims = item.shape
-        return item.reshape(1, *dims)
+        if len(dims) == 4:
+            return item # for batch append stacked arrays
+        elif len(dims) == 3: # extend single image array along axis 0
+            return item.reshape(1, *dims)
 
 
 class ClassificationArray(WrappedDataArray):
