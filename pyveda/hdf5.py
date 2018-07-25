@@ -59,8 +59,9 @@ class ImageArray(WrappedDataArray):
         dims = item.shape
         if len(dims) == 4:
             return item # for batch append stacked arrays
-        elif len(dims) == 3: # extend single image array along axis 0
+        elif len(dims) in (2, 3): # extend single image array along axis 0
             return item.reshape(1, *dims)
+        return item # what could this thing be, let it fail
 
 
 class ClassificationArray(WrappedDataArray):
