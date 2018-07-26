@@ -22,6 +22,13 @@ import logging
 from pyveda.fetch.diagnostics import BatchFetchTracer
 from pyveda.utils import write_trace_profile
 
+has_tqdm = False
+try:
+    from tqdm import trange, tqdm, tqdm_notebook, tnrange
+    has_tqdm = True
+except ImportError:
+    pass
+
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger.setLevel(logging.INFO)
@@ -214,6 +221,8 @@ class AsyncArrayFetcher(AsyncBaseFetcher):
         self._n_write_threads = num_write_threads
         self._max_memarrs = int(np.floor(max_memarrays / float(num_write_workers)))
         self._write_executor = concurrent.futures.ThreadPoolExecutor(max_workers=num_write_threads)
+        if has_tqdm:
+            self._pbar = tqdm(total=len(self.reqs))
 
     async def on_result(self, arr):
         await self._qwrite.put(arr)
@@ -230,6 +239,8 @@ class AsyncArrayFetcher(AsyncBaseFetcher):
                         await loop.run_in_executor(self._write_executor, self.write_fn, arrs)
                     arrs = []
                 self._qwrite.task_done()
+                if has_tqdm:
+                    self._pbar.update(1)
             except CancelledError as ce: # Write out anything remaining
                 if len(arrs) > 0:
                     arrs = np.array(arrs)
