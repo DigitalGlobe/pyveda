@@ -17,6 +17,6 @@ def write_fetch(points, labelgroup, datagroup):
         labelgroup.append(p.y)
 
     for f in as_completed(futures):
-        datagroup.append(f.result()) # This should be sync
+        datagroup.image.append(f.result()) # This should be sync
 
 
