@@ -7,17 +7,16 @@ threads = int(os.environ.get('GBDX_THREADS', 64))
 pool = ThreadPoolExecutor(threads)
 threaded_get = partial(dask.threaded.get, num_workers=threads)
 
-def write_fetch(points, labelgroup, datagroup):
-    def group_append(dsk):
-        datagroup.image.append(dsk.compute())
+def url_to_array(dsk):
+    return(dsk.compute())
 
+def write_fetch(points, labelgroup, datagroup):
     futures = []
     for p in points:
-        futures.append(pool.submit(group_append, p.image))
+        futures.append(pool.submit(url_to_array, p.image))
         labelgroup.append(p.y)
 
-    finished = []
     for f in as_completed(futures):
-        finished.append(f.result())
+        datagroup.image.append(f.result()) # This should be sync
 
 
