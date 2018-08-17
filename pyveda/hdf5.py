@@ -155,7 +155,7 @@ class ImageTrainer(object):
             labels = self._fileh.create_group(group, "labels", "Image Labels")
             self._fileh.create_table(group, "hit_table", Classifications,
                                     "Chip Index + Klass Hit Record", tables.Filters(0))
-            self._fileh.create_earray(group, "image", atom=tables.UInt8Atom(), shape=self._imshape)
+            self._fileh.create_earray(group, "image", atom=tables.Float32Atom(), shape=self._imshape)
             self._fileh.create_earray(labels, "classification",
                                     atom=tables.UInt8Atom(), shape=(0, len(klass_map)))
             self._fileh.create_earray(labels, "segmentation",
