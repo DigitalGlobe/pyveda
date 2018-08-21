@@ -118,7 +118,7 @@ class BaseSet(object):
         self._data_url = "{}/data".format(HOST)
         self._cache_url = "{}/data/{}/cache"
         self._datapoint_url = "{}/datapoints".format(HOST)
-        self._chunk_size = os.environ.get('VEDA_CHUNK_SIZE', 5000)
+        self._chunk_size = int(os.environ.get('VEDA_CHUNK_SIZE', 5000))
         self._temp_gen = NamedTemporaryHDF5Generator()
         self.conn = conn
 
@@ -239,21 +239,22 @@ class BaseSet(object):
             idx = self._index
             with NamedTemporaryHDF5Generator() as h5gen:
                 for chunk in range(nchunks):
-                    with h5py.File(h5gen.mktempfilename(), "a") as temp:
-                        grp = temp.create_group(group)
-                        xgrp = grp.create_group("X")
-                        ygrp = grp.create_group("Y")
-                        for i in range(self._chunk_size):
-                            try:
-                                self.cache.copy('{}/X/{}'.format(group, str(idx)), xgrp)
-                                self.cache.copy('{}/Y/{}'.format(group, str(idx)), ygrp)
-                            except Exception as err:
-                                pass
-                            idx += 1
+                    temp, fname = h5gen.mktemp()
+                    grp = temp.create_group(group)
+                    xgrp = grp.create_group("X")
+                    ygrp = grp.create_group("Y")
+                    for i in range(self._chunk_size):
+                        try:
+                            self.cache.copy('{}/X/{}'.format(group, str(idx)), xgrp)
+                            self.cache.copy('{}/Y/{}'.format(group, str(idx)), ygrp)
+                        except Exception as err:
+                            pass
+                        idx += 1
 
-                    with open(temp.filename, 'rb') as f:
+                    temp.close()
+                    with open(fname, 'rb') as f:
                         files = {
-                            'file': (os.path.basename(temp.filename), f, 'application/octet-stream')
+                            'file': (os.path.basename(fname), f, 'application/octet-stream')
                         }
                         if self.id is not None:
                             meta = {
