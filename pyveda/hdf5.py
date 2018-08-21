@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import tables
 from pyveda.utils import mktempfilename
 
@@ -8,7 +9,6 @@ MLTYPES = {"TRAIN": "Data designated for model training",
           }
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
-
 
 class LabelNotSupported(NotImplementedError):
     pass
@@ -119,13 +119,18 @@ class WrappedDataNode(object):
     def __len__(self):
         return len(self._node.image)
 
+def _atom_from_type(_type):
+    if isinstance(_type, np.dtype):
+        return tables.Atom.from_dtype(_type)
+    return tables.Atom.from_dtype(np.dtype(_type))
 
 class ImageTrainer(object):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
     def __init__(self, fname=None, klass_map=None, data_groups=MLTYPES, framework=None,
-                 title="Unknown", image_shape=(3, 256, 256), focus="classification", append=False):
+                 title="Unknown", image_shape=(3, 256, 256), image_dtype=np.float32, segmentation_dtype=np.float32,
+                 detection_dtype=np.float32, focus="classification", append=False):
         if fname is None:
             fname = mktempfilename(prefix="veda", suffix='h5')
 
@@ -139,8 +144,12 @@ class ImageTrainer(object):
         self._focus = focus
         self.klass_map = klass_map
 
-        if os.path.exists(fname) and not append:
-            os.remove(fname)
+        if os.path.exists(fname):
+            if not append:
+                os.remove(fname)
+            else:
+                self._fileh = tables.open_file(fname, mode="a")
+                return
 
         self._fileh = tables.open_file(fname, mode="a", title=title)
         for name, desc in data_groups.items():
@@ -150,18 +159,25 @@ class ImageTrainer(object):
                             in enumerate(sorted(data_groups.items(), key=lambda x: x[1]))}
         Classifications["image_chunk_index"] = tables.UInt8Col(shape=2, pos=1)
 
+        image_atom = _atom_from_type(image_dtype)
+        detection_atom = _atom_from_type(detection_dtype)
+        segmentation_atom = _atom_from_type(segmentation_dtype)
+
         groups = {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
         for name, group in groups.items():
             labels = self._fileh.create_group(group, "labels", "Image Labels")
+            # Generate hit table for data lookup
             self._fileh.create_table(group, "hit_table", Classifications,
                                     "Chip Index + Klass Hit Record", tables.Filters(0))
-            self._fileh.create_earray(group, "image", atom=tables.Float32Atom(), shape=self._imshape)
+            # Generate data arrays
+            self._fileh.create_earray(group, "image",
+                                      atom=image_atom(), shape=self._imshape)
             self._fileh.create_earray(labels, "classification",
-                                    atom=tables.UInt8Atom(), shape=(0, len(klass_map)))
+                                      atom=tables.UInt8Atom(), shape=(0, len(klass_map)))
             self._fileh.create_earray(labels, "segmentation",
-                                    atom=tables.UInt8Atom(), shape=self._segshape)
+                                      atom=segmentation_atom(), shape=self._segshape)
             self._fileh.create_vlarray(labels, "detection",
-                                    atom=tables.UInt8Atom())
+                                       atom=detection_atom())
 
     @property
     def focus(self):
