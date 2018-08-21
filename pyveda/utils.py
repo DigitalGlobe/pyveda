@@ -39,7 +39,7 @@ class NamedTemporaryHDF5File(object):
     def __enter__(self):
         return self._fh
 
-    def __exit__(self):
+    def __exit__(self, *args):
         if self._delete:
             self.remove()
 
@@ -65,7 +65,7 @@ class NamedTemporaryHDF5Generator(object):
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, *args):
         if self._delete_files:
             for h5 in self._fps:
                 h5.remove()
