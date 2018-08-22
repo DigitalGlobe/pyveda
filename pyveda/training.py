@@ -37,7 +37,7 @@ gbdx = Interface()
 
 HOST = os.environ.get('SANDMAN_API')
 if not HOST:
-    HOST = "https://veda.timbr.io"
+    HOST = "https://veda-api.geobigdata.io"
 
 if 'https:' in HOST:
     conn = gbdx.gbdx_connection
