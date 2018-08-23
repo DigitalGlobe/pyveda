@@ -39,7 +39,6 @@ sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 #                'requests.packages.urllib3',
 #                'requests.packages.urllib3.exceptions',
 #                'gbdx_auth',
-#                'gbdxtools.images.worldview',
 #                'gdal',
 #                'abc',
 #                'six.add_metaclass',
@@ -255,8 +254,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'gbdxtools.tex', u'gbdxtools Documentation',
-     u'Kostas Stamatiou', 'manual'),
+    (master_doc, 'veda.tex', u'pyveda Documentation',
+     u'Chris Helm', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -285,7 +284,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'gbdxtools', u'gbdxtools Documentation',
+    (master_doc, 'pyveda', u'pyveda Documentation',
      [author], 1)
 ]
 
@@ -299,8 +298,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'gbdxtools', u'gbdxtools Documentation',
-     author, 'gbdxtools', 'One line description of project.',
+    (master_doc, 'pyveda', u'pyveda Documentation',
+     author, 'pyveda', 'One line description of project.',
      'Miscellaneous'),
 ]
 
