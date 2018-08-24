@@ -33,7 +33,7 @@ class voting(object):
             buttons.append(btn)
         return buttons
 
-    def _handle_buttons_binary(b):
+    def _handle_buttons_binary(self, b):
         """
         Callback for the widget buttons.
         Appends an image chip and associated binary classification to a list,
@@ -46,7 +46,7 @@ class voting(object):
             self.samples.append((self.chips[self.index], [1]))
             self.index += 1
         elif b.description == 'No':
-            self.samples.append((self.chips[index], [0]))
+            self.samples.append((self.chips[self.index], [0]))
             self.index += 1
         elif b.description == 'Back':
             self.samples.pop()
@@ -62,7 +62,7 @@ class voting(object):
         clear_output()
         buttons = self._create_buttons()
         for b in buttons:
-            b.on_click(voting._handle_buttons_binary)
+            b.on_click(self._handle_buttons_binary)
         if self.index < len(self.chips):
             print("%0.f chips out of %0.f chips have been labeled" % (self.index, len(self.chips)))
             display(HBox(buttons))
@@ -72,7 +72,7 @@ class voting(object):
             plt.title("Is there a %s in this chip?" % self.class_type)
         if self.index >= len(self.chips):
             print('all objects have been labeled')
-        return(samples)
+        #return(samples)
 
     def format_data(self):
         """formats chip/polygon data for object vote"""
