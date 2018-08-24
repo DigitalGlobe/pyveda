@@ -72,7 +72,7 @@ class voting(object):
             plt.title("Is there a %s in this chip?" % self.class_type)
         if self.index >= len(self.chips):
             print('all objects have been labeled')
-        #return(samples)
+        return(self.samples)
 
     def format_data(self):
         """formats chip/polygon data for object vote"""
@@ -128,4 +128,4 @@ class voting(object):
             plt.title('Is this a %s?' % self.class_type)
         if indexShp>=len(shps):
             print('all objects have been labeled')
-        return(positiveSamples,negativeSamples)
+        return(self.positiveSamples, self.negativeSamples)
