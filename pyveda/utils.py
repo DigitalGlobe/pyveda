@@ -6,6 +6,8 @@ import tempfile
 import shutil
 import h5py
 
+from shapely.geometry import box
+
 def mklogfilename(prefix, suffix="json", path=None):
     timestamp = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
     basename = "_".join([prefix, timestamp]) # e.g. 'mylogfile_120508_171442'
@@ -106,12 +108,14 @@ def rda(dsk):
     return [json.dumps({
       'graph': dsk.ipe_id,
       'node': dsk.ipe.graph()['nodes'][0]['id'],
-      'bounds': dsk.bounds
+      'bounds': dsk.bounds,
+      'bounds_wgs84': dsk._reproject(box(*dsk.bounds), from_proj=dsk.proj, to_proj="EPSG:4326").bounds
     })]
 
 def maps_api(dsk):
     return [json.dumps({
-      'bounds': dsk.bounds
+      'bounds': dsk.bounds,
+      'bounds_wgs84': dsk._reproject(box(*dsk.bounds), from_proj=dsk.proj, to_proj="EPSG:4326").bounds
     })]
 
 

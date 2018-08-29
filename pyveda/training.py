@@ -71,7 +71,7 @@ class DataPoint(object):
         self.data = item["data"]
         self.data['y'] = np.array(self.data['y'])
         self.links = item["links"]
-        self.shape = tuple(shape)
+        self.shape = tuple(map(int, shape))
         self.dtype = dtype
 
         if 'mlType' in kwargs and kwargs['mlType'] == 'segmentation':
@@ -315,7 +315,7 @@ class TrainingSet(BaseSet):
         self.links = kwargs.get('links')
         self.shape = kwargs.get('shape', None)
         if self.shape is not None:
-            self.shape = tuple(self.shape)
+            self.shape = tuple(map(int, self.shape))
         self.dtype = kwargs.get('dtype', None)
         self.percent_cached = kwargs.get('percent_cached', 0)
         self.sensors = kwargs.get('sensors', [])
