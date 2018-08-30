@@ -559,7 +559,7 @@ class TrainingSet(BaseSet):
     def release(self, version):
         """ Create a released version of this training set. Publishes the entire set to s3."""
         assert self.id is not None, 'You can only release a saved TrainingSet. Call the save method first.'
-        return self._release()
+        return self._release(version)
 
     def __getitem__(self, slc):
         """ Enable slicing of the TrainingSet by index/slice """
