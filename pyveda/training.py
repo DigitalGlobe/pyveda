@@ -282,7 +282,7 @@ class BaseSet(object):
         return self.conn.put(self.links["publish"]["href"], json={"public": False}).json()
 
     def _release(self, version):
-        r = self.conn.put(self.links["release"]["href"], json={"version": version})
+        r = self.conn.post(self.links["release"]["href"], json={"version": version})
         r.raise_for_status()
         return r.json()
 
