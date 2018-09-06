@@ -53,7 +53,8 @@ def search(params={}):
     try:
         results = r.json()
         return [TrainingSet.from_doc(s) for s in r.json()]
-    except:
+    except Exception as err:
+        print(err)
         return []
 
 def vec_to_raster(vectors, shape):
@@ -172,7 +173,7 @@ class BaseSet(object):
             "sensors": self.sensors
         })
 
-        total = sum(list(meta['count'].values()))
+        total = sum(map(int, list(meta['count'].values())))
         if total <= self._chunk_size:
             self.cache.close()
             doc = self._create_set(meta, h5=self.fname)
@@ -323,10 +324,10 @@ class TrainingSet(BaseSet):
         self._cache = None
         self._datapoints = None
         try:
-            self._index = sum(list(self._count.values()))
+            self._index = sum(map(int, list(self._count.values())))
         except:
             self._index = 0
-        self._index = sum(list(self._count.values()))
+        self._index = sum(map(int, list(self._count.values())))
         self._temp_gen = NamedTemporaryHDF5Generator()
 
         self.meta = {

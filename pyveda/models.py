@@ -43,7 +43,8 @@ class Model(object):
             "mlType": mlType,
             "public": kwargs.get("public", False),
             "training_set": kwargs.get("training_set", ''),
-            "description": kwargs.get("description", '')
+            "description": kwargs.get("description", ''),
+            "deployed": kwargs.get("deployed", False)
         }
 
         for k,v in self.meta.items():
@@ -62,13 +63,36 @@ class Model(object):
         doc = conn.get(url).json()
         return cls.from_doc(doc)
 
-    def save(self, data):
-        return conn.put(self.links["update"]["href"], json=data).json()
+    def save(self):
+        files = self.files
+        payload = {
+            'metadata': (None, json.dumps(self.meta), 'application/json'),
+            'model': (os.path.basename(files["model"]), open(files["model"], 'rb'), 'application/octet-stream'),
+            'weights': (os.path.basename(files["weights"]), open(files["weights"], 'rb'), 'application/octet-stream')
+        }
 
+        if self.links is not None:
+            url = self.links['self']['href']
+            meta.update({"update": True})
+            files["metadata"] = (None, json.dumps(meta), 'application/json')
+        else:
+            url = "{}/models".format(HOST)
+        r = conn.post(url, files=payload)
+        r.raise_for_status()
+        doc = r.json()
+        self.id = doc["data"]["id"]
+        self.links = doc["links"]
+        return doc
+
+    def deploy(self):
+        assert self.id is not None, "Model not saved, please call save() before deploying."
+        assert not self.deployed, "Model already deployed."
+        return conn.post(self.links["deploy"]["href"], json={"id": self.id}).json()        
+            
     def update(self, new_data, save=True):
         self.meta.update(new_data)
         if save:
-            self.save(new_data)
+            return conn.put(self.links["update"]["href"], json=self.meta).json()
 
     def remove(self):
         return conn.delete(self.links["delete"]["href"]).json()
@@ -83,21 +107,3 @@ class Model(object):
 
     def __repr__(self):
         return json.dumps(self.meta)
-
-    def save(self):
-        files = self.files 
-        payload = {
-            'metadata': (None, json.dumps(self.meta), 'application/json'),
-            'model': (os.path.basename(files["model"]), open(files["model"], 'rb'), 'application/octet-stream'),
-            'weights': (os.path.basename(files["weights"]), open(files["weights"], 'rb'), 'application/octet-stream')
-        }
-        
-        if self.links is not None:
-            url = self.links['self']['href']
-            meta.update({"update": True})
-            files["metadata"] = (None, json.dumps(meta), 'application/json')
-        else:
-            url = "{}/models".format(HOST)
-        doc = conn.post(url, files=payload)
-        doc.raise_for_status()
-        return doc.json()
