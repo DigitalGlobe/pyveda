@@ -95,7 +95,7 @@ class Model(object):
             return conn.put(self.links["update"]["href"], json=self.meta).json()
 
     def remove(self):
-        return conn.delete(self.links["delete"]["href"]).json()
+        return conn.delete(self.links["delete"]["href"])
 
     def publish(self):
         assert self.id is not None, 'You can only publish a saved Model. Call the save method first.'
