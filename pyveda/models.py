@@ -20,21 +20,20 @@ def search(params={}):
     r = conn.post('{}/models/search'.format(HOST), json=params)
     try:
         results = r.json()
-        return [Model.from_doc(s) for s in r.json()]
+        return [Model.from_doc(s) for s in results]
     except:
         return []
 
 
 class Model(object):
     """ Methods for accessing training data pairs """
-    def __init__(self, name, model_path, model_weights, mlType="classification", bbox=[], shape=(3,256,256), dtype="uint8", **kwargs):
+    def __init__(self, name, model_path=None, mlType="classification", bbox=[], shape=(3,256,256), dtype="uint8", **kwargs):
         self.id = kwargs.get('id', None)
         self.links = kwargs.get('links')
         self.shape = tuple(shape)
         self.dtype = dtype
         self.files = {
             "model": model_path, 
-            "weights": model_weights
         }
 
         self.meta = {
@@ -42,9 +41,10 @@ class Model(object):
             "bbox": bbox,
             "mlType": mlType,
             "public": kwargs.get("public", False),
-            "training_set": kwargs.get("training_set", ''),
-            "description": kwargs.get("description", ''),
-            "deployed": kwargs.get("deployed", False)
+            "training_set": kwargs.get("training_set", None),
+            "description": kwargs.get("description", None),
+            "deployed": json.loads(kwargs.get("deployed", False)),
+            "library": kwargs.get("library", None)
         }
 
         for k,v in self.meta.items():
@@ -60,15 +60,15 @@ class Model(object):
     def from_id(cls, _id):
         """ Helper method that fetches an id into a model """
         url = "{}/models/{}".format(HOST, _id)
-        doc = conn.get(url).json()
-        return cls.from_doc(doc)
+        r = conn.get(url)
+        r.raise_for_status()
+        return cls.from_doc(r.json())
 
     def save(self):
         files = self.files
         payload = {
             'metadata': (None, json.dumps(self.meta), 'application/json'),
-            'model': (os.path.basename(files["model"]), open(files["model"], 'rb'), 'application/octet-stream'),
-            'weights': (os.path.basename(files["weights"]), open(files["weights"], 'rb'), 'application/octet-stream')
+            'model': (os.path.basename(files["model"]), open(files["model"], 'rb'), 'application/octet-stream')
         }
 
         if self.links is not None:
@@ -86,6 +86,7 @@ class Model(object):
 
     def deploy(self):
         assert self.id is not None, "Model not saved, please call save() before deploying."
+        assert self.library is not None, "Model library not defined. Please set the `.library` property before deploying."
         assert not self.deployed, "Model already deployed."
         return conn.post(self.links["deploy"]["href"], json={"id": self.id}).json()        
             
@@ -105,6 +106,19 @@ class Model(object):
     def unpublish(self):
         assert self.id is not None, 'You can only unpublish a saved Model. Call the save method first.'
         return conn.put(self.links["publish"]["href"], json={"public": False}).json()
+
+    def download(self, path=None):
+        assert self.id is not None, 'You can only download a saved Model. Call the save method first.'
+        path = path if path is not None else './{}'.format(self.id)
+        try: 
+            os.makedirs(path)
+        except Exception as err:
+            pass
+        r = conn.get(self.links["download"]["href"])
+        with open('{}/model.tar.gz'.format(path), 'wb') as fh:
+            fh.write(r.content)
+        return path
+      
 
     def __repr__(self):
         return json.dumps(self.meta)
