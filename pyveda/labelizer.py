@@ -8,6 +8,7 @@ import matplotlib.patches as patches
 from gbdxtools import Interface, TmsImage, CatalogImage, IpeImage
 from rasterio import features
 from shapely.geometry.geo import shape
+from pyveda.utils import rescale_rgb
 
 
 def format_data(chips, polygons):
@@ -28,22 +29,6 @@ def format_data(chips, polygons):
             formatted_chips.append(a)
             formatted_polygons.append(b)
     return(formatted_chips, formatted_polygons)
-
-
-def rescale_rgb(arr, dtype="float32"):
-    """
-    Rescale any multi-dimensional array of shape (D, M, N) by first subtracting the
-    min from each (M, N) array along axis 0, then divide each by the resulting maximum
-    to get (float32) distributions between [0, 1]. Optionally spec uint8 for 0-255 ints.
-    """
-    # First look at raw value dists along bands
-
-    arr_trans = np.subtract(arr, arr.min(axis=(1, 2))[:, np.newaxis, np.newaxis])
-    arr_rs = np.divide(arr_trans, arr_trans.max(axis=(1, 2))[:, np.newaxis, np.newaxis])
-    if dtype == "uint8":
-        arr_rs = np.array(arr_rs*255, dtype=np.uint8)
-    return arr_rs.T
-
 
 class voting(object):
     """

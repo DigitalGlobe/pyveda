@@ -5,7 +5,7 @@ import uuid
 import tempfile
 import shutil
 import h5py
-
+import numpy as np
 from shapely.geometry import box
 
 def mklogfilename(prefix, suffix="json", path=None):
@@ -121,3 +121,18 @@ def maps_api(dsk):
 
 def transforms(source):
     return rda if source == 'rda' else maps_api
+
+
+def rescale_rgb(arr, dtype="float32"):
+    """
+    Rescale any multi-dimensional array of shape (D, M, N) by first subtracting the
+    min from each (M, N) array along axis 0, then divide each by the resulting maximum
+    to get (float32) distributions between [0, 1]. Optionally spec uint8 for 0-255 ints.
+    """
+    # First look at raw value dists along bands
+
+    arr_trans = np.subtract(arr, arr.min(axis=(1, 2))[:, np.newaxis, np.newaxis])
+    arr_rs = np.divide(arr_trans, arr_trans.max(axis=(1, 2))[:, np.newaxis, np.newaxis])
+    if dtype == "uint8":
+        arr_rs = np.array(arr_rs*255, dtype=np.uint8)
+    return arr_rs.T
