@@ -30,11 +30,27 @@ def format_data(chips, polygons):
     return(formatted_chips, formatted_polygons)
 
 
+def rescale_rgb(arr, dtype="float32"):
+    """
+    Rescale any multi-dimensional array of shape (D, M, N) by first subtracting the
+    min from each (M, N) array along axis 0, then divide each by the resulting maximum
+    to get (float32) distributions between [0, 1]. Optionally spec uint8 for 0-255 ints.
+    """
+    # First look at raw value dists along bands
+
+    arr_trans = np.subtract(arr, arr.min(axis=(1, 2))[:, np.newaxis, np.newaxis])
+    arr_rs = np.divide(arr_trans, arr_trans.max(axis=(1, 2))[:, np.newaxis, np.newaxis])
+    if dtype == "uint8":
+        arr_rs = np.array(arr_rs*255, dtype=np.uint8)
+    return arr_rs.T
+
+
 class voting(object):
     """
     Methods for data generation and verification
     Args:
-        chips: a list of image tiles as dask arrays
+        chips: a list of image tiles as dask arrays or a list of numpy arrays from data already in veda store in
+        data.train.image
         class_type: the type of object to be verified or classified
     Params:
         polygons: a list of label geometries associated with chips
@@ -102,7 +118,10 @@ class voting(object):
             display(HBox(buttons))
             plt.figure(figsize = (7, 7))
             plt.axis("off")
-            plt.imshow(self.chips[self.index].rgb(bands = [4, 2, 1]))
+            if type(self.chips[0]) == numpy.ndarray:
+                plt.imshow(rescale_toa(self.chips[self.index][[4, 2, 1], ...]))
+            else:
+                plt.imshow(self.chips[self.index].rgb(bands = [4, 2, 1]))
             plt.title("Is there a %s in this chip?" % self.class_type)
         if self.index >= len(self.chips):
             print('all objects have been labeled')
@@ -158,7 +177,10 @@ class voting(object):
             plt.figure(figsize = (7, 7))
             ax = plt.subplot()
             ax.axis("off")
-            ax.imshow(self.chips[self.index].rgb(bands = [4, 2, 1]))
+            if type(self.chips[0]) == numpy.ndarray:
+                ax.imshow(rescale_toa(self.chips[self.index][[4, 2, 1], ...]))
+            else:
+                ax.imshow(self.chips[self.index].rgb(bands = [4, 2, 1]))
             self._plot_polygons()
             plt.title('Is this a %s?' % self.class_type)
         if self.index >= len(self.polygons):
