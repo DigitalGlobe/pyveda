@@ -19,9 +19,11 @@ else:
 def search(params={}):
     r = conn.post('{}/models/search'.format(HOST), json=params)
     try:
+        
         results = r.json()
         return [Model.from_doc(s) for s in results]
-    except:
+    except Exception as err:
+        print(err)
         return []
 
 
@@ -43,8 +45,9 @@ class Model(object):
             "public": kwargs.get("public", False),
             "training_set": kwargs.get("training_set", None),
             "description": kwargs.get("description", None),
-            "deployed": json.loads(kwargs.get("deployed", False)),
-            "library": kwargs.get("library", None)
+            "deployed": kwargs.get("deployed", None),
+            "library": kwargs.get("library", None),
+            "location": kwargs.get("location", None)
         }
 
         for k,v in self.meta.items():
@@ -82,12 +85,17 @@ class Model(object):
         doc = r.json()
         self.id = doc["data"]["id"]
         self.links = doc["links"]
-        return doc
+        self.meta.update(doc['data'])
+        return self
 
     def deploy(self):
+        # fetch the latest model data from the server, need to make sure we've saved the tarball
+        doc = conn.get(self.links["self"]["href"]).json()
+        self.meta.update(doc["data"])
         assert self.id is not None, "Model not saved, please call save() before deploying."
         assert self.library is not None, "Model library not defined. Please set the `.library` property before deploying."
-        assert not self.deployed, "Model already deployed."
+        assert self.meta["location"] is not None, "Model not finished saving yet, model.location is None..."
+        assert self.deployed is not 'false', "Model already deployed."
         return conn.post(self.links["deploy"]["href"], json={"id": self.id}).json()        
             
     def update(self, new_data, save=True):
