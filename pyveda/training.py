@@ -37,7 +37,7 @@ gbdx = Interface()
 
 HOST = os.environ.get('SANDMAN_API')
 if not HOST:
-    HOST = "https://veda.timbr.io"
+    HOST = "https://veda-api.geobigdata.io"
 
 if 'https:' in HOST:
     conn = gbdx.gbdx_connection
@@ -53,7 +53,8 @@ def search(params={}):
     try:
         results = r.json()
         return [TrainingSet.from_doc(s) for s in r.json()]
-    except:
+    except Exception as err:
+        print(err)
         return []
 
 def vec_to_raster(vectors, shape):
@@ -71,7 +72,7 @@ class DataPoint(object):
         self.data = item["data"]
         self.data['y'] = np.array(self.data['y'])
         self.links = item["links"]
-        self.shape = tuple(shape)
+        self.shape = tuple(map(int, shape))
         self.dtype = dtype
 
         if 'mlType' in kwargs and kwargs['mlType'] == 'segmentation':
@@ -172,7 +173,7 @@ class BaseSet(object):
             "sensors": self.sensors
         })
 
-        total = sum(list(meta['count'].values()))
+        total = sum(map(int, list(meta['count'].values())))
         if total <= self._chunk_size:
             self.cache.close()
             doc = self._create_set(meta, h5=self.fname)
@@ -282,7 +283,7 @@ class BaseSet(object):
         return self.conn.put(self.links["publish"]["href"], json={"public": False}).json()
 
     def _release(self, version):
-        r = self.conn.put(self.links["release"]["href"], json={"version": version})
+        r = self.conn.post(self.links["release"]["href"], json={"version": version})
         r.raise_for_status()
         return r.json()
 
@@ -315,7 +316,7 @@ class TrainingSet(BaseSet):
         self.links = kwargs.get('links')
         self.shape = kwargs.get('shape', None)
         if self.shape is not None:
-            self.shape = tuple(self.shape)
+            self.shape = tuple(map(int, self.shape))
         self.dtype = kwargs.get('dtype', None)
         self.percent_cached = kwargs.get('percent_cached', 0)
         self.sensors = kwargs.get('sensors', [])
@@ -323,10 +324,10 @@ class TrainingSet(BaseSet):
         self._cache = None
         self._datapoints = None
         try:
-            self._index = sum(list(self._count.values()))
+            self._index = sum(map(int, list(self._count.values())))
         except:
             self._index = 0
-        self._index = sum(list(self._count.values()))
+        self._index = sum(map(int, list(self._count.values())))
         self._temp_gen = NamedTemporaryHDF5Generator()
 
         self.meta = {
@@ -559,7 +560,7 @@ class TrainingSet(BaseSet):
     def release(self, version):
         """ Create a released version of this training set. Publishes the entire set to s3."""
         assert self.id is not None, 'You can only release a saved TrainingSet. Call the save method first.'
-        return self._release()
+        return self._release(version)
 
     def __getitem__(self, slc):
         """ Enable slicing of the TrainingSet by index/slice """

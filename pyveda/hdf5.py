@@ -171,13 +171,13 @@ class ImageTrainer(object):
                                     "Chip Index + Klass Hit Record", tables.Filters(0))
             # Generate data arrays
             self._fileh.create_earray(group, "image",
-                                      atom=image_atom(), shape=self._imshape)
+                                      atom=_atom_from_type(image_dtype), shape=self._imshape)
             self._fileh.create_earray(labels, "classification",
                                       atom=tables.UInt8Atom(), shape=(0, len(klass_map)))
             self._fileh.create_earray(labels, "segmentation",
-                                      atom=segmentation_atom(), shape=self._segshape)
+                                      atom=_atom_from_type(segmentation_dtype), shape=self._segshape)
             self._fileh.create_vlarray(labels, "detection",
-                                       atom=detection_atom())
+                                       atom=_atom_from_type(detection_dtype))
 
     @property
     def focus(self):
