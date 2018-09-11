@@ -1,4 +1,5 @@
 import ipywidgets as widgets
+import numpy as np
 from ipywidgets import Button, HBox, VBox
 from IPython.display import display, clear_output
 from rasterio import features
@@ -104,7 +105,7 @@ class voting(object):
             plt.figure(figsize = (7, 7))
             plt.axis("off")
             if type(self.chips[0]) == numpy.ndarray:
-                plt.imshow(rescale_toa(self.chips[self.index][[4, 2, 1], ...]))
+                plt.imshow(rescale_rgb(self.chips[self.index][[4, 2, 1], ...]))
             else:
                 plt.imshow(self.chips[self.index].rgb(bands = [4, 2, 1]))
             plt.title("Is there a %s in this chip?" % self.class_type)
@@ -163,7 +164,7 @@ class voting(object):
             ax = plt.subplot()
             ax.axis("off")
             if type(self.chips[0]) == numpy.ndarray:
-                ax.imshow(rescale_toa(self.chips[self.index][[4, 2, 1], ...]))
+                ax.imshow(rescale_rgb(self.chips[self.index][[4, 2, 1], ...]))
             else:
                 ax.imshow(self.chips[self.index].rgb(bands = [4, 2, 1]))
             self._plot_polygons()
