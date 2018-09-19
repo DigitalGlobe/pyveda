@@ -38,7 +38,6 @@ class Model(object):
         self.files = {
             "model": model_path, 
         }
-
         self.meta = {
             "name": name,
             "bbox": bbox,
@@ -46,7 +45,7 @@ class Model(object):
             "public": kwargs.get("public", False),
             "training_set": kwargs.get("training_set", None),
             "description": kwargs.get("description", None),
-            "deployed": kwargs.get("deployed", None),
+            "deployed": kwargs.get("deployed", {"id": None}),
             "library": kwargs.get("library", None),
             "location": kwargs.get("location", None)
         }
@@ -98,7 +97,7 @@ class Model(object):
         assert self.id is not None, "Model not saved, please call save() before deploying."
         assert self.library is not None, "Model library not defined. Please set the `.library` property before deploying."
         assert self.meta["location"] is not None, "Model not finished saving yet, model.location is None..."
-        if self.deployed == 'false':
+        if self.deployed is None or self.deployed["id"] is None:
             return conn.post(self.links["deploy"]["href"], json={"id": self.id}).json()        
         else:
             print('Model already deployed.')
