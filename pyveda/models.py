@@ -1,7 +1,8 @@
-import requests
 import os 
 import mmap
 import json
+import requests
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 from gbdxtools import Interface
 gbdx = Interface()
 
@@ -37,7 +38,6 @@ class Model(object):
         self.files = {
             "model": model_path, 
         }
-
         self.meta = {
             "name": name,
             "bbox": bbox,
@@ -45,7 +45,7 @@ class Model(object):
             "public": kwargs.get("public", False),
             "training_set": kwargs.get("training_set", None),
             "description": kwargs.get("description", None),
-            "deployed": kwargs.get("deployed", None),
+            "deployed": kwargs.get("deployed", {"id": None}),
             "library": kwargs.get("library", None),
             "location": kwargs.get("location", None)
         }
@@ -69,18 +69,20 @@ class Model(object):
 
     def save(self):
         files = self.files
-        payload = {
-            'metadata': (None, json.dumps(self.meta), 'application/json'),
-            'model': (os.path.basename(files["model"]), open(files["model"], 'rb'), 'application/octet-stream')
-        }
+        payload = MultipartEncoder(
+            fields={
+                'metadata': json.dumps(self.meta),
+                'model': (os.path.basename(files["model"]), open(files["model"], 'rb'), 'application/octet-stream')
+            }
+        )
 
         if self.links is not None:
             url = self.links['self']['href']
-            meta.update({"update": True})
-            files["metadata"] = (None, json.dumps(meta), 'application/json')
+            #meta.update({"update": True})
+            #files["metadata"] = (None, json.dumps(meta), 'application/json')
         else:
             url = "{}/models".format(HOST)
-        r = conn.post(url, files=payload)
+        r = conn.post(url, data=payload, headers={'Content-Type': payload.content_type})
         r.raise_for_status()
         doc = r.json()
         self.id = doc["data"]["id"]
@@ -95,8 +97,10 @@ class Model(object):
         assert self.id is not None, "Model not saved, please call save() before deploying."
         assert self.library is not None, "Model library not defined. Please set the `.library` property before deploying."
         assert self.meta["location"] is not None, "Model not finished saving yet, model.location is None..."
-        assert self.deployed is not 'false', "Model already deployed."
-        return conn.post(self.links["deploy"]["href"], json={"id": self.id}).json()        
+        if self.deployed is None or self.deployed["id"] is None:
+            return conn.post(self.links["deploy"]["href"], json={"id": self.id}).json()        
+        else:
+            print('Model already deployed.')
             
     def update(self, new_data, save=True):
         self.meta.update(new_data)

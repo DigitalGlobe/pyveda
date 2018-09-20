@@ -1,14 +1,22 @@
+from functools import partial
+
 from pyveda.utils import extract_load_tasks
 from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, AsyncArrayFetcher
 
+def write_data(data, labelgroup=None, datagroup=None):
+    images, labels = data
+    datagroup.image.append(images)
+    labelgroup.append(labels)
+
 def write_fetch(points, labelgroup, datagroup):
     reqs = []
+    lut = {}
     for p in points:
         url, token = extract_load_tasks(p.image.dask)
         reqs.append([url])
-        labelgroup.append(p.y)
+        lut[url] = p.y
 
-    abf = AsyncArrayFetcher(reqs=reqs, token=token, write_fn=datagroup.image.append)
+    abf = AsyncArrayFetcher(reqs=reqs, token=token, label_lut=lut, write_fn=partial(write_data, labelgroup=labelgroup, datagroup=datagroup))
     with ThreadedAsyncioRunner(abf.run) as tar:
         tar(loop=tar._loop)
 

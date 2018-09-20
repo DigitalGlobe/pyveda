@@ -67,6 +67,8 @@ class ImageArray(WrappedDataArray):
 class ClassificationArray(WrappedDataArray):
     def _input_fn(self, item):
         dims = item.shape
+        if len(dims) == 2:
+            return item # for batch append stacked arrays
         return item.reshape(1, *dims)
 
 

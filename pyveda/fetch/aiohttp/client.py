@@ -161,7 +161,7 @@ class AsyncBaseFetcher(BatchFetchTracer):
                     arr = on_fail()
                 else:
                     arr = await loop.run_in_executor(self._payload_executor, self._payload_handler, payload)
-                await self.on_result(arr)
+                await self.on_result([url, arr])
                 self._qres.task_done()
             except CancelledError as ce:
                 break
@@ -213,39 +213,43 @@ class AsyncBaseFetcher(BatchFetchTracer):
 
 class AsyncArrayFetcher(AsyncBaseFetcher):
     def __init__(self, write_fn=lambda x: x, payload_handler=bytes_to_array, max_memarrays=200,
-                 num_write_workers=1, num_write_threads=1, *args, **kwargs):
+                 num_write_workers=1, num_write_threads=1, label_lut={}, *args, **kwargs):
 
         super(AsyncArrayFetcher, self).__init__(payload_handler=payload_handler, *args, **kwargs)
         self.write_fn = write_fn
         self._n_write_workers = num_write_workers
         self._n_write_threads = num_write_threads
+        self._label_lut = label_lut
         self._max_memarrs = int(np.floor(max_memarrays / float(num_write_workers)))
         self._write_executor = concurrent.futures.ThreadPoolExecutor(max_workers=num_write_threads)
         if has_tqdm:
             self._pbar = tqdm(total=len(self.reqs))
 
-    async def on_result(self, arr):
-        await self._qwrite.put(arr)
+    async def on_result(self, res):
+        url, arr = res
+        label = self._label_lut[url]
+        await self._qwrite.put([arr, label])
 
     async def write_stack(self, loop):
-        arrs = []
+        arrs, labels = [], []
         while True:
             try:
-                arr = await self._qwrite.get()
+                arr, label = await self._qwrite.get()
                 arrs.append(arr)
+                labels.append(label)
                 if len(arrs) == self._max_memarrs:
-                    arrs = np.array(arrs)
+                    data = [np.array(arrs), np.array(labels)]
                     async with self._write_lock:
-                        await loop.run_in_executor(self._write_executor, self.write_fn, arrs)
-                    arrs = []
+                        await loop.run_in_executor(self._write_executor, self.write_fn, data)
+                    arrs, labels = [], []
                 self._qwrite.task_done()
                 if has_tqdm:
                     self._pbar.update(1)
             except CancelledError as ce: # Write out anything remaining
                 if len(arrs) > 0:
-                    arrs = np.array(arrs)
+                    data = [np.array(arrs), np.array(labels)]
                     async with self._write_lock:
-                        await loop.run_in_executor(self._write_executor, self.write_fn, arrs)
+                        await loop.run_in_executor(self._write_executor, self.write_fn, data)
                 break
         return True
 
