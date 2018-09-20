@@ -106,8 +106,8 @@ def extract_load_tasks(dsk):
 
 def rda(dsk):
     return [json.dumps({
-      'graph': dsk.ipe_id,
-      'node': dsk.ipe.graph()['nodes'][0]['id'],
+      'graph': dsk.rda_id,
+      'node': dsk.rda.graph()['nodes'][0]['id'],
       'bounds': dsk.bounds,
       'bounds_wgs84': dsk._reproject(box(*dsk.bounds), from_proj=dsk.proj, to_proj="EPSG:4326").bounds
     })]
