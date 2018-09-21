@@ -3,18 +3,20 @@ import numpy as np
 import tables
 from pyveda.utils import mktempfilename
 
-MLTYPES = {"TRAIN": "Data designated for model training",
-           "TEST": "Data designated for model testing",
-           "VALIDATION": "Data designated for model validation"
-          }
-
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
+
+def _atom_from_type(_type):
+    if isinstance(_type, np.dtype):
+        return tables.Atom.from_dtype(_type)
+    return tables.Atom.from_dtype(np.dtype(_type))
+
 
 class LabelNotSupported(NotImplementedError):
     pass
 
 class FrameworkNotSupported(NotImplementedError):
     pass
+
 
 class WrappedDataArray(object):
     def __init__(self, node, trainer, output_transform=lambda x: x):
@@ -55,6 +57,7 @@ class WrappedDataArray(object):
 
 
 class ImageArray(WrappedDataArray):
+    _default_dtype = np.float32
     def _input_fn(self, item):
         dims = item.shape
         if len(dims) == 4:
@@ -62,6 +65,14 @@ class ImageArray(WrappedDataArray):
         elif len(dims) in (2, 3): # extend single image array along axis 0
             return item.reshape(1, *dims)
         return item # what could this thing be, let it fail
+
+    @classmethod
+    def create_array(cls, trainer, group, dtype):
+        shape = list(trainer.image_shape)
+        shape.insert(0,0)
+        trainer._fileh.create_earray(group, "images",
+                                     atom = _atom_from_dtype(dtype),
+                                     shape = tuple(shape))
 
 
 class ClassificationArray(WrappedDataArray):
@@ -71,12 +82,27 @@ class ClassificationArray(WrappedDataArray):
             return item # for batch append stacked arrays
         return item.reshape(1, *dims)
 
+    @classmethod
+    def create_array(cls, trainer, group, dtype):
+        trainer._fileh.create_earray(group, "labels",
+                                     atom = tables.UInt8Atom(),
+                                     shape = (0, len(trainer.klass_map)))
+
+
 
 class SegmentationArray(ImageArray):
-    pass
+    _default_dtype = np.float32
+    @classmethod
+    def create_array(cls, trainer, group, dtype):
+        if not dtype:
+            dtype = cls._default_dtype
+        trainer._fileh.create_earray(group, "labels",
+                                     atom = _atom_from_dtype(dtype),
+                                     shape = tuple([s if idx > 0 else 0 for idx, s in enumerate(trainer.image_shape)]))
 
 
 class DetectionArray(WrappedDataArray):
+    _default_dtype = np.float32
     def _input_fn(self, item):
         assert item.shape[1] == 4
         # Detection Bboxes are np arrays of shape (N, 4)
@@ -86,6 +112,13 @@ class DetectionArray(WrappedDataArray):
         op_shape = (int(len(item) / 4), 4)
         return item.reshape(op_shape)
 
+    @classmethod
+    def create_array(cls, trainer, group, dtype):
+        if not dtype:
+            dtype = cls._default_dtype
+        trainer._fileh.create_vlarray(group, "labels",
+                                      atom = _atom_from_dtype(dtype))
+
 
 class WrappedDataNode(object):
     def __init__(self, node, trainer):
@@ -93,57 +126,49 @@ class WrappedDataNode(object):
         self._trainer = trainer
 
     @property
-    def image(self):
-        return ImageArray(self._node.image, self._trainer, output_transform = self._trainer._fw_loader)
+    def images(self):
+        return self._trainer._image_array_factory(self._node.images, self._trainer, output_transform = self._trainer._fw_loader)
 
     @property
-    def classification(self):
-        return ClassificationArray(self._node.labels.classification, self._trainer)
-
-    @property
-    def segmentation(self):
-        return SegmentationArray(self._node.labels.segmentation, self._trainer)
-
-    @property
-    def detection(self):
-        return DetectionArray(self._node.labels.detection, self._trainer)
+    def labels(self):
+        return self._trainer._label_array_factory(self._node.labels, self._trainer)
 
     def __getitem__(self, idx):
-        label_data = getattr(self, self._trainer.focus)
-        return list(zip(self.image[idx], label_data[idx]))
+        return list(zip(self.images[idx], self.labels[idx]))
 
     def __iter__(self, spec=slice(None)):
-        data = [getattr(self, label) for label in self._trainer.focus]
-        data.insert(0, self.image)
-        for rec in zip([arr[spec] for arr in data]):
+        for rec in zip([arr[spec] for arr in [self.images, self.labels]]):
             yield rec
 
     def __len__(self):
-        return len(self._node.image)
+        return len(self._node.images)
 
-def _atom_from_type(_type):
-    if isinstance(_type, np.dtype):
-        return tables.Atom.from_dtype(_type)
-    return tables.Atom.from_dtype(np.dtype(_type))
+
+mltype_map = {"classification": ClassificationArray,
+              "segmentation": SegmentationArray,
+              "detection": DetectionArray}
+
+data_groups = {"TRAIN": "Data designated for model training",
+               "TEST": "Data designated for model testing",
+               "VALIDATION": "Data designated for model validation"}
+
 
 class ImageTrainer(object):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
-    def __init__(self, fname=None, klass_map=None, data_groups=MLTYPES, framework=None,
-                 title="Unknown", image_shape=(3, 256, 256), image_dtype=np.float32, segmentation_dtype=np.float32,
-                 detection_dtype=np.float32, focus="classification", append=False):
+    def __init__(self, fname=None, klass_map=None,  framework=None,
+                 title="Unknown", image_shape=(3, 256, 256), image_dtype=np.float32,
+                 label_dtype=None, mltype="classification", append=True):
+
         if fname is None:
             fname = mktempfilename(prefix="veda", suffix='h5')
 
         self._framework = framework
         self._fw_loader = lambda x: x
-        imshape = list(image_shape)
-        imshape.insert(0,0)
-        self._imshape = tuple(imshape)
-        self._segshape = tuple([s if idx > 0 else 0 for idx, s in enumerate(image_shape)])
-        self.imshape = image_shape
-        self._focus = focus
+        self._image_klass = ImageArray
+        self._label_klass = mltype_map[mltype]
+        self.image_shape = image_shape
         self.klass_map = klass_map
 
         if os.path.exists(fname):
@@ -157,41 +182,23 @@ class ImageTrainer(object):
         for name, desc in data_groups.items():
             self._fileh.create_group("/", name.lower(), desc)
 
-        Classifications = {klass: tables.UInt8Col(pos=idx + 2) for idx, (klass, _)
+        classifications = {klass: tables.UInt8Col(pos=idx + 2) for idx, (klass, _)
                             in enumerate(sorted(data_groups.items(), key=lambda x: x[1]))}
-        Classifications["image_chunk_index"] = tables.UInt8Col(shape=2, pos=1)
-
-        image_atom = _atom_from_type(image_dtype)
-        detection_atom = _atom_from_type(detection_dtype)
-        segmentation_atom = _atom_from_type(segmentation_dtype)
+        classifications["image_chunk_index"] = tables.UInt8Col(shape=2, pos=1)
 
         groups = {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
         for name, group in groups.items():
-            labels = self._fileh.create_group(group, "labels", "Image Labels")
-            # Generate hit table for data lookup
-            self._fileh.create_table(group, "hit_table", Classifications,
+            self._fileh.create_table(group, "hit_table", classifications,
                                     "Chip Index + Klass Hit Record", tables.Filters(0))
-            # Generate data arrays
-            self._fileh.create_earray(group, "image",
-                                      atom=_atom_from_type(image_dtype), shape=self._imshape)
-            self._fileh.create_earray(labels, "classification",
-                                      atom=tables.UInt8Atom(), shape=(0, len(klass_map)))
-            self._fileh.create_earray(labels, "segmentation",
-                                      atom=_atom_from_type(segmentation_dtype), shape=self._segshape)
-            self._fileh.create_vlarray(labels, "detection",
-                                       atom=_atom_from_type(detection_dtype))
+            self._image_klass.create_array(self, group, image_dtype)
+            self._label_klass.create_array(self, group, label_dtype)
 
-    @property
-    def focus(self):
-        return self._focus
-#        return [task for task, leaf in self._fileh.root.train.labels._v_children.items()
-#                if isinstance(leaf, tables.array.Array)]
 
-    @focus.setter
-    def focus(self, foc):
-        if foc not in ['classification', 'segmentation', 'detection']:
-            raise LabelNotSupported("Focus must be classification, segmentation or detection")
-        self._focus = foc
+    def _image_arr_factory(self, *args, **kwargs):
+        return self._image_klass(*args, **kwargs)
+
+    def _label_arr_factory(self, *args, **kwargs):
+        return self._label_klass(*args, **kwargs)
 
     @property
     def framework(self):
