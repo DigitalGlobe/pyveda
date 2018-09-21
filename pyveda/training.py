@@ -567,3 +567,35 @@ class TrainingSet(BaseSet):
         start, stop = slc.start, slc.stop
         limit = stop - start
         return self.fetch_points(limit, offset=start)
+
+    def __iter__(self):
+        # loosely based on PRAW https://github.com/praw-dev/praw
+        # iterator batches fetching 100 records at a time
+        self._exhausted = False
+        self._iterlist = None
+        self._list_index = None
+        self.limit = 100
+        self.yielded = 0
+        return self
+    
+    def next(self):
+        return self.__next__()
+
+    def __next__(self):
+        if self._iterlist is None or self._list_index >= len(self._iterlist):
+            self._next_batch()
+        self._list_index += 1
+        self.yielded += 1
+        return self._iterlist[self._list_index - 1]
+
+    def _next_batch(self):
+        if self._exhausted:
+            raise StopIteration()
+        self._iterlist = self.fetch_points(self.limit, offset=self.yielded)
+        self._list_index = 0
+
+        if not self._iterlist:
+            raise StopIteration()
+
+        if len(self._iterlist) < self.limit:
+            self._exhausted = True
