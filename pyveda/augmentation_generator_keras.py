@@ -145,7 +145,7 @@ class DataGenerator(keras.utils.Sequence):
             else:
                 randomly_selected_f = sample(augmentation_lst, randint(0, len(augmentation_lst) - 1))
                 #possibility that no augmentation functions were randomly selected
-                if len(batch_augmentation_to_use) == 0:
+                if len(augmentation_lst) == 0:
                     X[i,] = x
                 for i in (randomly_selected_f):
                     if i == random_rotation_f:
