@@ -564,8 +564,14 @@ class TrainingSet(BaseSet):
 
     def __getitem__(self, slc):
         """ Enable slicing of the TrainingSet by index/slice """
-        start, stop = slc.start, slc.stop
-        limit = stop - start
+        try:
+            start, stop = slc.start, slc.stop
+            limit = stop - start
+        except AttributeError:
+            start = slc
+            if start < 0:
+                raise IndexError('Negative indexing is not supported')
+            limit = 1
         return self.fetch_points(limit, offset=start)
 
     def __iter__(self):
