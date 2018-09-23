@@ -14,7 +14,7 @@ from random import sample
 # Jamie's rescaling function
 
 
-def rescale_toa(arr, dtype="float32"):
+def rescale_toa(arr, dtype=np.float32):
     """
     Rescale any multi-dimensional array of shape (D, M, N) by first subtracting
     the min from each (M, N) array along axis 0, then divide each by the
@@ -25,17 +25,14 @@ def rescale_toa(arr, dtype="float32"):
 
     arr_trans = np.subtract(arr, arr.min(axis=(1, 2))[:, np.newaxis, np.newaxis])
     arr_rs = np.divide(arr_trans, arr_trans.max(axis=(1, 2))[:, np.newaxis, np.newaxis])
-
-    if dtype == "uint8":
+    if dtype == np.uint8:
         arr_rs = np.array(arr_rs*255, dtype=np.uint8)
-    # return arr_rs.T
     return arr_rs.T
 
 
 def bands_subset_f(arr, band_numbers):
     """
     Subset array to array of  just given band indices
-
     arr: float32
     band_numbers: List. List of band numbers to subset
     """
@@ -84,7 +81,7 @@ class DataGenerator(keras.utils.Sequence):
     '''
     cache:
     batch_size: Int.
-    shape: Tuple. (number of bands, height, width)
+    shape: Tuple. (number of bands - after data has been preprocessed, height, width)
     group:
     rescale_toa: Boolean. To rescale values between 0 and 1.
     bands_subset: List. List of band numbers to subset.
@@ -101,7 +98,7 @@ class DataGenerator(keras.utils.Sequence):
         self.cache = getattr(cache, group)
         self.shape = shape
         self.batch_size = batch_size
-        self.list_IDs = [i for i in range(0, len(self.cache))]
+        self.list_ids = [i for i in range(0, len(self.cache))]
         self.shuffle = shuffle
         self.on_epoch_end()
         self.group = group
@@ -130,6 +127,7 @@ class DataGenerator(keras.utils.Sequence):
     def data_generation(self, list_IDs_temp):
         '''Generates data containing batch_size samples
         optionally pre-processes the data'''
+
         X = np.empty((self.batch_size, *self.shape[::-1]))
         y = np.empty((self.batch_size), dtype=int)
 
@@ -137,39 +135,39 @@ class DataGenerator(keras.utils.Sequence):
                                         self.horizontal_flip,
                                         self.vertical_flip)
 
-        for i, ID in enumerate(list_IDs_temp):
+        for i, _id in enumerate(list_IDs_temp):
             # pre-process, needs to be re-factored!
             if self.rescale_toa and self.bands_subset is not None:
-                x = rescale_toa(bands_subset_f(self.cache.image[ID], self.bands_subset))
+                x = rescale_toa(bands_subset_f(self.cache.image[_id], self.bands_subset))
             if self.bands_subset is not None and not self.rescale_toa:
-                x = bands_subset_f(self.cache.image[ID], self.bands_subset).T
+                x = bands_subset_f(self.cache.image[_id], self.bands_subset).T
             if self.bands_subset is None and if self.rescale_toa:
-                x = rescale_toa(self.cache.image[ID], 0, -1)
+                x = rescale_toa(self.cache.image[_id], 0, -1)
             if self.bands_subset is None and not self.rescale_toa:
-                x = self.cache.image[ID].T
+                x = self.cache.image[_id].T
 
             # user selects no augmentation functions
             if len(augmentation_lst) == 0:
                 X[i, ] = x
 
             else:
-                randomly_selected_f = sample(augmentation_lst, randint(0, len(augmentation_lst) - 1))
+                randomly_selected_functions_lst = sample(augmentation_lst, randint(0, len(augmentation_lst) - 1))
                 # possibility that no augmentation functions were selected
-                if len(augmentation_lst) == 0:
+                if len(randomly_selected_functions_lst) == 0:
                     X[i, ] = x
-                for i in (randomly_selected_f):
-                    if i == random_rotation_f:
+                for func in randomly_selected_functions_lst:
+                    if func is random_rotation_f:
                         random_rotation = randint(0, 359)
-                        x = i(x, random_rotation)
+                        x = func(x, random_rotation)
                     else:
-                        x = i(x)
-                        X[i, ] = x
-            y[i] = self.cache.classification[ID]
-        return X, y
+                        x = func(x)
+                X[i, ] = x
+            y[i] = self.cache.classification[_id]
+        return X, yu
 
     def __len__(self):
         '''Denotes the number of batches per epoch'''
-        return int(np.floor(len(self.list_IDs) / self.batch_size))
+        return int(np.floor(len(self.list_ids) / self.batch_size))
 
     def __getitem__(self, index):
         '''Generate one batch of data'''
