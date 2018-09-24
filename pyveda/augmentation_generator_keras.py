@@ -104,7 +104,7 @@ class DataGenerator(keras.utils.Sequence):
         self.group = group
         self.rescale_toa = rescale_toa
         self.bands_subset = bands_subset
-        self.rotation_random = random_rotation
+        self.random_rotation = random_rotation
         self.horizontal_flip = horizontal_flip
         self.vertical_flip = vertical_flip
 
@@ -120,11 +120,11 @@ class DataGenerator(keras.utils.Sequence):
 
     def on_epoch_end(self):
         '''update index for each epoch'''
-        self.indexes = np.arange(len(self.list_IDs))
+        self.indexes = np.arange(len(self.list_ids))
         if self.shuffle:
             np.random.shuffle(self.indexes)
 
-    def data_generation(self, list_IDs_temp):
+    def data_generation(self, list_ids_temp):
         '''Generates data containing batch_size samples
         optionally pre-processes the data'''
 
@@ -135,13 +135,13 @@ class DataGenerator(keras.utils.Sequence):
                                         self.horizontal_flip,
                                         self.vertical_flip)
 
-        for i, _id in enumerate(list_IDs_temp):
+        for i, _id in enumerate(list_ids_temp):
             # pre-process, needs to be re-factored!
             if self.rescale_toa and self.bands_subset is not None:
                 x = rescale_toa(bands_subset_f(self.cache.image[_id], self.bands_subset))
             if self.bands_subset is not None and not self.rescale_toa:
                 x = bands_subset_f(self.cache.image[_id], self.bands_subset).T
-            if self.bands_subset is None and if self.rescale_toa:
+            if self.rescale_toa is True and self.bands_subset is None:
                 x = rescale_toa(self.cache.image[_id], 0, -1)
             if self.bands_subset is None and not self.rescale_toa:
                 x = self.cache.image[_id].T
@@ -163,7 +163,7 @@ class DataGenerator(keras.utils.Sequence):
                         x = func(x)
                 X[i, ] = x
             y[i] = self.cache.classification[_id]
-        return X, yu
+        return X, y
 
     def __len__(self):
         '''Denotes the number of batches per epoch'''
@@ -172,6 +172,6 @@ class DataGenerator(keras.utils.Sequence):
     def __getitem__(self, index):
         '''Generate one batch of data'''
         indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
-        list_IDs_temp = [self.list_IDs[k] for k in indexes]
-        X, y = self.data_generation(list_IDs_temp)
+        list_ids_temp = [self.list_ids[k] for k in indexes]
+        X, y = self.data_generation(list_ids_temp)
         return X, y
