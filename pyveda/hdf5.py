@@ -5,7 +5,7 @@ from pyveda.utils import mktempfilename
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
-def _atom_from_type(_type):
+def _atom_from_dtype(_type):
     if isinstance(_type, np.dtype):
         return tables.Atom.from_dtype(_type)
     return tables.Atom.from_dtype(np.dtype(_type))
@@ -55,6 +55,9 @@ class WrappedDataArray(object):
     def append(self, item):
         self._arr.append(self._input_fn(item))
 
+    @classmethod
+    def create_array(cls, *args, **kwargs):
+        raise NotImplementedError
 
 class ImageArray(WrappedDataArray):
     _default_dtype = np.float32
