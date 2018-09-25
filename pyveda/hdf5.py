@@ -160,7 +160,7 @@ mltype_map = {"classification": ClassificationArray,
 
 data_groups = {"TRAIN": "Data designated for model training",
                "TEST": "Data designated for model testing",
-               "VALIDATION": "Data designated for model validation"}
+               "VALIDATE": "Data designated for model validation"}
 
 
 class ImageTrainer(object):
@@ -230,8 +230,8 @@ class ImageTrainer(object):
         return WrappedDataNode(self._fileh.root.test, self)
 
     @property
-    def validation(self):
-        return WrappedDataNode(self._fileh.root.validation, self)
+    def validate(self):
+        return WrappedDataNode(self._fileh.root.validate, self)
 
     def flush(self):
         self._fileh.flush()
