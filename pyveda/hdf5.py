@@ -40,7 +40,7 @@ class WrappedDataArray(object):
 
     def __getitem__(self, spec):
         if isinstance(spec, slice):
-            return [self._read_transform(self._output_fn(rec)) for rec in self._arr[spec]]
+            return list(self.__iter__(spec))
         elif isinstance(spec, int):
             return self._read_transform(self._output_fn(self._arr[spec]))
         else:
@@ -136,12 +136,19 @@ class WrappedDataNode(object):
     def labels(self):
         return self._trainer._label_array_factory(self._node.labels, self._trainer)
 
-    def __getitem__(self, idx):
-        return list(zip(self.images[idx], self.labels[idx]))
+    def __getitem__(self, spec):
+        if isinstance(spec, int):
+            return [self.images[spec], self.labels[spec]]
+        else:
+            return list(self.__iter__(spec))
 
-    def __iter__(self, spec=slice(None)):
-        for rec in zip([arr[spec] for arr in [self.images, self.labels]]):
-            yield rec
+    def __iter__(self, spec=None):
+        if not spec:
+            spec = slice(0, len(self)-1, 1)
+        gimg = self.images.__iter__(spec)
+        glbl = self.labels.__iter__(spec)
+        while True:
+            yield (gimg.__next__(), glbl.__next__())
 
     def __len__(self):
         return len(self._node.images)
@@ -164,6 +171,7 @@ class ImageTrainer(object):
                  title="Unknown", image_shape=(3, 256, 256), image_dtype=np.float32,
                  label_dtype=None, mltype="classification", append=True):
 
+        print('hey from itin')
         if fname is None:
             fname = mktempfilename(prefix="veda", suffix='h5')
 
@@ -197,10 +205,10 @@ class ImageTrainer(object):
             self._label_klass.create_array(self, group, label_dtype)
 
 
-    def _image_arr_factory(self, *args, **kwargs):
+    def _image_array_factory(self, *args, **kwargs):
         return self._image_klass(*args, **kwargs)
 
-    def _label_arr_factory(self, *args, **kwargs):
+    def _label_array_factory(self, *args, **kwargs):
         return self._label_klass(*args, **kwargs)
 
     @property
