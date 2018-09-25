@@ -81,8 +81,8 @@ class DataGenerator(keras.utils.Sequence):
     '''
     cache:
     batch_size: Int.
-    shape: Tuple. (number of bands - after data has been preprocessed, height, width)
-    group:
+    shape: Tuple. (number of bands - after data has been preprocessed bands, height, width)
+    group: String. train, test, or validate.
     rescale_toa: Boolean. To rescale values between 0 and 1.
     bands_subset: List. List of band numbers to subset.
     random_rotation: Boolean. Randomly rotate image by selected degree.
@@ -96,7 +96,6 @@ class DataGenerator(keras.utils.Sequence):
                  vertical_flip=False):
 
         self.cache = getattr(cache, group)
-        self.shape = shape
         self.batch_size = batch_size
         self.list_ids = [i for i in range(0, len(self.cache))]
         self.shuffle = shuffle
@@ -136,13 +135,12 @@ class DataGenerator(keras.utils.Sequence):
                                         self.vertical_flip)
 
         for i, _id in enumerate(list_ids_temp):
-            # pre-process, needs to be re-factored!
             if self.rescale_toa and self.bands_subset is not None:
                 x = rescale_toa(bands_subset_f(self.cache.image[_id], self.bands_subset))
             if self.bands_subset is not None and not self.rescale_toa:
                 x = bands_subset_f(self.cache.image[_id], self.bands_subset).T
             if self.rescale_toa is True and self.bands_subset is None:
-                x = rescale_toa(self.cache.image[_id], 0, -1)
+                x = rescale_toa(self.cache.image[_id])
             if self.bands_subset is None and not self.rescale_toa:
                 x = self.cache.image[_id].T
 
