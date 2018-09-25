@@ -171,7 +171,6 @@ class ImageTrainer(object):
                  title="Unknown", image_shape=(3, 256, 256), image_dtype=np.float32,
                  label_dtype=None, mltype="classification", append=True):
 
-        print('hey from itin')
         if fname is None:
             fname = mktempfilename(prefix="veda", suffix='h5')
 
