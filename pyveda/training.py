@@ -484,7 +484,7 @@ class TrainingSet(BaseSet):
         else:
             fname = "{}.h5".format(name) if name is not None else None
             klass_map = {idx: klass_name for idx, klass_name in enumerate(self.meta['classes'])}
-            cache = ImageTrainer(klass_map=klass_map, focus=self.mlType,
+            cache = ImageTrainer(klass_map=klass_map, mltype=self.mlType,
                               image_shape=self.shape, fname=fname)
             datagroup = getattr(cache, group)
             labelgroup = getattr(datagroup, self.mlType)
