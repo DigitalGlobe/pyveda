@@ -171,7 +171,6 @@ class ImageTrainer(object):
                  title="Unknown", image_shape=(3, 256, 256), image_dtype=np.float32,
                  label_dtype=None, mltype="classification", append=True):
 
-        print('hey from itin')
         if fname is None:
             fname = mktempfilename(prefix="veda", suffix='h5')
 
@@ -193,9 +192,7 @@ class ImageTrainer(object):
         for name, desc in data_groups.items():
             self._fileh.create_group("/", name.lower(), desc)
 
-        classifications = {klass: tables.UInt8Col(pos=idx + 2) for idx, (klass, _)
-                            in enumerate(sorted(data_groups.items(), key=lambda x: x[1]))}
-        classifications["image_chunk_index"] = tables.UInt8Col(shape=2, pos=1)
+        classifications = {klass: tables.UInt8Col(pos=idx + 1) for idx, klass in klass_map.items()}
 
         groups = {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
         for name, group in groups.items():
@@ -231,8 +228,8 @@ class ImageTrainer(object):
         return WrappedDataNode(self._fileh.root.test, self)
 
     @property
-    def validation(self):
-        return WrappedDataNode(self._fileh.root.validation, self)
+    def validate(self):
+        return WrappedDataNode(self._fileh.root.validate, self)
 
     def flush(self):
         self._fileh.flush()
