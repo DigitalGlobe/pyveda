@@ -6,9 +6,9 @@ from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, AsyncArrayFetcher
 def write_data(data, datagroup=None):
     images, labels = data
     datagroup.images.append(images)
-    datagroup.labels..append(labels)
+    datagroup.labels.append(labels)
 
-def write_fetch(points, labelgroup, datagroup):
+def write_fetch(points, datagroup):
     reqs = []
     lut = {}
     for p in points:
