@@ -72,8 +72,14 @@ class ClassificationArray(WrappedDataArray):
         return item.reshape(1, *dims)
 
 
-class SegmentationArray(ImageArray):
-    pass
+class SegmentationArray(WrappedDataArray):
+    def input_fn(self, item):
+        dims = item.shape
+        assert len(dims) in (2, 3)
+        if len(dims) == 3:
+            return item
+        else:
+            return item.reshape(1, *dims)
 
 
 class DetectionArray(WrappedDataArray):
