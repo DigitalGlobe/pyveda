@@ -12,6 +12,7 @@ except:
     from urllib import urlencode
 import requests
 from requests_futures.sessions import FuturesSession
+from tempfile import NamedTemporaryFile
 import numpy as np
 from dask import delayed
 import dask.array as da
@@ -19,7 +20,7 @@ from gbdxtools import Interface
 from .loaders import load_image
 from .utils import transforms
 from rasterio.features import rasterize
-from shapely.geometry import shape, mapping
+from shapely.geometry import shape as shp, mapping
 from shapely import ops
 
 from functools import partial
@@ -182,19 +183,26 @@ class BaseSet(object):
             "sensors": self.sensors,
             "bbox": self.bbox,
             "graph": self.image.rda_id,
-            "node": self.image.rda.graph()['nodes'][0]['id'],
-            "geojson": self.geojson
+            "node": self.image.rda.graph()['nodes'][0]['id']
         })
-        doc = self.conn.post(self._data_url, json={"metadata": meta}).json()
-        self.id = doc["data"]["id"]
-        self.links = doc["links"]
-        if HOST == "http://localhost:3002":
-            links = self.links.copy()
-            for key in links:
-                href = links[key]['href']
-                href.replace("host.docker.internal", "localhost")
-                links[key]['href'] = href
-            self.links = links
+
+        with open(self.geojson, 'r') as fh:
+            mfile = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
+            body = {
+                'metadata': (None, json.dumps(meta), 'application/json'),
+                'file': (os.path.basename(self.geojson), mfile, 'application/text')
+            }
+            doc = self.conn.post(self._data_url, files=body).json()
+            self.id = doc["data"]["id"]
+            self.links = doc["links"]
+
+            if HOST == "http://localhost:3002":
+                links = self.links.copy()
+                for key in links:
+                    href = links[key]['href']
+                    href.replace("host.docker.internal", "localhost")
+                    links[key]['href'] = href
+                self.links = links
 
         return doc
 
@@ -242,18 +250,26 @@ class VedaCollection(BaseSet):
     def __init__(self, geojson, image, name, shape=(8,256,256), mlType="classification", bbox=None, **kwargs):
         assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
         super(VedaCollection, self).__init__()
-        try:
-            self.geojson = json.loads(json.dumps(geojson)) # turn parens into brackets, gotta be a better way
-        except: 
-            self.geojson = {}
+
         self.image = image
-        
+        self.geojson = None
+        self.bbox = bbox
+
+        if geojson is not None:
+            if bbox is None:
+                union = ops.cascaded_union([shp(f['geometry']) for f in geojson['features']])
+                self.bbox = list(union.bounds)            
+            with NamedTemporaryFile(prefix="veda", suffix="json", delete=False) as temp:
+                with open(temp.name, 'w') as fh:
+                    geojson = json.loads(json.dumps(geojson)) # seriously wtf
+                    fh.write(json.dumps(geojson))
+                self.geojson = temp.name
+
         self.id = kwargs.get('id', None)
         self.links = kwargs.get('links')
         self.shape = shape
         if self.shape is not None:
             self.shape = tuple(map(int, self.shape))
-        self._bbox = bbox
         self.dtype = kwargs.get('dtype', None)
         self.percent_cached = kwargs.get('percent_cached', 0)
         self.sensors = kwargs.get('sensors', [image.__class__.__name__])
@@ -283,15 +299,6 @@ class VedaCollection(BaseSet):
         url = "{}/data/{}".format(HOST, _id)
         doc = conn.get(url).json()
         return cls.from_doc(doc)
-
-    @property
-    def bbox(self):
-        if self._bbox is None:
-            # calc bbox
-            union = ops.cascaded_union([shape(f['geometry']) for f in self.geojson['features']])
-            return list(union.bounds)
-        else:
-            return self._bbox
 
     @property
     def count(self):
