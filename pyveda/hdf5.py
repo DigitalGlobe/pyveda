@@ -1,25 +1,16 @@
 import os
+from collections import OrderedDict
+
 import numpy as np
 import tables
-from pyveda.utils import mktempfilename
+from pyveda.utils import mktempfilename, _atom_from_dtype
+from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
+
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
-def _atom_from_dtype(_type):
-    if isinstance(_type, np.dtype):
-        return tables.Atom.from_dtype(_type)
-    return tables.Atom.from_dtype(np.dtype(_type))
-
-
-class LabelNotSupported(NotImplementedError):
-    pass
-
-class FrameworkNotSupported(NotImplementedError):
-    pass
-
-
 class WrappedDataArray(object):
-    def __init__(self, node, trainer, output_transform=lambda x: x):
+    def __init__(self, array, trainer, output_transform=lambda x: x):
         self._arr = node
         self._trainer = trainer
         self._read_transform = output_transform
@@ -59,6 +50,7 @@ class WrappedDataArray(object):
     def create_array(cls, *args, **kwargs):
         raise NotImplementedError
 
+
 class ImageArray(WrappedDataArray):
     _default_dtype = np.float32
     def _input_fn(self, item):
@@ -78,7 +70,29 @@ class ImageArray(WrappedDataArray):
                                      shape = tuple(shape))
 
 
-class ClassificationArray(WrappedDataArray):
+class LabelArray(WrappedDataArray):
+    def __init__(self, hit_table, *args, **kwargs):
+        self._table = hit_table
+        super(WrappedDataArray, self).__init__(*args, **kwargs)
+
+    def _add_record(self, label):
+        row = self._table.row
+        for klass in label.keys():
+            row[klass] = self._hit_test(label)
+            row.append()
+        self._table.flush()
+
+    def _hit_test(self, label):
+        raise NotImplementedError
+
+    def append(self, label):
+        super(LabelArray, self).append(label)
+        self._add_record(label)
+
+
+class ClassificationArray(LabelArray):
+    _default_dtype = np.uint8
+
     def _input_fn(self, item):
         dims = item.shape
         if len(dims) == 2:
@@ -92,9 +106,16 @@ class ClassificationArray(WrappedDataArray):
                                      shape = (0, len(trainer.klass_map)))
 
 
-
-class SegmentationArray(ImageArray):
+class SegmentationArray(LabelArray):
     _default_dtype = np.float32
+
+    def _input_fn(self, item):
+        dims = item.shape
+        assert len(dims) in (2, 3)
+        if len(dims) == 2:
+            return item.reshape(1, *dims)
+        return item
+
     @classmethod
     def create_array(cls, trainer, group, dtype):
         if not dtype:
@@ -104,8 +125,9 @@ class SegmentationArray(ImageArray):
                                      shape = tuple([s if idx > 0 else 0 for idx, s in enumerate(trainer.image_shape)]))
 
 
-class DetectionArray(WrappedDataArray):
+class DetectionArray(LabelArray):
     _default_dtype = np.float32
+
     def _input_fn(self, item):
         assert item.shape[1] == 4
         # Detection Bboxes are np arrays of shape (N, 4)
@@ -134,7 +156,7 @@ class WrappedDataNode(object):
 
     @property
     def labels(self):
-        return self._trainer._label_array_factory(self._node.labels, self._trainer)
+        return self._trainer._label_array_factory(self._node.hit_table, self._node.labels,  self._trainer)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):
@@ -192,7 +214,7 @@ class ImageTrainer(object):
         for name, desc in data_groups.items():
             self._fileh.create_group("/", name.lower(), desc)
 
-        classifications = {klass: tables.UInt8Col(pos=idx + 1) for idx, klass in klass_map.items()}
+        classifications = dict([(klass, tables.UInt8Col(pos=idx + 1)) for idx, klass in klass_map.items()])
 
         groups = {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
         for name, group in groups.items():
@@ -200,7 +222,6 @@ class ImageTrainer(object):
                                     "Chip Index + Klass Hit Record", tables.Filters(0))
             self._image_klass.create_array(self, group, image_dtype)
             self._label_klass.create_array(self, group, label_dtype)
-
 
     def _image_array_factory(self, *args, **kwargs):
         return self._image_klass(*args, **kwargs)
