@@ -51,12 +51,12 @@ valid_mltypes = ['classification', 'object_detection', 'segmentation']
 
 def search(params={}):
     r = conn.post('{}/{}'.format(HOST, "search"), json=params)
-    try:
-        results = r.json()
-        return [VedaCollection.from_doc(s) for s in r.json()]
-    except Exception as err:
-        print(err)
-        return []
+    #try:
+    results = r.json()
+    return [VedaCollection.from_doc(s) for s in r.json()]
+    #except Exception as err:
+    #    print(err)
+    #    return []
 
 def vec_to_raster(vectors, shape):
     try:
@@ -181,7 +181,6 @@ class BaseSet(object):
             "shape": list(self.shape),
             "dtype": str(self.image.dtype),
             "sensors": self.sensors,
-            "bbox": self.bbox,
             "graph": self.image.rda_id,
             "node": self.image.rda.graph()['nodes'][0]['id']
         })
@@ -247,7 +246,7 @@ class VedaCollection(BaseSet):
           shape (tuple): the shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
           dtype (str): the dtype of the imergy (ie int8, uint16, float32, etc)
     """
-    def __init__(self, geojson, image, name, shape=(8,256,256), mlType="classification", bbox=None, **kwargs):
+    def __init__(self, geojson, image, name, shape=None, mlType="classification", bbox=None, **kwargs):
         assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
         super(VedaCollection, self).__init__()
 
@@ -256,9 +255,6 @@ class VedaCollection(BaseSet):
         self.bbox = bbox
 
         if geojson is not None:
-            if bbox is None:
-                union = ops.cascaded_union([shp(f['geometry']) for f in geojson['features']])
-                self.bbox = list(union.bounds)            
             with NamedTemporaryFile(prefix="veda", suffix="json", delete=False) as temp:
                 with open(temp.name, 'w') as fh:
                     geojson = json.loads(json.dumps(geojson)) # seriously wtf
@@ -267,9 +263,13 @@ class VedaCollection(BaseSet):
 
         self.id = kwargs.get('id', None)
         self.links = kwargs.get('links')
-        self.shape = shape
-        if self.shape is not None:
-            self.shape = tuple(map(int, self.shape))
+        if shape is None:
+            if self.image is not None:
+                self.shape = self.image.chunksize
+            else:
+                self.shape = (8,256,256)
+        else:
+            self.shape = tuple(map(int, shape))
         self.dtype = kwargs.get('dtype', None)
         self.percent_cached = kwargs.get('percent_cached', 0)
         self.sensors = kwargs.get('sensors', [image.__class__.__name__])
@@ -281,7 +281,8 @@ class VedaCollection(BaseSet):
             "mlType": mlType,
             "public": kwargs.get("public", False),
             "partition": kwargs.get("partition", [100,0,0]),
-            "cache_type": kwargs.get("cache_type", "fetch")
+            "cache_type": kwargs.get("cache_type", "fetch"),
+            "classes": kwargs.get("classes", [])
         }
 
         for k,v in self.meta.items():
