@@ -338,3 +338,91 @@ class VedaCollection(BaseSet):
             start, stop = slc.start, slc.stop
             limit = stop - start
         return self.fetch_points(limit, offset=start)
+
+class DataSet():
+
+    def __init__(self, source, size=None):
+        self.size = size
+        self.source = source
+        self.data = None
+        if type(source) == str:
+            if os.path.splitext(source)[1] == 'hd5':
+                self.data_type = 'hdf5'
+            else:
+                try:
+                    release = Release(source)
+                    self.source = release
+                    self.data_type = 'memory'
+                except:
+                    raise ValueError('{} is not a valid release location'.format(self.source))
+        elif type(self.source) == Release:
+            self.data_type = 'memory'
+        elif type(self.source) == VedaCollection:
+            self.data_type = 'memory'
+    
+    def store(self, path, size=None):
+        ''' Convert the Dataset to HDF5 storage if it's using in-memory'''
+        if self.data_type == 'hdf5':
+            print('DataSet already saved to HDF5 file at {}'.format(self.source))
+            return
+        # Do the conversion
+        self.source = path
+        self.data_type = 'hdf5'
+        return self
+        
+    @property
+    def classes(self):
+        ''' A list of all the classes, in the same order as the labels in the `labels` array. 
+            Classes and labels are always in alphabetical order by class name.'''
+        return self.data.classes
+    
+    @property
+    def images(self):
+        '''Returns a an array-like object (either in-memory or and HDF5 object) of all the images.'''
+        return self.data.images
+
+    @property
+    def labels(self):
+        '''Returns an array-like object (either in-memory or and HDF5 object) of all the labels.'''
+        return self.data.labels
+
+    @property
+    def train(self):
+        self.data = self.data.train
+        return self
+
+    @property
+    def validate(self):
+        self.data = self.data.validate
+        return self
+
+    @property
+    def test(self):
+        self.data = self.data.test
+        return self
+
+
+class Release():
+    ''' Access to file-based Releases ''' 
+    def init(self, source):
+        self.source = source
+        images = os.path.join(self.source, 'images')
+        labels = os.path.join(self.source, 'labels')
+        meta = os.path.join(self.source, 'meta.json')
+        bounds = os.path.join(self.source, 'bounds.json')
+        if not (os.path.exists(images) or os.path.exists(labels) or os.path.exists(meta)):
+            raise ValueError('{} is not a valid release'.format(self.source))
+        with open(meta, 'r') as meta_file:
+            self.meta = json.load(meta_file)
+        try: 
+            with open(bounds, 'r') as bounds_file:
+                self.bounds = json.load(bounds_file)
+                self.__geo_interface__ = self.bounds
+        except:
+            # the release stores ungeoreferenced imagery
+            self.bounds = None
+
+    def store(self, path, size):
+        ''' Stores the Release as an hdf5 Dataset '''
+        ds = DataSet(self, size=size)
+        return ds.store(path)
