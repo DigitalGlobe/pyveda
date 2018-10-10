@@ -5,6 +5,8 @@ import uuid
 import tempfile
 import shutil
 import h5py
+import tables
+import numpy as np
 
 from shapely.geometry import box
 

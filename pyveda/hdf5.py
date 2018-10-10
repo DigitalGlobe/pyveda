@@ -191,23 +191,21 @@ class ImageTrainer(object):
     """
     def __init__(self, fname=None, klass_map=None,  framework=None,
                  title="Unknown", image_shape=(3, 256, 256), image_dtype=np.float32,
-                 label_dtype=None, mltype="classification", append=True):
+                 label_dtype=None, mltype="classification", overwrite=False):
 
         if fname is None:
             fname = mktempfilename(prefix="veda", suffix='h5')
 
         self._framework = framework
         self._fw_loader = lambda x: x
-        self._image_klass = ImageArray
-        self._label_klass = mltype_map[mltype]
         self.image_shape = image_shape
         self.klass_map = klass_map
 
         if os.path.exists(fname):
-            if not append:
+            if overwrite:
                 os.remove(fname)
             else:
-                self._fileh = tables.open_file(fname, mode="a")
+                self._load_existing()
                 return
 
         self._fileh = tables.open_file(fname, mode="a", title=title)
@@ -216,18 +214,34 @@ class ImageTrainer(object):
 
         classifications = dict([(klass, tables.UInt8Col(pos=idx + 1)) for idx, klass in klass_map.items()])
 
-        groups = {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
-        for name, group in groups.items():
-            self._fileh.create_table(group, "hit_table", classifications,
-                                    "Chip Index + Klass Hit Record", tables.Filters(0))
-            self._image_klass.create_array(self, group, image_dtype)
-            self._label_klass.create_array(self, group, label_dtype)
+        self._create_tables(classifications, filters=tables.Filters(0))
+        self._create_arrays(ImageArray, image_dtype)
+        self._create_arrays(mltype_map[mltype])
+
+    def _configure_new(self, *args, **kwargs):
+        pass
 
     def _image_array_factory(self, *args, **kwargs):
         return self._image_klass(*args, **kwargs)
 
     def _label_array_factory(self, *args, **kwargs):
         return self._label_klass(*args, **kwargs)
+
+    def _create_arrays(self, data_klass, data_dtype=None):
+        for name, group in self._groups.items():
+            data_klass.create_array(self, group, data_dtype)
+
+    def _create_tables(self, classifications, filters=tables.Filters(0)):
+        for name, group in self._groups.items():
+            self._fileh.create_table(group, "hit_table", classifications,
+                                     "Label Hit Record", filters)
+
+    def _build_label_tables(self, rebuild=True):
+        pass
+
+    @property
+    def _groups(self):
+        return {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
 
     @property
     def framework(self):
