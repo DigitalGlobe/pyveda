@@ -77,8 +77,8 @@ class DataPoint(object):
         self.ml_type = kwargs.get('mlType')
         self._y = None
 
-        if self.ml_type is not None and self.ml_type == 'segmentation':
-            self.data['label'] = vec_to_raster(self.data['label'], self.shape)
+        #if self.ml_type is not None and self.ml_type == 'segmentation':
+        #    self.data['label'] = vec_to_raster(self.data['label'], self.shape)
 
 
     @property
@@ -122,8 +122,6 @@ class DataPoint(object):
         if _type is not None:
             if _type == 'classification':
                 return [int(self.label[key]) for key in list(self.label.keys())]
-            elif _type == 'segementation':
-                return vec_to_raster(self.label, self.shape)
             else:
                 return self.label
         else:
@@ -282,7 +280,8 @@ class VedaCollection(BaseSet):
             "public": kwargs.get("public", False),
             "partition": kwargs.get("partition", [100,0,0]),
             "cache_type": kwargs.get("cache_type", "fetch"),
-            "classes": kwargs.get("classes", [])
+            "classes": kwargs.get("classes", []),
+            "rda_templates": kwargs.get("rda_templates", [])
         }
 
         for k,v in self.meta.items():
