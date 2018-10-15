@@ -16,7 +16,7 @@ from tempfile import NamedTemporaryFile
 import numpy as np
 from dask import delayed
 import dask.array as da
-from gbdxtools import Interface
+from gbdxtools import Interface, CatalogImage
 from .loaders import load_image
 from .utils import transforms
 from rasterio.features import rasterize
@@ -29,6 +29,7 @@ import dask
 import threading
 
 from .hdf5 import ImageTrainer
+from .rda import MLImage
 from pyveda.utils import NamedTemporaryHDF5Generator
 from pyveda.fetch.compat import write_fetch
 
@@ -48,6 +49,7 @@ else:
     conn.headers.update(headers)
 
 valid_mltypes = ['classification', 'object_detection', 'segmentation']
+valid_matches = ['INSIDE', 'INTERSECT', 'ALL']
 
 def search(params={}):
     r = conn.post('{}/{}'.format(HOST, "search"), json=params)
@@ -168,26 +170,30 @@ class BaseSet(object):
                       for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
         return points
 
-    def save(self, auto_cache=True):
+    def _load(self, geojson, image, **kwargs):
         """
-          Saves a dataset in the DB. Contains logic for determining whether
-          the data should be posted as a single h5 cache or a series of smalled chunked files.
-          Upon save completing sets the _index property so that new datapoints are indexed correctly.
+            Loads a geojson file into the VC
         """
         meta = self.meta
         meta.update({
             "shape": list(self.shape),
-            "dtype": str(self.image.dtype),
             "sensors": self.sensors,
-            "graph": self.image.rda_id,
-            "node": self.image.rda.graph()['nodes'][0]['id']
+            "dtype": self.dtype
         })
-
-        with open(self.geojson, 'r') as fh:
+        options = {
+            'match':  kwargs.get('match', 'INTERSECTS'),
+            'default_label': kwargs.get('default_label', None),
+            'label_field':  kwargs.get('label_field', None),
+            'cache_type':  kwargs.get('cache_type', 'stream'),
+            'graph': image.rda_id,
+            'node': image.rda.graph()['nodes'][0]['id']
+        }
+        with open(geojson, 'r') as fh:
             mfile = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
             body = {
                 'metadata': (None, json.dumps(meta), 'application/json'),
-                'file': (os.path.basename(self.geojson), mfile, 'application/text')
+                'file': (os.path.basename(geojson), mfile, 'application/text'),
+                'options': (None, json.dumps(options), 'application/json')
             }
             doc = self.conn.post(self._data_url, files=body).json()
             self.id = doc["data"]["id"]
@@ -200,7 +206,6 @@ class BaseSet(object):
                     href.replace("host.docker.internal", "localhost")
                     links[key]['href'] = href
                 self.links = links
-
         return doc
 
     def create(self, data):
@@ -223,12 +228,6 @@ class BaseSet(object):
         r.raise_for_status()
         return r.json()
 
-    def __del__(self):
-        try:
-            self._temp_gen.remove()
-        except Exception:
-            pass
-
 
 class VedaCollection(BaseSet):
     """
@@ -238,64 +237,95 @@ class VedaCollection(BaseSet):
           name (str): a name for the TrainingSet
       Params:
           mlType (str): the type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'
-          bbox (list): a list of geographic coordinate bounds for the data ([minx, miny, maxx, maxy])
-          classes (list): a list of names of the classes in the training data (ie buildings, cars, planes, trees)
-          source (str): Defaults to 'rda'. Currently anything but RDA imagery is treated as MapsAPI data.
-          shape (tuple): the shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
-          dtype (str): the dtype of the imergy (ie int8, uint16, float32, etc)
+          tilesize (tuple): the shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
+          partition (str):internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
     """
-    def __init__(self, geojson, image, name, shape=None, mlType="classification", bbox=None, **kwargs):
+    def __init__(self, name, mlType="classification", tilesize=[256,256], partition=[100,0,0], **kwargs):
         assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
         super(VedaCollection, self).__init__()
-
-        self.image = image
-        self.geojson = None
-        self.bbox = bbox
-
-        if geojson is not None:
-            with NamedTemporaryFile(prefix="veda", suffix="json", delete=False) as temp:
-                with open(temp.name, 'w') as fh:
-                    geojson = json.loads(json.dumps(geojson)) # seriously wtf
-                    fh.write(json.dumps(geojson))
-                self.geojson = temp.name
-
-        self.id = kwargs.get('id', None)
-        self.links = kwargs.get('links')
-        if shape is None:
-            if self.image is not None:
-                self.shape = self.image.chunksize
-            else:
-                self.shape = (8,256,256)
-        else:
-            self.shape = tuple(map(int, shape))
+        #default to 0 bands until the first load
+        self.shape = [0] + list(tilesize)
+        self.partition = partition
         self.dtype = kwargs.get('dtype', None)
         self.percent_cached = kwargs.get('percent_cached', 0)
-        self.sensors = kwargs.get('sensors', [image.__class__.__name__])
+        self.sensors = kwargs.get('sensors', [])
         self._count = kwargs.get('count', 0)
         self._datapoints = None
+        self.id = kwargs.get('id', None)
+        self.links = kwargs.get('links')
 
         self.meta = {
             "name": name,
             "mlType": mlType,
             "public": kwargs.get("public", False),
             "partition": kwargs.get("partition", [100,0,0]),
-            "cache_type": kwargs.get("cache_type", "fetch"),
-            "classes": kwargs.get("classes", []),
-            "rda_templates": kwargs.get("rda_templates", [])
+            "rda_templates": kwargs.get("rda_templates", []),
+            "classes": kwargs.get("classes", [])
         }
 
         for k,v in self.meta.items():
             setattr(self, k, v)
 
+    def load(self, geojson, image, match="INTERSECT", default_label=None, label_field = None, cache_type="stream"):
+        '''Loads a geojson file or object into the VedaCollection
+        ARGS
+
+        `geojson`: geojson feature collection, in the following formats:
+
+        - a path to a geojson file
+        - a geojson feature collection in Python dictionary format
+        - TODO: a Python list of either of the above
+        - TODO: a generator function that emits feature objects in Python dictionary format
+
+        `image`: Any gbdxtools image object. Veda includes the MLImage type configured with the most commonly used options
+                 and only requires a Catalog ID.
+
+        `match`: Generates a tile based on the topological relationship of the feature. Can be:
+
+        - `INSIDE`: the feature must be contained inside the tile bounds to generate a tile.
+        - `INTERSECTS`: the feature only needs to intersect the tile. The feature will be cropped to the tile boundary (default).
+        - `ALL`: Generate all possible tiles that cover the bounding box of the input features, whether or not they contain or intersect features. 
+
+        `default_label`: default label value to apply to all features when  `label` in the geojson `Properties` is missing.
+
+        `label_field`: Field in the geojson `Properties` to use for the label instead of `label`.
+        
+        `cache_type`: The type of caching to use on the server. Valid types are `stream` and `fetch`.'''
+
+        
+        assert match.upper() in valid_matches, "match {} not supported. Must be one of {}".format(match, valid_matches)
+        # set up the geojson file for upload
+        if type(geojson) == str: 
+            if not os.path.exists(geojson):
+                raise ValueError('{} does not exist'.format(geojson))
+        else:
+            with NamedTemporaryFile(prefix="veda", suffix="json", delete=False) as temp:
+                with open(temp.name, 'w') as fh:
+                    geojson = json.loads(json.dumps(geojson)) # seriously wtf
+                    fh.write(json.dumps(geojson))
+                geojson = temp.name
+        if not self.dtype:
+            self.dtype = image.dtype.name
+        else:
+            if self.dtype != image.dtype.name:
+                raise ValueError('Image dtype must be {} to match previous images'.format(self.dtype))
+        if self.shape[0] == 0:
+            self.shape[0] = image.shape[0]
+        else:
+            if self.shape[0] != image.shape[0]:
+                raise ValueError('Image band size must be {} to match previous images'.format(self.shape[0]))
+        self._update_sensors(image)
+        self._load(geojson, image, match=match, default_label=default_label, label_field=label_field, cache_type=cache_type)
+
     @classmethod
     def from_doc(cls, doc):
-        """ Helper method that converts a db doc to a TrainingSet """
+        """ Helper method that converts a db doc to a VedaCollection"""
         doc['data']['links'] = doc['links']
-        return cls(None, None, **doc['data'])
+        return cls(**doc['data'])
 
     @classmethod
     def from_id(cls, _id):
-        """ Helper method that fetches an id into a TrainingSet """
+        """ Helper method that fetches an id into a VedaCollection """
         url = "{}/data/{}".format(HOST, _id)
         doc = conn.get(url).json()
         return cls.from_doc(doc)
@@ -303,6 +333,17 @@ class VedaCollection(BaseSet):
     @property
     def count(self):
         return self._count
+    
+    @property
+    def status(self):
+        # update percent_cached?
+        if self.percent_cached == None:
+            return {'status':'EMPTY'}
+        elif self.percent_cached == 100:
+            return {'status':'COMPLETE'}
+        else:
+            return {'status':'BUILDING'}
+
 
     @property
     def type(self):
@@ -314,22 +355,22 @@ class VedaCollection(BaseSet):
         self.sensors = list(set(self.sensors))
 
     def publish(self):
-        """ Make a saved TrainingSet publicly searchable and consumable """
+        """ Make a saved VedaCollection publicly searchable and consumable """
         assert self.id is not None, 'You can only publish a saved TrainingSet. Call the save method first.'
         return self._publish()
 
     def unpublish(self):
-        """ Unpublish a saved TraininSet (make it private) """
+        """ Unpublish a saved VedaCollection (make it private) """
         assert self.id is not None, 'You can only publish a saved TrainingSet. Call the save method first.'
         return self._unpublish()
 
     def release(self, version):
-        """ Create a released version of this training set. Publishes the entire set to s3."""
+        """ Create a released version of this VedaCollection. Publishes the entire set to s3."""
         assert self.id is not None, 'You can only release a saved TrainingSet. Call the save method first.'
         return self._release(version)
 
     def __getitem__(self, slc):
-        """ Enable slicing of the TrainingSet by index/slice """
+        """ Enable slicing of the VedaCollection by index/slice """
         if slc.__class__.__name__ == 'int':
             start = slc
             limit = 1
