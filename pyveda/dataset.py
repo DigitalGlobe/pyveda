@@ -1,6 +1,7 @@
 import os
 import json
-from training import VedaCollection
+from .training import VedaCollection
+from .release import Release
 
 class DataSet():
 
@@ -11,18 +12,32 @@ class DataSet():
         if type(source) == str:
             if os.path.splitext(source)[1] == 'hd5':
                 self.data_type = 'hdf5'
-                #load
+                self._load_hdf5()
             else:
-                from release import Release
                 release = Release(source)
                 self.source = release
         if type(self.source) == Release:
-            self.data_type = 'memory'
-            #load
+            self._load_release()
         elif type(self.source) == VedaCollection:
-            self.data_type = 'memory'
-            #load
-    
+            self._load_vc()
+
+    def _load_release(self):
+        self.data_type = 'memory'
+        self.classes = self.source.classes
+        #load
+
+    def _load_hdf5(self):
+        #hydrate the Imagetrainer?
+        pass
+
+
+    def _load_vc(self):
+        self.data_type = 'memory'
+        self.classes = self.source.classes
+        if not self.size:
+            self.size = self.source.count
+        self.data = self.source.batch(self.size)    
+
     def store(self, path, size=None):
         ''' Convert the Dataset to HDF5 storage if it's using in-memory'''
         if self.data_type == 'hdf5':
@@ -32,12 +47,6 @@ class DataSet():
         self.source = path
         self.data_type = 'hdf5'
         return self
-        
-    @property
-    def classes(self):
-        ''' A list of all the classes, in the same order as the labels in the `labels` array. 
-            Classes and labels are always in alphabetical order by class name.'''
-        return self.data.classes
     
     @property
     def images(self):

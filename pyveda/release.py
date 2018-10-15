@@ -3,14 +3,14 @@ import json
 
 class Release():
     ''' Access to file-based Releases ''' 
-    def init(self, source):
+    def __init__(self, source):
         self.source = source
         images = os.path.join(self.source, 'images')
         labels = os.path.join(self.source, 'labels')
         meta = os.path.join(self.source, 'meta.json')
         bounds = os.path.join(self.source, 'bounds.json')
         if not (os.path.exists(images) or os.path.exists(labels) or os.path.exists(meta)):
-            raise ValueError('{} is not a valid release'.format(self.source))
+            raise ValueError('Directory "{}" is not a valid release'.format(self.source))
         with open(meta, 'r') as meta_file:
             self.meta = json.load(meta_file)
         try: 
@@ -26,3 +26,7 @@ class Release():
         ''' Stores the Release as an hdf5 Dataset '''
         ds = DataSet(self, size=size)
         return ds.store(path)
+    
+    @property
+    def classes(self):
+        return self.meta.classes
