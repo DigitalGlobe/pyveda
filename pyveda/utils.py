@@ -5,6 +5,8 @@ import uuid
 import tempfile
 import shutil
 import h5py
+import tables
+import numpy as np
 
 from shapely.geometry import box
 
@@ -121,3 +123,10 @@ def maps_api(dsk):
 
 def transforms(source):
     return rda if source == 'rda' else maps_api
+
+def _atom_from_dtype(_type):
+    if isinstance(_type, np.dtype):
+        return tables.Atom.from_dtype(_type)
+    return tables.Atom.from_dtype(np.dtype(_type))
+
+
