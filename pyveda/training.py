@@ -367,6 +367,20 @@ class VedaCollection(BaseSet):
         assert self.id is not None, 'You can only release a saved TrainingSet. Call the save method first.'
         return self._release(version)
 
+    def to_dataset(self, size, fname, partition=[70, 20, 10], **kwargs):
+        """ Build an hdf5 database from this collection and return it as a DataSet instance """
+        namepath, ext = os.path.splitext(fname)
+        if ext != ".h5":
+            fname = namepath + ".h5"
+
+        points = self.fetch_points(size)
+        random.shuffle(points) # in-place shuffle
+        ds = ImageTrainer(fname, self.mtype, self.meta['classes'], self.shape, image_dtype=self.dtype, **kwargs)
+
+        write_fetch(points, ds, partition) # does the work
+        ds.flush()
+        return ds
+
     def __getitem__(self, slc):
         """ Enable slicing of the VedaCollection by index/slice """
         if slc.__class__.__name__ == 'int':
