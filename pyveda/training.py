@@ -344,7 +344,7 @@ class VedaCollection(BaseSet):
 
 
     @property
-    def type(self):
+    def mtype(self):
         return self.meta['mlType']
 
     def _update_sensors(self, image):
