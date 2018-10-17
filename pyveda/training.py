@@ -284,25 +284,23 @@ class VedaCollection(BaseSet):
 
         - `INSIDE`: the feature must be contained inside the tile bounds to generate a tile.
         - `INTERSECTS`: the feature only needs to intersect the tile. The feature will be cropped to the tile boundary (default).
-        - `ALL`: Generate all possible tiles that cover the bounding box of the input features, whether or not they contain or intersect features. 
+        - `ALL`: Generate all possible tiles that cover the bounding box of the input features, whether or not they contain or intersect features.
 
         `default_label`: default label value to apply to all features when  `label` in the geojson `Properties` is missing.
 
         `label_field`: Field in the geojson `Properties` to use for the label instead of `label`.
-        
+
         `cache_type`: The type of caching to use on the server. Valid types are `stream` and `fetch`.'''
 
-        
+
         assert match.upper() in valid_matches, "match {} not supported. Must be one of {}".format(match, valid_matches)
         # set up the geojson file for upload
-        if type(geojson) == str: 
+        if type(geojson) == str:
             if not os.path.exists(geojson):
                 raise ValueError('{} does not exist'.format(geojson))
         else:
-            with NamedTemporaryFile(prefix="veda", suffix="json", delete=False) as temp:
-                with open(temp.name, 'w') as fh:
-                    geojson = json.loads(json.dumps(geojson)) # seriously wtf
-                    fh.write(json.dumps(geojson))
+            with NamedTemporaryFile(mode="w+t", prefix="veda", suffix="json", delete=False) as temp:
+                    temp.file.write(json.dumps(geojson))
                 geojson = temp.name
         if not self.dtype:
             self.dtype = image.dtype.name
@@ -333,7 +331,7 @@ class VedaCollection(BaseSet):
     @property
     def count(self):
         return self._count
-    
+
     @property
     def status(self):
         # update percent_cached?
