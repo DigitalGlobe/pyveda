@@ -12,14 +12,15 @@ except:
     from urllib import urlencode
 import requests
 from requests_futures.sessions import FuturesSession
+from tempfile import NamedTemporaryFile
 import numpy as np
 from dask import delayed
 import dask.array as da
-from gbdxtools import Interface
+from gbdxtools import Interface, CatalogImage
 from .loaders import load_image
 from .utils import transforms
 from rasterio.features import rasterize
-from shapely.geometry import shape, mapping
+from shapely.geometry import shape as shp, mapping
 from shapely import ops
 
 from functools import partial
@@ -28,6 +29,7 @@ import dask
 import threading
 
 from .hdf5 import ImageTrainer
+from .rda import MLImage
 from pyveda.utils import NamedTemporaryHDF5Generator
 from pyveda.fetch.compat import write_fetch
 
@@ -47,21 +49,22 @@ else:
     conn.headers.update(headers)
 
 valid_mltypes = ['classification', 'object_detection', 'segmentation']
+valid_matches = ['INSIDE', 'INTERSECT', 'ALL']
 
 def search(params={}):
     r = conn.post('{}/{}'.format(HOST, "search"), json=params)
-    try:
-        results = r.json()
-        return [TrainingSet.from_doc(s) for s in r.json()]
-    except Exception as err:
-        print(err)
-        return []
+    #try:
+    results = r.json()
+    return [VedaCollection.from_doc(s) for s in r.json()]
+    #except Exception as err:
+    #    print(err)
+    #    return []
 
 def vec_to_raster(vectors, shape):
     try:
         arr = rasterize(((g, 1) for g in vectors), out_shape=shape[1:])
     except Exception as err:
-#        print(err)
+        #print(err)
         arr = np.zeros(shape[1:])
     return np.array(arr)
 
@@ -70,13 +73,14 @@ class DataPoint(object):
     def __init__(self, item, shape=(3,256,256), dtype="uint8", **kwargs):
         self.conn = conn
         self.data = item["data"]
-        self.data['y'] = np.array(self.data['y'])
         self.links = item["links"]
         self.shape = tuple(map(int, shape))
         self.dtype = dtype
+        self.ml_type = kwargs.get('mlType')
+        self._y = None
 
-        if 'mlType' in kwargs and kwargs['mlType'] == 'segmentation':
-            self.data['y'] = vec_to_raster(self.data['y'], self.shape)
+        #if self.ml_type is not None and self.ml_type == 'segmentation':
+        #    self.data['label'] = vec_to_raster(self.data['label'], self.shape)
 
 
     @property
@@ -84,8 +88,14 @@ class DataPoint(object):
         return self.data["id"]
 
     @property
+    def label(self):
+        return self.data['label']
+
+    @property
     def y(self):
-        return np.array(self.data["y"])
+        if self._y is None:
+            self._y = self._map_labels()
+        return self._y
 
     @property
     def image(self):
@@ -108,6 +118,17 @@ class DataPoint(object):
         """ Removes the datapoint from the set"""
         return self.conn.delete(self.links["delete"]["href"]).json()
 
+    def _map_labels(self):
+        """ Convert labels to data """
+        _type = self.ml_type
+        if _type is not None:
+            if _type == 'classification':
+                return [int(self.label[key]) for key in list(self.label.keys())]
+            else:
+                return self.label
+        else:
+            return None
+
     def __repr__(self):
         return str(self.data)
 
@@ -120,17 +141,7 @@ class BaseSet(object):
         self._cache_url = "{}/data/{}/cache"
         self._datapoint_url = "{}/datapoints".format(HOST)
         self._chunk_size = int(os.environ.get('VEDA_CHUNK_SIZE', 5000))
-        self._temp_gen = NamedTemporaryHDF5Generator()
         self.conn = conn
-
-    @property
-    def _tempGen(self):
-        if self._temp_gen is not None:
-            if os.path.exists(self._temp_gen.dirpath):
-                return self._temp_gen
-        self._temp_gen = NamedTemporaryHDF5Generator()
-        return self._temp_gen
-
 
     def _querystring(self, limit, **kwargs):
         """ Builds a qury string from kwargs for fetching points """
@@ -159,113 +170,43 @@ class BaseSet(object):
                       for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
         return points
 
-    def save(self, auto_cache=True):
+    def _load(self, geojson, image, **kwargs):
         """
-          Saves a dataset in the DB. Contains logic for determining whether
-          the data should be posted as a single h5 cache or a series of smalled chunked files.
-          Upon save completing sets the _index property so that new datapoints are indexed correctly.
+            Loads a geojson file into the VC
         """
         meta = self.meta
         meta.update({
-            "count": dict(self._count),
             "shape": list(self.shape),
-            "dtype": str(self.dtype),
-            "sensors": self.sensors
+            "sensors": self.sensors,
+            "dtype": self.dtype
         })
+        options = {
+            'match':  kwargs.get('match', 'INTERSECTS'),
+            'default_label': kwargs.get('default_label', None),
+            'label_field':  kwargs.get('label_field', None),
+            'cache_type':  kwargs.get('cache_type', 'stream'),
+            'graph': image.rda_id,
+            'node': image.rda.graph()['nodes'][0]['id']
+        }
+        with open(geojson, 'r') as fh:
+            mfile = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
+            body = {
+                'metadata': (None, json.dumps(meta), 'application/json'),
+                'file': (os.path.basename(geojson), mfile, 'application/text'),
+                'options': (None, json.dumps(options), 'application/json')
+            }
+            doc = self.conn.post(self._data_url, files=body).json()
+            self.id = doc["data"]["id"]
+            self.links = doc["links"]
 
-        total = sum(map(int, list(meta['count'].values())))
-        if total <= self._chunk_size:
-            self.cache.close()
-            doc = self._create_set(meta, h5=self.fname)
-        else:
-            doc = self._create_set(meta)
-            self._send_chunks(doc)
-
-        self.id = doc["data"]["id"]
-        self.links = doc["links"]
-        if HOST == "http://localhost:3002":
-            links = self.links.copy()
-            for key in links:
-                href = links[key]['href']
-                href.replace("host.docker.internal", "localhost")
-                links[key]['href'] = href
-            self.links = links
-
-        self._temp_gen.remove()
-        self._cache = None
-        self._index = total
-
-        if auto_cache:
-            self.conn.post(self._cache_url.format(HOST, self.id), json={})
-
+            if HOST == "http://localhost:3002":
+                links = self.links.copy()
+                for key in links:
+                    href = links[key]['href']
+                    href.replace("host.docker.internal", "localhost")
+                    links[key]['href'] = href
+                self.links = links
         return doc
-
-    def _create_set(self, meta, h5=None):
-        """
-          Creates the set in the API/DB
-        """
-        if h5 is None:
-            # Big dataset, create a doc, then post in chunks
-            if self.id is not None:
-                doc = self.conn.get(self.links['self']['href'])
-            else:
-                doc = self.conn.post(self._data_url, json={"metadata": meta})
-        else:
-            # Small file send all the data
-            with open(h5, 'rb') as f:
-                mfile = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-                files = {
-                    'metadata': (None, json.dumps(meta), 'application/json'),
-                    'file': (os.path.basename(h5), mfile, 'application/octet-stream')
-                }
-                if self.links is not None:
-                    url = self.links['self']['href']
-                    meta.update({"update": True})
-                    files["metadata"] = (None, json.dumps(meta), 'application/json')
-                else:
-                    url = self._data_url
-                doc = self.conn.post(url, files=files)
-                mfile.close()
-
-        doc.raise_for_status()
-        return doc.json()
-
-    def _send_chunks(self, doc):
-        """ Chunk up the HDF5 cache into chunks <= chunk_size and post with doc id """
-        session = FuturesSession(session=conn)
-        groups = list(self.cache.keys())
-        for group in groups:
-            count = float(self._count[group])
-            nchunks = math.ceil(count / float(self._chunk_size))
-            idx = self._index
-            with NamedTemporaryHDF5Generator() as h5gen:
-                for chunk in range(nchunks):
-                    temp, fname = h5gen.mktemp()
-                    grp = temp.create_group(group)
-                    xgrp = grp.create_group("X")
-                    ygrp = grp.create_group("Y")
-                    for i in range(self._chunk_size):
-                        try:
-                            self.cache.copy('{}/X/{}'.format(group, str(idx)), xgrp)
-                            self.cache.copy('{}/Y/{}'.format(group, str(idx)), ygrp)
-                        except Exception as err:
-                            pass
-                        idx += 1
-
-                    temp.close()
-                    with open(fname, 'rb') as f:
-                        files = {
-                            'file': (os.path.basename(fname), f, 'application/octet-stream')
-                        }
-                        if self.id is not None:
-                            meta = {
-                                "count": dict(self._count),
-                                "sensors": self.sensors,
-                                "update": True
-                            }
-                            files['metadata'] = (None, json.dumps(meta), 'application/json')
-                        p = session.post(doc['links']['self']['href'], files=files)
-                        p.result() # wait for it...
 
     def create(self, data):
         return self.conn.post(self.links["create"]["href"], json=data).json()
@@ -287,14 +228,8 @@ class BaseSet(object):
         r.raise_for_status()
         return r.json()
 
-    def __del__(self):
-        try:
-            self._temp_gen.remove()
-        except Exception:
-            pass
 
-
-class TrainingSet(BaseSet):
+class VedaCollection(BaseSet):
     """
       Creates, persists, and provided access to ML training data via the Sandman Api
 
@@ -302,266 +237,156 @@ class TrainingSet(BaseSet):
           name (str): a name for the TrainingSet
       Params:
           mlType (str): the type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'
-          bbox (list): a list of geographic coordinate bounds for the data ([minx, miny, maxx, maxy])
-          classes (list): a list of names of the classes in the training data (ie buildings, cars, planes, trees)
-          source (str): Defaults to 'rda'. Currently anything but RDA imagery is treated as MapsAPI data.
-          shape (tuple): the shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
-          dtype (str): the dtype of the imergy (ie int8, uint16, float32, etc)
+          tilesize (tuple): the shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
+          partition (str):internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
     """
-    def __init__(self, name, mlType="classification", bbox=[], classes=[], source="rda", **kwargs):
+    def __init__(self, name, mlType="classification", tilesize=[256,256], partition=[100,0,0], **kwargs):
         assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
-        super(TrainingSet, self).__init__()
-        self.source = source
-        self.id = kwargs.get('id', None)
-        self.links = kwargs.get('links')
-        self.shape = kwargs.get('shape', None)
-        if self.shape is not None:
-            self.shape = tuple(map(int, self.shape))
+        super(VedaCollection, self).__init__()
+        #default to 0 bands until the first load
+        self.shape = [0] + list(tilesize)
+        self.partition = partition
         self.dtype = kwargs.get('dtype', None)
         self.percent_cached = kwargs.get('percent_cached', 0)
         self.sensors = kwargs.get('sensors', [])
-        self._count = kwargs.get('count', defaultdict(int))
-        self._cache = None
+        self._count = kwargs.get('count', 0)
         self._datapoints = None
-        try:
-            self._index = sum(map(int, list(self._count.values())))
-        except:
-            self._index = 0
-        self._index = sum(map(int, list(self._count.values())))
-        self._temp_gen = NamedTemporaryHDF5Generator()
+        self.id = kwargs.get('id', None)
+        self.links = kwargs.get('links')
 
         self.meta = {
-            "source": source,
             "name": name,
-            "bbox": bbox,
-            "classes": classes,
-            "nclasses": len(classes),
             "mlType": mlType,
-            "public": kwargs.get("public", False)
+            "public": kwargs.get("public", False),
+            "partition": kwargs.get("partition", [100,0,0]),
+            "rda_templates": kwargs.get("rda_templates", []),
+            "classes": kwargs.get("classes", [])
         }
 
         for k,v in self.meta.items():
             setattr(self, k, v)
 
+    def load(self, geojson, image, match="INTERSECT", default_label=None, label_field = None, cache_type="stream"):
+        '''Loads a geojson file or object into the VedaCollection
+        ARGS
+
+        `geojson`: geojson feature collection, in the following formats:
+
+        - a path to a geojson file
+        - a geojson feature collection in Python dictionary format
+        - TODO: a Python list of either of the above
+        - TODO: a generator function that emits feature objects in Python dictionary format
+
+        `image`: Any gbdxtools image object. Veda includes the MLImage type configured with the most commonly used options
+                 and only requires a Catalog ID.
+
+        `match`: Generates a tile based on the topological relationship of the feature. Can be:
+
+        - `INSIDE`: the feature must be contained inside the tile bounds to generate a tile.
+        - `INTERSECTS`: the feature only needs to intersect the tile. The feature will be cropped to the tile boundary (default).
+        - `ALL`: Generate all possible tiles that cover the bounding box of the input features, whether or not they contain or intersect features.
+
+        `default_label`: default label value to apply to all features when  `label` in the geojson `Properties` is missing.
+
+        `label_field`: Field in the geojson `Properties` to use for the label instead of `label`.
+
+        `cache_type`: The type of caching to use on the server. Valid types are `stream` and `fetch`.'''
+
+
+        assert match.upper() in valid_matches, "match {} not supported. Must be one of {}".format(match, valid_matches)
+        # set up the geojson file for upload
+        if type(geojson) == str:
+            if not os.path.exists(geojson):
+                raise ValueError('{} does not exist'.format(geojson))
+        else:
+            with NamedTemporaryFile(mode="w+t", prefix="veda", suffix="json", delete=False) as temp:
+                    temp.file.write(json.dumps(geojson))
+                geojson = temp.name
+        if not self.dtype:
+            self.dtype = image.dtype.name
+        else:
+            if self.dtype != image.dtype.name:
+                raise ValueError('Image dtype must be {} to match previous images'.format(self.dtype))
+        if self.shape[0] == 0:
+            self.shape[0] = image.shape[0]
+        else:
+            if self.shape[0] != image.shape[0]:
+                raise ValueError('Image band size must be {} to match previous images'.format(self.shape[0]))
+        self._update_sensors(image)
+        self._load(geojson, image, match=match, default_label=default_label, label_field=label_field, cache_type=cache_type)
+
     @classmethod
     def from_doc(cls, doc):
-        """ Helper method that converts a db doc to a TrainingSet """
+        """ Helper method that converts a db doc to a VedaCollection"""
         doc['data']['links'] = doc['links']
         return cls(**doc['data'])
 
     @classmethod
     def from_id(cls, _id):
-        """ Helper method that fetches an id into a TrainingSet """
+        """ Helper method that fetches an id into a VedaCollection """
         url = "{}/data/{}".format(HOST, _id)
         doc = conn.get(url).json()
         return cls.from_doc(doc)
-
-    @property
-    def cache(self):
-        """ Looks for an existing cache file and creates it if doesnt exist """
-        if self._cache is None:
-            self._cache, self.fname = self._tempGen.mktemp(delete=False)
-        return self._cache
 
     @property
     def count(self):
         return self._count
 
     @property
-    def type(self):
+    def status(self):
+        # update percent_cached?
+        if self.percent_cached == None:
+            return {'status':'EMPTY'}
+        elif self.percent_cached == 100:
+            return {'status':'COMPLETE'}
+        else:
+            return {'status':'BUILDING'}
+
+
+    @property
+    def mtype(self):
         return self.meta['mlType']
 
-    def _create_groups(self, group):
-        """ Creates a group in the h5 cache """
-        grp = self._cache.create_group(group)
-        grp.create_group("X")
-        grp.create_group("Y")
-        if group not in self._count:
-            self._count[group] = 0
-
-    def feed(self, data, group="train", verbose=False):
-        """
-          Feeds data to a cache from a list of image/label pairs
-
-          Args:
-              data (list): list of tuples: [(dask, numpy array)]
-          Params:
-              group (str): the group to store data into. Defaults to "train"
-              verbose (bool): whether or not to print logs while feeding the cache
-        """
-        if verbose:
-            print("caching {} {} records".format(len(data), group))
-
-        if group not in self.cache:
-            self._create_groups(group)
-
-        for i in range(len(data)):
-            if not i % 100 and verbose:
-                print("checkpoint", i)
-
-            dsk, labels = data[i]
-
-            if self.shape is None:
-                self.shape = dsk.shape
-                self.dtype = dsk.dtype
-
-            self._update_sensors(dsk)
-
-            if dsk.shape == self.shape:
-                X = transforms(self.source)(dsk)
-                if self.mlType == 'segmentation':
-                    labels = [json.loads(json.dumps((mapping(ops.transform(dsk.__geo_transform__.rev, shape(s)))))) for s in labels]
-                self.add_to_cache(X, labels, group=group)
-            elif verbose:
-                print('Could not add image to set, shape mismatch {} != {}'.format(dsk.shape, self.shape))
-
-    def add_to_cache(self, X, Y, group="train", idx=None):
-        """
-          Adds single image and label pair to the cache
-
-          Args:
-              X (dask): a image dask
-              Y (ndarray): an arrayof label data to add
-          Params:
-              group (str): the group to append to
-              idx (int): an index to use to in the cache (None). If defined overwrites that may exist at that index.
-        """
-        try:
-            y = [str(Y.tolist()).encode('utf8')]
-        except:
-            y = [str(Y).encode('utf8')]
-        if idx is None:
-            idx = self.count[group] + self._index
-            self.cache[group]["X"].create_dataset(str(idx), data=[x.encode('utf8') for x in X])
-            self.cache[group]["Y"].create_dataset(str(idx), data=y)
-            self._count[group] += 1
-        else:
-            del self.cache[group]["X"][str(idx)]
-            del self.cache[group]["Y"][str(idx)]
-            self.cache[group]["X"].create_dataset(str(idx), data=[x.encode('utf8') for x in X])
-            self.cache[group]["Y"].create_dataset(str(idx), data=y)
-
-    def add(self, dsk, labels, group="train"):
-        """
-          Add a image/lable pair to an existing TrainingSet
-
-          Args:
-              dsk: a gbdxtools image dask
-              labels: an array or nd-array of label data
-        """
-        assert self.id is not None, 'Can only call add on existing Sets, try calling `feed`.'
-        assert dsk.shape == self.shape, 'Mismatching shapes, cannot add {} to set with shape {}'.format(dsk.shape, self.shape)
-        self._update_sensors(dsk)
-        x = transforms(self.source)(dsk)
-        if type(labels) != list:
-            labels = labels.tolist()
-        if self.mlType == 'classification':
-            labels = [labels]
-        elif self.mlType == 'segmentation':
-            labels = [json.loads(json.dumps((mapping(ops.transform(dsk.__geo_transform__.rev, shape(s)))))) for s in labels]
-        return self.create({
-          'x': x,
-          'y': labels,
-          'group': group,
-          'dataset_id': self.id
-        })
-
-
-    def batch(self, size, group="train", to_cache=False, name=None, **kwargs):
-        """
-          Fetches a batch of randomly sampled pairs from either the set
-          Args:
-              size (int): the sample size of pairs to fetch
-          Params:
-              group (str): the group to fetch pairs from
-              to_cache (bool): fetch the data directly to a h5 file on disk
-        """
-        points = self.fetch_points(size, shuffle=True, group=group)
-        if not to_cache:
-            X = da.stack([p.image for p in points])
-            Y = [p.y for p in points]
-            return X.compute(get=threaded_get), np.array(Y)
-        else:
-            fname = "{}.h5".format(name) if name is not None else None
-            klass_map = {idx: klass_name for idx, klass_name in enumerate(self.meta['classes'])}
-            cache = ImageTrainer(klass_map=klass_map, mltype=self.mlType,
-                              image_shape=self.shape, fname=fname)
-            datagroup = getattr(cache, group)
-            write_fetch(points, datagroup, **kwargs)
-
-            cache.flush()
-            return cache
-
-    def batch_generator(self, size, group="train"):
-        """
-          Create a generator of randomly sampled pairs from the set
-          Args:
-              size (int): the sample size of pairs to fetch
-          Params:
-              group (str): the group to fetch pairs from
-              to_cache (bool): fetch the data directly to a h5 file on disk
-        """
-        points = self.fetch_points(size, shuffle=True, group=group)
-        dsk = da.stack([p.image for p in points])
-        for i, p in enumerate(points):
-            yield dsk[i].compute(), p.y
-
-    def get_one(self, idx, group="train"):
-        """
-          Gets a pair of data at a given index from either the h5 cache or API
-
-          Params:
-              idx (int): index of the pair to fetch
-              group (str): the group to fetch pairs from
-        """
-        if self.id is None:
-            X = self.cache[group]["X"][str(idx)]
-            Y = self.cache[group]["Y"][str(idx)]
-            data = {
-                "x": [x.decode('utf8') for x in X.value.tolist()],
-                "y": json.loads([y.decode('utf8').replace("'", '"') for y in Y.value.tolist()][0]),
-                "group": group
-            }
-            return data
-        else:
-            return self.fetch_index(idx, group=group)
-
-    def update_index(self, idx, data):
-        """
-          Update a pair at the given index
-
-          Args:
-              idx: the index to override
-              data: a dict of data to overwrite in the cache
-        """
-        if self.id is None:
-            self.add_to_cache(data["x"], [tuple(map(float, y)) for y in data["y"]], group=data["group"], idx=idx)
-        else:
-            pnt = self.fetch_index(idx)
-            pnt.update(data, save=True)
-
-    def _update_sensors(self, dsk):
+    def _update_sensors(self, image):
         """ Appends the sensor name to the list of already cached sensors """
-        self.sensors.append(dsk.__class__.__name__)
+        self.sensors.append(image.__class__.__name__)
         self.sensors = list(set(self.sensors))
 
     def publish(self):
-        """ Make a saved TrainingSet publicly searchable and consumable """
+        """ Make a saved VedaCollection publicly searchable and consumable """
         assert self.id is not None, 'You can only publish a saved TrainingSet. Call the save method first.'
         return self._publish()
 
     def unpublish(self):
-        """ Unpublish a saved TraininSet (make it private) """
+        """ Unpublish a saved VedaCollection (make it private) """
         assert self.id is not None, 'You can only publish a saved TrainingSet. Call the save method first.'
         return self._unpublish()
 
     def release(self, version):
-        """ Create a released version of this training set. Publishes the entire set to s3."""
+        """ Create a released version of this VedaCollection. Publishes the entire set to s3."""
         assert self.id is not None, 'You can only release a saved TrainingSet. Call the save method first.'
         return self._release(version)
 
+    def to_dataset(self, size, fname, partition=[70, 20, 10], **kwargs):
+        """ Build an hdf5 database from this collection and return it as a DataSet instance """
+        namepath, ext = os.path.splitext(fname)
+        if ext != ".h5":
+            fname = namepath + ".h5"
+
+        points = self.fetch_points(size)
+        random.shuffle(points) # in-place shuffle
+        ds = ImageTrainer(fname, self.mtype, self.meta['classes'], self.shape, image_dtype=self.dtype, **kwargs)
+
+        write_fetch(points, ds, partition) # does the work
+        ds.flush()
+        return ds
+
     def __getitem__(self, slc):
-        """ Enable slicing of the TrainingSet by index/slice """
-        start, stop = slc.start, slc.stop
-        limit = stop - start
+        """ Enable slicing of the VedaCollection by index/slice """
+        if slc.__class__.__name__ == 'int':
+            start = slc
+            limit = 1
+        else:
+            start, stop = slc.start, slc.stop
+            limit = stop - start
         return self.fetch_points(limit, offset=start)

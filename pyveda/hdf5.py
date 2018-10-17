@@ -182,7 +182,7 @@ mltype_map = {"classification": ClassificationArray,
 
 data_groups = {"TRAIN": "Data designated for model training",
                "TEST": "Data designated for model testing",
-               "VALIDATION": "Data designated for model validation"}
+               "VALIDATE": "Data designated for model validation"}
 
 
 class ImageTrainer(object):
