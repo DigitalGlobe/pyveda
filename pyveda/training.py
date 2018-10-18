@@ -53,6 +53,7 @@ valid_matches = ['INSIDE', 'INTERSECT', 'ALL']
 
 def search(params={}):
     r = conn.post('{}/{}'.format(HOST, "search"), json=params)
+    r.raise_for_status()
     #try:
     results = r.json()
     return [VedaCollection.from_doc(s) for s in r.json()]
@@ -64,7 +65,6 @@ def vec_to_raster(vectors, shape):
     try:
         arr = rasterize(((g, 1) for g in vectors), out_shape=shape[1:])
     except Exception as err:
-        #print(err)
         arr = np.zeros(shape[1:])
     return np.array(arr)
 
@@ -195,24 +195,19 @@ class BaseSet(object):
                 'file': (os.path.basename(geojson), mfile, 'application/text'),
                 'options': (None, json.dumps(options), 'application/json')
             }
-            doc = self.conn.post(self._data_url, files=body).json()
-            self.id = doc["data"]["id"]
-            self.links = doc["links"]
-
-            if HOST == "http://localhost:3002":
-                links = self.links.copy()
-                for key in links:
-                    href = links[key]['href']
-                    href.replace("host.docker.internal", "localhost")
-                    links[key]['href'] = href
-                self.links = links
+            if self.id is not None:
+                doc = self.conn.post(self.links["self"]["href"], files=body).json()
+            else:
+                doc = self.conn.post(self._data_url, files=body).json()
+                self.id = doc["data"]["id"]
+                self._set_links(doc["links"])
         return doc
 
     def create(self, data):
         return self.conn.post(self.links["create"]["href"], json=data).json()
 
     def update(self, data):
-        return self.conn.put(self.links["update"]["href"], json=data).json()
+        self.conn.put(self.links["update"]["href"], json=data).json()
 
     def remove(self):
         self.conn.delete(self.links["delete"]["href"])
@@ -227,6 +222,21 @@ class BaseSet(object):
         r = self.conn.post(self.links["release"]["href"], json={"version": version})
         r.raise_for_status()
         return r.json()
+
+    def _refresh(self):
+        r = self.conn.get(self.links["self"]["href"])
+        r.raise_for_status()
+        return VedaCollection.from_doc(**r.json())
+
+    def _set_links(self, links):
+        self.links = links
+        if HOST == "http://localhost:3002":
+            _links = self.links.copy()
+            for key in _links:
+                href = _links[key]['href']
+                href.replace("host.docker.internal", "localhost")
+                _links[key]['href'] = href
+            self.links = _links
 
 
 class VedaCollection(BaseSet):
@@ -260,7 +270,8 @@ class VedaCollection(BaseSet):
             "public": kwargs.get("public", False),
             "partition": kwargs.get("partition", [100,0,0]),
             "rda_templates": kwargs.get("rda_templates", []),
-            "classes": kwargs.get("classes", [])
+            "classes": kwargs.get("classes", []),
+            "bbox": kwargs.get("bbox", None)
         }
 
         for k,v in self.meta.items():
@@ -325,8 +336,9 @@ class VedaCollection(BaseSet):
     def from_id(cls, _id):
         """ Helper method that fetches an id into a VedaCollection """
         url = "{}/data/{}".format(HOST, _id)
-        doc = conn.get(url).json()
-        return cls.from_doc(doc)
+        r = conn.get(url)
+        r.raise_for_status()
+        return cls.from_doc(r.json())
 
     @property
     def count(self):
@@ -354,17 +366,17 @@ class VedaCollection(BaseSet):
 
     def publish(self):
         """ Make a saved VedaCollection publicly searchable and consumable """
-        assert self.id is not None, 'You can only publish a saved TrainingSet. Call the save method first.'
+        assert self.id is not None, 'You can only publish a loaded VedaCollection. Call the load method first.'
         return self._publish()
 
     def unpublish(self):
         """ Unpublish a saved VedaCollection (make it private) """
-        assert self.id is not None, 'You can only publish a saved TrainingSet. Call the save method first.'
+        assert self.id is not None, 'You can only publish a loaded VedaCollection. Call the load method first.'
         return self._unpublish()
 
     def release(self, version):
         """ Create a released version of this VedaCollection. Publishes the entire set to s3."""
-        assert self.id is not None, 'You can only release a saved TrainingSet. Call the save method first.'
+        assert self.id is not None, 'You can only release a loaded VedaCollection. Call the load method first.'
         return self._release(version)
 
     def to_dataset(self, size, fname, partition=[70, 20, 10], **kwargs):
@@ -381,6 +393,11 @@ class VedaCollection(BaseSet):
         write_fetch(points, ds.train)
         ds.flush()
         return ds
+
+    def refresh(self):
+        """ Create a released version of this VedaCollection. Publishes the entire set to s3."""
+        assert self.id is not None, 'You can only refresh a VedaCollection that has been loaed. Call the load method first.'
+        return self._refresh()
 
     def __getitem__(self, slc):
         """ Enable slicing of the VedaCollection by index/slice """
