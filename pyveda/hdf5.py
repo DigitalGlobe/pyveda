@@ -178,7 +178,7 @@ class WrappedDataNode(object):
 
 mltype_map = {"classification": ClassificationArray,
               "segmentation": SegmentationArray,
-              "detection": DetectionArray}
+              "object_detection": DetectionArray}
 
 data_groups = {"TRAIN": "Data designated for model training",
                "TEST": "Data designated for model testing",
