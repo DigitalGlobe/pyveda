@@ -170,6 +170,11 @@ class BaseSet(object):
                       for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
         return points
 
+    def fetch_ids(self, page_size=100, page_id=None):
+        """ Fetch a point for a given ID """
+        #qs = urlencode({"pageId": page_id, "pageSize": page_size})
+        return self.conn.get("{}/data/{}/ids?pageSize={}&pageId={}".format(HOST, self.id, page_size, page_id)).json()
+
     def _load(self, geojson, image, **kwargs):
         """
             Loads a geojson file into the VC
@@ -404,5 +409,5 @@ class VedaCollection(BaseSet):
             limit = 1
         else:
             start, stop = slc.start, slc.stop
-            limit = stop - start
+            limit = (stop-1) - start
         return self.fetch_points(limit, offset=start)
