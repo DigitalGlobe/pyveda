@@ -103,7 +103,7 @@ class ClassificationArray(LabelArray):
     def create_array(cls, trainer, group, dtype):
         trainer._fileh.create_earray(group, "labels",
                                      atom = tables.UInt8Atom(),
-                                     shape = (0, len(trainer.klass_map)))
+                                     shape = (0, len(trainer.klasses)))
 
 
 class SegmentationArray(LabelArray):
@@ -189,17 +189,13 @@ class ImageTrainer(object):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
-    def __init__(self, fname=None, klass_map=None,  framework=None,
-                 title="Unknown", image_shape=(3, 256, 256), image_dtype=np.float32,
-                 label_dtype=None, mltype="classification", overwrite=False):
-
-        if fname is None:
-            fname = mktempfilename(prefix="veda", suffix='h5')
+    def __init__(self, fname, mltype, klasses, image_shape, image_dtype, framework=None,
+                 title="Unknown", label_dtype=None, overwrite=False):
 
         self._framework = framework
         self._fw_loader = lambda x: x
-        self.image_shape = image_shape
-        self.klass_map = klass_map
+        self.image_shape = [s for s in image_shape if s != 0]
+        self.klasses = klasses
 
         if os.path.exists(fname):
             if overwrite:
@@ -212,7 +208,7 @@ class ImageTrainer(object):
         for name, desc in data_groups.items():
             self._fileh.create_group("/", name.lower(), desc)
 
-        classifications = dict([(klass, tables.UInt8Col(pos=idx + 1)) for idx, klass in klass_map.items()])
+        classifications = dict([(klass, tables.UInt8Col(pos=idx + 1)) for idx, klass in enumerate(klasses)])
 
         self._create_tables(classifications, filters=tables.Filters(0))
         self._create_arrays(ImageArray, image_dtype)

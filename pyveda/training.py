@@ -300,8 +300,8 @@ class VedaCollection(BaseSet):
                 raise ValueError('{} does not exist'.format(geojson))
         else:
             with NamedTemporaryFile(mode="w+t", prefix="veda", suffix="json", delete=False) as temp:
-                    temp.file.write(json.dumps(geojson))
-                geojson = temp.name
+                temp.file.write(json.dumps(geojson))
+            geojson = temp.name
         if not self.dtype:
             self.dtype = image.dtype.name
         else:
@@ -377,7 +377,8 @@ class VedaCollection(BaseSet):
         random.shuffle(points) # in-place shuffle
         ds = ImageTrainer(fname, self.mtype, self.meta['classes'], self.shape, image_dtype=self.dtype, **kwargs)
 
-        write_fetch(points, ds, partition) # does the work
+        #write_fetch(points, ds, partition) # does the work
+        write_fetch(points, ds.train)
         ds.flush()
         return ds
 
