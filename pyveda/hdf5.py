@@ -77,12 +77,12 @@ class LabelArray(WrappedDataArray):
 
     def _add_record(self, label):
         row = self._table.row
-        for klass in label.keys():
-            row[klass] = self._hit_test(label)
-            row.append()
+        for klass in label:
+            row[klass] = self._hit_test(label[klass]))
+        row.append()
         self._table.flush()
 
-    def _hit_test(self, label):
+    def _hit_test(self, record):
         raise NotImplementedError
 
     def append(self, label):
@@ -98,6 +98,10 @@ class ClassificationArray(LabelArray):
         if len(dims) == 2:
             return item # for batch append stacked arrays
         return item.reshape(1, *dims)
+
+    def _hit_test(self, record):
+        assert record in (0, 1)
+        return record
 
     @classmethod
     def create_array(cls, trainer, group, dtype):
@@ -116,6 +120,10 @@ class SegmentationArray(LabelArray):
             return item.reshape(1, *dims)
         return item
 
+    def _hit_test(self, record):
+        assert isinstance(record, list)
+        return len(record)
+
     @classmethod
     def create_array(cls, trainer, group, dtype):
         if not dtype:
@@ -125,7 +133,7 @@ class SegmentationArray(LabelArray):
                                      shape = tuple([s if idx > 0 else 0 for idx, s in enumerate(trainer.image_shape)]))
 
 
-class DetectionArray(LabelArray):
+class ObjDetectionArray(LabelArray):
     _default_dtype = np.float32
 
     def _input_fn(self, item):
@@ -136,6 +144,10 @@ class DetectionArray(LabelArray):
     def _output_fn(self, item):
         op_shape = (int(len(item) / 4), 4)
         return item.reshape(op_shape)
+
+    def _hit_test(self, record):
+        assert isinstance(record, list)
+        return len(record)
 
     @classmethod
     def create_array(cls, trainer, group, dtype):
