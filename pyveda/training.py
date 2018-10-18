@@ -152,9 +152,9 @@ class BaseSet(object):
         qs.update(**kwargs)
         return urlencode(qs)
 
-    def fetch_index(self, idx, group="train"):
+    def fetch_index(self, idx):
         """ Fetch a single data point at a given index in the dataset """
-        qs = urlencode({"limit": 1, "offset": idx, "group": group, "includeLinks": True})
+        qs = urlencode({"limit": 1, "offset": idx, "includeLinks": True})
         p = self.conn.get("{}/data/{}/datapoints?{}".format(HOST, self.id, qs)).json()[0]
         return DataPoint(p, shape=self.shape, dtype=self.dtype, mlType=self.mlType)
 
@@ -163,9 +163,9 @@ class BaseSet(object):
         return DataPoint(self.conn.get("{}/datapoints/{}".format(HOST, _id)).json(),
                   shape=self.shape, dtype=self.dtype, mlType=self.mlType)
 
-    def fetch_points(self, limit, **kwargs):
+    def fetch_points(self, limit, offset=0, **kwargs):
         """ Fetch a list of datapoints """
-        qs = self._querystring(limit, **kwargs)
+        qs = self._querystring(limit, offset=offset, **kwargs)
         points = [DataPoint(p, shape=self.shape, dtype=self.dtype, mlType=self.mlType)
                       for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
         return points
