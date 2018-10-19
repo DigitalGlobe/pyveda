@@ -182,7 +182,8 @@ class BaseSet(object):
 
     def fetch_ids(self, page_size=100, page_id=None):
         """ Fetch a point for a given ID """
-        return self.conn.get("{}/data/{}/ids?pageSize={}&pageId={}".format(HOST, self.id, page_size, page_id)).json()
+        data = self.conn.get("{}/data/{}/ids?pageSize={}&pageId={}".format(HOST, self.id, page_size, page_id)).json()
+        return data['ids'], data['nextPageId']
 
     def _load(self, geojson, image, **kwargs):
         """
@@ -385,6 +386,22 @@ class VedaCollection(BaseSet):
     @property
     def type(self):
         return self.meta['mlType']
+
+    def ids(self, size=None, page_size=100):
+        if size is None:
+            size = self.count
+        def get(pages):
+            next_page = None
+            for p in range(0, pages):
+                ids, next_page = self.fetch_ids(page_size, page_id=next_page)
+                yield ids, next_page
+
+        count = 0
+        for ids, next_page in get(math.ceil(size/page_size)):
+            for i in ids:
+                count += 1
+                if count <= size:
+                    yield i
 
     def _update_sensors(self, image):
         """ Appends the sensor name to the list of already cached sensors """
