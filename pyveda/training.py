@@ -154,25 +154,34 @@ class BaseSet(object):
 
     def fetch_index(self, idx):
         """ Fetch a single data point at a given index in the dataset """
-        qs = urlencode({"limit": 1, "offset": idx, "includeLinks": True})
+        params = {"limit": 1, "offset": idx, "includeLinks": True}
+        if self.classes and len(self.classes):
+            params["classes"] = ','.join(self.classes)
+        qs = urlencode(params)
         p = self.conn.get("{}/data/{}/datapoints?{}".format(HOST, self.id, qs)).json()[0]
         return DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
 
     def fetch(self, _id):
         """ Fetch a point for a given ID """
-        return DataPoint(self.conn.get("{}/datapoints/{}".format(HOST, _id)).json(),
+        qs = urlencode({})
+        if self.classes and len(self.classes):
+            params = {"classes": ','.join(self.classes)}
+            qs = urlencode(params)
+        return DataPoint(self.conn.get("{}/datapoints/{}?{}".format(HOST, _id, qs)).json(),
                   shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
 
     def fetch_points(self, limit, offset=0, **kwargs):
         """ Fetch a list of datapoints """
-        qs = self._querystring(limit, offset=offset, **kwargs)
+        params = {"offset": offset}
+        if self.classes and len(self.classes):
+            params["classes"] = ','.join(self.classes)
+        qs = self._querystring(limit, **params)
         points = [DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
                       for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
         return points
 
     def fetch_ids(self, page_size=100, page_id=None):
         """ Fetch a point for a given ID """
-        #qs = urlencode({"pageId": page_id, "pageSize": page_size})
         return self.conn.get("{}/data/{}/ids?pageSize={}&pageId={}".format(HOST, self.id, page_size, page_id)).json()
 
     def _load(self, geojson, image, **kwargs):
