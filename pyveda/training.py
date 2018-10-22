@@ -28,7 +28,7 @@ import dask
 
 import threading
 
-from .hdf5 import ImageTrainer
+from .hdf5 import VedaBase
 from .rda import MLImage
 from pyveda.utils import NamedTemporaryHDF5Generator
 from pyveda.fetch.compat import write_fetch
@@ -269,7 +269,7 @@ class VedaCollection(BaseSet):
         assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
         super(VedaCollection, self).__init__()
         #default to 0 bands until the first load
-        assert sum(partition) == 100
+        #assert sum(partition) == 100
         self.shape = [0] + tilesize
         self.imshape = [0] + tilesize
         self.partition = partition
@@ -431,7 +431,7 @@ class VedaCollection(BaseSet):
 
         points = self.fetch_points(size)
         random.shuffle(points) # in-place shuffle
-        ds = ImageTrainer(fname, self.mtype, self.meta['classes'], self.shape, image_dtype=self.dtype, **kwargs)
+        ds = VedaBase(fname, self.mtype, self.meta['classes'], self.shape, image_dtype=self.dtype, **kwargs)
 
         #write_fetch(points, ds, partition) # does the work
         write_fetch(points, ds.train)
