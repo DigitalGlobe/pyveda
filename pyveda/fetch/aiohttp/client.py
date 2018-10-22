@@ -275,6 +275,43 @@ class AsyncArrayFetcher(AsyncBaseFetcher):
         return self.results
 
 
+class VedaBaseFetcher(AsyncArrayFetcher):
+    pass
+
+class AsyncPayloadMapper(object):
+    def __init__(self, q, label=None, image=None):
+        self.q = q
+        self._label = label
+        self._image = image
+        self._pushed = False
+
+    @property
+    def label(self):
+        return self._label
+
+    @label.setter
+    async def label(self, label):
+        if label and self.image:
+            await self.put([label, self.image])
+        else:
+            self._label = label
+
+    @property
+    def image(self):
+        return self._image
+
+    @image.setter
+    async def image(self, image):
+        if image and self.label:
+            await self.put([self.label, image])
+        else:
+            self._image = image
+
+    async def put(self, payload):
+        await self.q.put(payload)
+        self._pushed = True
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()

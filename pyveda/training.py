@@ -429,14 +429,15 @@ class VedaCollection(BaseSet):
         if ext != ".h5":
             fname = namepath + ".h5"
 
-        points = self.fetch_points(size)
-        random.shuffle(points) # in-place shuffle
-        ds = VedaBase(fname, self.mtype, self.meta['classes'], self.shape, image_dtype=self.dtype, **kwargs)
+#        points = self.fetch_points(size)
+#        random.shuffle(points) # in-place shuffle
+        pgen = self.ids(size)
+        vb = VedaBase(fname, self.mtype, self.meta['classes'], self.shape, image_dtype=self.dtype, **kwargs)
 
         #write_fetch(points, ds, partition) # does the work
-        write_fetch(points, ds.train)
-        ds.flush()
-        return ds
+        write_fetch(vb, pgen, partition=partition, token=gbdx.gbdx_connection.access_token)
+        vb.flush()
+        return vb
 
     def refresh(self):
         """ Create a released version of this VedaCollection. Publishes the entire set to s3."""
