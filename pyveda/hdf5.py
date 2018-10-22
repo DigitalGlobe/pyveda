@@ -77,7 +77,7 @@ class LabelArray(WrappedDataArray):
         super(WrappedDataArray, self).__init__(*args, **kwargs)
 
     def _add_records(self, labels):
-        records = [tuple([self._hit_test(label[klass])]) for klass in label) for label in labels]
+        records = [tuple([self._hit_test(label[klass]) for klass in label]) for label in labels]
         self._table.append(records)
         self._table.flush()
 
