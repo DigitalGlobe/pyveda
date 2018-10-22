@@ -1,5 +1,8 @@
 import os
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
+from rasterio.transform import from_bounds
+from shapely.ops import transform
+from shapely.geometry import shape, box
 
 import numpy as np
 import tables
@@ -133,9 +136,17 @@ class ObjDetectionArray(LabelArray):
     _default_dtype = np.float32
 
     def _input_fn(self, item):
-        assert item.shape[1] == 4
-        # Detection Bboxes are np arrays of shape (N, 4)
-        return item.flatten()
+        bounds = list(map(float, item['data']['bounds']))
+        xfm = from_bounds(*bounds, self.im_shape[1], self.im_shape[2])
+        labels = []
+        for k, features in item['data']['label'].items():
+            class_labels = []
+            for f in features:
+                b = shape(f).bounds
+                ll, ur = ~xfm * (b[0],b[1]), ~xfm * (b[2],b[3])
+                class_labels.append([*ll, *ur])
+            labels.append(class_labels)
+        return np.array(labels)
 
     def _output_fn(self, item):
         op_shape = (int(len(item) / 4), 4)
