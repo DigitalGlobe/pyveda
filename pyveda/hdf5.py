@@ -191,7 +191,7 @@ data_groups = {"TRAIN": "Data designated for model training",
                "VALIDATE": "Data designated for model validation"}
 
 
-class ImageTrainer(object):
+class VedaBase(object):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
