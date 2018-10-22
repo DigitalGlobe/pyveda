@@ -93,6 +93,9 @@ class LabelArray(WrappedDataArray):
         else:
             raise ValueError("say something")
 
+    def _get_transform(self, bounds, height, width):
+        return from_bounds(*bounds, width, height)
+
     def append(self, labels):
         super(LabelArray, self).append(labels)
         #self._add_records(labels)
@@ -118,9 +121,8 @@ class SegmentationArray(LabelArray):
     _default_dtype = np.float32
 
     def _input_fn(self, item):
-        bounds = list(map(float, item['data']['bounds']))
-        xfm = from_bounds(*bounds, self._trainer.image_shape[1], self._trainer.image_shape[2])
         out_shape = self._trainer.image_shape[1:]
+        xfm = self._get_transform(item['data']['bounds'], *out_shape)
         out_array = np.zeros(out_shape)
         value = 1 
         for k, features in item['data']['label'].items():
@@ -144,8 +146,8 @@ class ObjDetectionArray(LabelArray):
     _default_dtype = np.float32
 
     def _input_fn(self, item):
-        bounds = list(map(float, item['data']['bounds']))
-        xfm = from_bounds(*bounds, self._trainer.image_shape[1], self._trainer.image_shape[2])
+        out_shape = self._trainer.image_shape[1:]
+        xfm = self._get_transform(item['data']['bounds'], *out_shape)
         labels = []
         for k, features in item['data']['label'].items():
             class_labels = []
