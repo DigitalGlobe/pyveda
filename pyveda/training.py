@@ -203,6 +203,9 @@ class BaseSet(object):
             'graph': image.rda_id,
             'node': image.rda.graph()['nodes'][0]['id']
         }
+        if 'mask' in kwargs:
+            options['mask'] = shape(kwargs.get('mask')).wkt 
+
         with open(geojson, 'r') as fh:
             mfile = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
             body = {
