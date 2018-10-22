@@ -1,6 +1,7 @@
 import os
 from collections import OrderedDict, defaultdict
 from rasterio.transform import from_bounds
+from rasterio.features import rasterize
 from shapely.ops import transform
 from shapely.geometry import shape, box
 
@@ -117,11 +118,18 @@ class SegmentationArray(LabelArray):
     _default_dtype = np.float32
 
     def _input_fn(self, item):
-        dims = item.shape
-        assert len(dims) in (2, 3)
-        if len(dims) == 2:
-            return item.reshape(1, *dims)
-        return item
+        bounds = list(map(float, item['data']['bounds']))
+        xfm = from_bounds(*bounds, self._trainer.image_shape[1], self._trainer.image_shape[2])
+        out_shape = self._trainer.image_shape[1:]
+        out_array = np.zeros(out_shape)
+        value = 1 
+        for k, features in item['data']['label'].items():
+            out_array += self._create_mask(features, value, out_shape, xfm)
+            value += 1
+        return out_array
+
+    def _create_mask(shapes, value, shape, tfm):
+        return rasterize(((shape(g), value) for g in shapes), out_shape=shape, transform=tfm)
 
     @classmethod
     def create_array(cls, trainer, group, dtype):
@@ -137,7 +145,7 @@ class ObjDetectionArray(LabelArray):
 
     def _input_fn(self, item):
         bounds = list(map(float, item['data']['bounds']))
-        xfm = from_bounds(*bounds, self.im_shape[1], self.im_shape[2])
+        xfm = from_bounds(*bounds, self._trainer.image_shape[1], self._trainer.image_shape[2])
         labels = []
         for k, features in item['data']['label'].items():
             class_labels = []
