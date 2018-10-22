@@ -53,6 +53,7 @@ class WrappedDataArray(object):
 
 class ImageArray(WrappedDataArray):
     _default_dtype = np.float32
+
     def _input_fn(self, item):
         dims = item.shape
         if len(dims) == 4:
@@ -83,7 +84,12 @@ class LabelArray(WrappedDataArray):
         self._table.flush()
 
     def _hit_test(self, record):
-        raise NotImplementedError
+        if isinstance(record, int) and record in (0, 1):
+            return record
+        elif isinstance(record, list):
+            return len(record)
+        else:
+            raise ValueError("say something")
 
     def append(self, label):
         super(LabelArray, self).append(label)
@@ -98,10 +104,6 @@ class ClassificationArray(LabelArray):
         if len(dims) == 2:
             return item # for batch append stacked arrays
         return item.reshape(1, *dims)
-
-    def _hit_test(self, record):
-        assert record in (0, 1)
-        return record
 
     @classmethod
     def create_array(cls, trainer, group, dtype):
@@ -119,10 +121,6 @@ class SegmentationArray(LabelArray):
         if len(dims) == 2:
             return item.reshape(1, *dims)
         return item
-
-    def _hit_test(self, record):
-        assert isinstance(record, list)
-        return len(record)
 
     @classmethod
     def create_array(cls, trainer, group, dtype):
@@ -144,10 +142,6 @@ class ObjDetectionArray(LabelArray):
     def _output_fn(self, item):
         op_shape = (int(len(item) / 4), 4)
         return item.reshape(op_shape)
-
-    def _hit_test(self, record):
-        assert isinstance(record, list)
-        return len(record)
 
     @classmethod
     def create_array(cls, trainer, group, dtype):
