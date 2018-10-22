@@ -74,13 +74,13 @@ class DataPoint(object):
         self.conn = conn
         self.data = item["data"]
         self.links = item["links"]
-        self.shape = tuple(map(int, shape))
+        self.imshape = tuple(map(int, shape))
         self.dtype = dtype
         self.ml_type = kwargs.get('mlType')
         self._y = None
 
         #if self.ml_type is not None and self.ml_type == 'segmentation':
-        #    self.data['label'] = vec_to_raster(self.data['label'], self.shape)
+        #    self.data['label'] = vec_to_raster(self.data['label'], self.imshape)
 
 
     @property
@@ -101,8 +101,8 @@ class DataPoint(object):
     def image(self):
         """ Returns a delayed dask call for fetching the image for a data point """
         token = gbdx.gbdx_connection.access_token
-        load = load_image(self.links["image"]["href"], token, self.shape, dtype=self.dtype)
-        return da.from_delayed(load, shape=self.shape, dtype=self.dtype)
+        load = load_image(self.links["image"]["href"], token, self.imshape, dtype=self.dtype)
+        return da.from_delayed(load, shape=self.imshape, dtype=self.dtype)
 
     def save(self, data):
         """ Saves/updates the datapoint in the database """
@@ -152,23 +152,38 @@ class BaseSet(object):
         qs.update(**kwargs)
         return urlencode(qs)
 
-    def fetch_index(self, idx, group="train"):
+    def fetch_index(self, idx):
         """ Fetch a single data point at a given index in the dataset """
-        qs = urlencode({"limit": 1, "offset": idx, "group": group, "includeLinks": True})
+        params = {"limit": 1, "offset": idx, "includeLinks": True}
+        if self.classes and len(self.classes):
+            params["classes"] = ','.join(self.classes)
+        qs = urlencode(params)
         p = self.conn.get("{}/data/{}/datapoints?{}".format(HOST, self.id, qs)).json()[0]
-        return DataPoint(p, shape=self.shape, dtype=self.dtype, mlType=self.mlType)
+        return DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
 
     def fetch(self, _id):
         """ Fetch a point for a given ID """
-        return DataPoint(self.conn.get("{}/datapoints/{}".format(HOST, _id)).json(),
-                  shape=self.shape, dtype=self.dtype, mlType=self.mlType)
+        qs = urlencode({})
+        if self.classes and len(self.classes):
+            params = {"classes": ','.join(self.classes)}
+            qs = urlencode(params)
+        return DataPoint(self.conn.get("{}/datapoints/{}?{}".format(HOST, _id, qs)).json(),
+                  shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
 
-    def fetch_points(self, limit, **kwargs):
+    def fetch_points(self, limit, offset=0, **kwargs):
         """ Fetch a list of datapoints """
-        qs = self._querystring(limit, **kwargs)
-        points = [DataPoint(p, shape=self.shape, dtype=self.dtype, mlType=self.mlType)
+        params = {"offset": offset}
+        if self.classes and len(self.classes):
+            params["classes"] = ','.join(self.classes)
+        qs = self._querystring(limit, **params)
+        points = [DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
                       for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
         return points
+
+    def fetch_ids(self, page_size=100, page_id=None):
+        """ Fetch a point for a given ID """
+        data = self.conn.get("{}/data/{}/ids?pageSize={}&pageId={}".format(HOST, self.id, page_size, page_id)).json()
+        return data['ids'], data['nextPageId']
 
     def _load(self, geojson, image, **kwargs):
         """
@@ -176,7 +191,7 @@ class BaseSet(object):
         """
         meta = self.meta
         meta.update({
-            "shape": list(self.shape),
+            "imshape": list(self.imshape),
             "sensors": self.sensors,
             "dtype": self.dtype
         })
@@ -254,8 +269,9 @@ class VedaCollection(BaseSet):
         assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
         super(VedaCollection, self).__init__()
         #default to 0 bands until the first load
-        self.shape = [0] + list(tilesize)
         assert sum(partition) == 100
+        self.shape = [0] + tilesize
+        self.imshape = [0] + tilesize
         self.partition = partition
         self.dtype = kwargs.get('dtype', None)
         self.percent_cached = kwargs.get('percent_cached', 0)
@@ -319,11 +335,22 @@ class VedaCollection(BaseSet):
         else:
             if self.dtype != image.dtype.name:
                 raise ValueError('Image dtype must be {} to match previous images'.format(self.dtype))
-        if self.shape[0] == 0:
-            self.shape[0] = image.shape[0]
+        # set the image bands
+        # imshape is N,M for single band; X,N,M for multiband
+        if self.imshape[0] == 0:
+            if image.shape[0] > 1:
+                self.imshape[0] = image.shape[0]
+            else:
+                self.imshape = self.imshape[1:]
         else:
-            if self.shape[0] != image.shape[0]:
-                raise ValueError('Image band size must be {} to match previous images'.format(self.shape[0]))
+            # multiband X,N,M
+            if len(self.imshape) > 2:
+                if self.imshape[0] != image.shape[0]:
+                    raise ValueError('Image must have {} bands to match previously loaded images'.format(self.imshape[0]))
+            # single band N,M, incoming must be 1,N,M
+            else:
+                if image.shape[0] != 1:
+                    raise ValueError('Image must be single band to match previously loaded images')
         self._update_sensors(image)
         self._load(geojson, image, match=match, default_label=default_label, label_field=label_field, cache_type=cache_type)
 
@@ -359,6 +386,22 @@ class VedaCollection(BaseSet):
     @property
     def mtype(self):
         return self.meta['mlType']
+
+    def ids(self, size=None, page_size=100):
+        if size is None:
+            size = self.count
+        def get(pages):
+            next_page = None
+            for p in range(0, pages):
+                ids, next_page = self.fetch_ids(page_size, page_id=next_page)
+                yield ids, next_page
+
+        count = 0
+        for ids, next_page in get(math.ceil(size/page_size)):
+            for i in ids:
+                count += 1
+                if count <= size:
+                    yield i
 
     def _update_sensors(self, image):
         """ Appends the sensor name to the list of already cached sensors """
@@ -407,5 +450,5 @@ class VedaCollection(BaseSet):
             limit = 1
         else:
             start, stop = slc.start, slc.stop
-            limit = stop - start
+            limit = (stop-1) - start
         return self.fetch_points(limit, offset=start)
