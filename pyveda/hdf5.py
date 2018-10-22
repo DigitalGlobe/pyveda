@@ -1,5 +1,9 @@
 import os
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
+from rasterio.transform import from_bounds
+from rasterio.features import rasterize
+from shapely.ops import transform
+from shapely.geometry import shape, box
 
 import numpy as np
 import tables
@@ -89,6 +93,9 @@ class LabelArray(WrappedDataArray):
         else:
             raise ValueError("say something")
 
+    def _get_transform(self, bounds, height, width):
+        return from_bounds(*bounds, width, height)
+
     def append(self, labels):
         super(LabelArray, self).append(labels)
         #self._add_records(labels)
@@ -114,11 +121,17 @@ class SegmentationArray(LabelArray):
     _default_dtype = np.float32
 
     def _input_fn(self, item):
-        dims = item.shape
-        assert len(dims) in (2, 3)
-        if len(dims) == 2:
-            return item.reshape(1, *dims)
-        return item
+        out_shape = self._trainer.image_shape[1:]
+        xfm = self._get_transform(item['data']['bounds'], *out_shape)
+        out_array = np.zeros(out_shape)
+        value = 1 
+        for k, features in item['data']['label'].items():
+            out_array += self._create_mask(features, value, out_shape, xfm)
+            value += 1
+        return out_array
+
+    def _create_mask(shapes, value, shape, tfm):
+        return rasterize(((shape(g), value) for g in shapes), out_shape=shape, transform=tfm)
 
     @classmethod
     def create_array(cls, trainer, group, dtype):
@@ -133,9 +146,17 @@ class ObjDetectionArray(LabelArray):
     _default_dtype = np.float32
 
     def _input_fn(self, item):
-        assert item.shape[1] == 4
-        # Detection Bboxes are np arrays of shape (N, 4)
-        return item.flatten()
+        out_shape = self._trainer.image_shape[1:]
+        xfm = self._get_transform(item['data']['bounds'], *out_shape)
+        labels = []
+        for k, features in item['data']['label'].items():
+            class_labels = []
+            for f in features:
+                b = shape(f).bounds
+                ll, ur = ~xfm * (b[0],b[1]), ~xfm * (b[2],b[3])
+                class_labels.append([*ll, *ur])
+            labels.append(class_labels)
+        return np.array(labels)
 
     def _output_fn(self, item):
         op_shape = (int(len(item) / 4), 4)
