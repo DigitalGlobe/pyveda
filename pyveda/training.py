@@ -255,6 +255,7 @@ class VedaCollection(BaseSet):
         super(VedaCollection, self).__init__()
         #default to 0 bands until the first load
         self.shape = [0] + list(tilesize)
+        assert sum(partition) == 100
         self.partition = partition
         self.dtype = kwargs.get('dtype', None)
         self.percent_cached = kwargs.get('percent_cached', 0)
