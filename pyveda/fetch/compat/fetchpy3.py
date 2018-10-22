@@ -8,6 +8,10 @@ def write_data(data, datagroup=None):
     datagroup.images.append(images)
     datagroup.labels.append(labels)
 
+def write_vedadb(data, db, partition):
+    images, labels = data
+    pass
+
 def write_fetch(points, datagroup):
     reqs = []
     lut = {}
