@@ -76,11 +76,9 @@ class LabelArray(WrappedDataArray):
         self._table = hit_table
         super(WrappedDataArray, self).__init__(*args, **kwargs)
 
-    def _add_records(self, label):
-        row = self._table.row
-        for klass in label:
-            row[klass] = self._hit_test(label[klass])
-        row.append()
+    def _add_records(self, labels):
+        records = [tuple([self._hit_test(label[klass])]) for klass in label) for label in labels]
+        self._table.append(records)
         self._table.flush()
 
     def _hit_test(self, record):
@@ -184,7 +182,7 @@ class WrappedDataNode(object):
 
 mltype_map = {"classification": ClassificationArray,
               "segmentation": SegmentationArray,
-              "object_detection": DetectionArray}
+              "object_detection": ObjDetectionArray}
 
 data_groups = {"TRAIN": "Data designated for model training",
                "TEST": "Data designated for model testing",
