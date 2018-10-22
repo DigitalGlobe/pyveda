@@ -76,10 +76,10 @@ class LabelArray(WrappedDataArray):
         self._table = hit_table
         super(WrappedDataArray, self).__init__(*args, **kwargs)
 
-    def _add_record(self, label):
+    def _add_records(self, label):
         row = self._table.row
         for klass in label:
-            row[klass] = self._hit_test(label[klass]))
+            row[klass] = self._hit_test(label[klass])
         row.append()
         self._table.flush()
 
@@ -91,9 +91,9 @@ class LabelArray(WrappedDataArray):
         else:
             raise ValueError("say something")
 
-    def append(self, label):
-        super(LabelArray, self).append(label)
-        self._add_record(label)
+    def append(self, labels):
+        super(LabelArray, self).append(labels)
+        #self._add_records(labels)
 
 
 class ClassificationArray(LabelArray):
