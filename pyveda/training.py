@@ -289,7 +289,8 @@ class VedaCollection(BaseSet):
             "partition": kwargs.get("partition", [100,0,0]),
             "rda_templates": kwargs.get("rda_templates", []),
             "classes": kwargs.get("classes", []),
-            "bbox": kwargs.get("bbox", None)
+            "bbox": kwargs.get("bbox", None),
+            "user_id": kwargs.get("userId", None)
         }
 
         for k,v in self.meta.items():
