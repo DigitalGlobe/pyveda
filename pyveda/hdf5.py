@@ -120,11 +120,11 @@ class ClassificationArray(LabelArray):
 class SegmentationArray(LabelArray):
     _default_dtype = np.float32
 
-    def _input_fn(self, item):
+    def _from_geo(self, item):
         out_shape = self._trainer.image_shape[1:]
         xfm = self._get_transform(item['data']['bounds'], *out_shape)
         out_array = np.zeros(out_shape)
-        value = 1 
+        value = 1
         for k, features in item['data']['label'].items():
             out_array += self._create_mask(features, value, out_shape, xfm)
             value += 1
@@ -146,6 +146,10 @@ class ObjDetectionArray(LabelArray):
     _default_dtype = np.float32
 
     def _input_fn(self, item):
+        assert item.shape[1] == 4
+        return item.flatten()
+
+    def _from_geo(self, item):
         out_shape = self._trainer.image_shape[1:]
         xfm = self._get_transform(item['data']['bounds'], *out_shape)
         labels = []
