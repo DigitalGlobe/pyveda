@@ -275,41 +275,151 @@ class AsyncArrayFetcher(AsyncBaseFetcher):
         return self.results
 
 
-class VedaBaseFetcher(AsyncArrayFetcher):
-    pass
+class VedaBaseFetcher(BatchFetchTracer):
+    def __init__(self, reqs, total_count=0, session=None, token=None, max_retries=5, timeout=20,
+                 session_limit=30, max_concurrent_requests=500, connector=aiohttp.TCPConnector,
+                 lbl_payload_handler=lambda x: x, img_payload_handler=lambda x: x, write_fn=lambda x: x,
+                 num_lbl_payload_workers=10, num_img_payload_workers=10, num_lbl_payload_threads=10,
+                 num_img_payload_threads=10, lbl_payload_executor=concurrent.futures.ThreadPoolExecutor,
+                 img_payload_executor=concurrent.futures.ThreadPoolExecutor, num_write_workers=1,
+                 num_write_threads=1, write_executor=concurrent.futures.ThreadPoolExecutor, max_memarrays=200,
+                 run_tracer=False, *args, **kwargs)
 
-class AsyncPayloadMapper(object):
-    def __init__(self, q, label=None, image=None):
-        self.q = q
-        self._label = label
-        self._image = image
-        self._pushed = False
+    self.reqs = reqs
+    self.max_concurrent_reqs = min(total_count, max_concurrent_requsts)
+    self.max_retries = max_retries
+    self.timeout = timeout
+    self.session = session
+    self._token = token
+    self._session_limit = session_limit
+    self._connector = connector
+    self._trace_configs = []
+    self._run_tracer = run_tracer
+    if run_tracer:
+        trace_config = self._configure_tracer()
+        self._trace_configs.append(trace_config)
+
+    self.lbl_payload_handler = lbl_payload_handler
+    self.img_payload_handler = img_payload_handler
+    self.write_fn = write_fn
+    self.max_memarrs = max_memarrays
+    self._n_lbl_payload_workers = num_lbl_payload_workers
+    self._n_img_payload_workers = num_img_payload_workers
+    self._n_lbl_payload_threads = num_lbl_payload_threads
+    self._n_img_payload_threads = num_img_payload_threads
+    self._lbl_payload_executor = lbl_payload_executor(max_workers=num_lbl_payload_threads)
+    self._img_payload_executor = img_payload_executor(max_workers=num_img_payload_threads)
+    self._n_write_workers = num_write_workers
+    self._n_write_threads = num_write_threads
+    self._write_executor = write_executor(max_workers=num_write_threads)
+    self._pbar = None
+    if has_tqdm and total_count:
+        self._pbar = tqdm(total=total_count)
 
     @property
-    def label(self):
-        return self._label
+    def headers(self):
+        if not self._token:
+            raise AttributeError("Provide an auth token on init or as an argument to run")
+        return {"Authorization": "Bearer {}".format(self._token)}
 
-    @label.setter
-    async def label(self, label):
-        if label and self.image:
-            await self.put([label, self.image])
+    def _configure(self, session, loop):
+        self._qreq = asyncio.Queue(maxsize=self.max_concurrent_reqs)
+        self._qwrite = asyncio.Queue()
+        self._write_lock = asyncio.Lock()
+        self._consumers = [asyncio.ensure_future(self.consume_reqs(session)) for _ in range(self.max_concurrent_reqs)]
+        self._writers = [asyncio.ensure_future(self.write_stack(loop)) for _ in range(self._n_write_workers)]
+
+    async def fetch_with_retries(self, url, session, retries, json=True):
+        await asyncio.sleep(0.0)
+        while retries:
+            try:
+                async with session.get(url) as response:
+                    response.raise_for_status()
+                    logger.info("  URL READ SUCCESS: {}".format(url))
+                    if json:
+                        data = await response.json()
+                    else:
+                        data = await response.read()
+                    await response.release()
+                await self._qreq.task_done()
+                return data
+            except CancelledError: # is this needed?
+                break
+            except Exception as e:
+                logger.info("    URL READ ERROR: {}".format(url))
+                retries -= 1
+        await self._qres.task_done()
+        return None
+
+    async def write_stack(self, loop):
+        labels, images = [], []
+        while True:
+            try:
+                label, image = await self._qwrite.get()
+                labels.append(label)
+                images.append(image)
+                if len(images) == self.max_memarrs:
+                    data = [np.array(images), np.array(labels)]
+                    async with self._write_lock:
+                        await loop.run_in_executor(self._write_executor, self.write_fn, data)
+                    labels, images = [], []
+                self._qwrite.task_done()
+                if self._pbar:
+                    self._pbar.update(1)
+            except CancelledError: # write out anything remaining
+                if images:
+                    data = [np.array(images), np.array(labels)]
+                    async with self._write_lock:
+                        await loop.run_in_executor(self._write_executor, self.write_fn, data)
+                break
+        return True
+
+    async def consume_reqs(self, session):
+        while True:
+            try:
+                label_url, image_url = await self._qreq.get()
+                flbl = asyncio.ensure_future(self.fetch_with_retries(label_url, self.session, self.retries))
+                fimg = asyncio.ensure_future(self.fetch_with_retries(image_url, self.session, self.retries, json=False))
+                label, image = await asyncio.gather([flbl.add_done_callback(self.lbl_payload_handler),
+                                            fimg.add_done_callback(self.img_payload_handler])])
+                await self._qwrite.put([label, image])
+            except CancelledError:
+                break
+
+    async def drive_fetch(self, session, loop):
+        self._configure(session, loop)
+        producer = await self.produce_reqs()
+        await asyncio.gather([self._qreq.join(), self._qwrite.join()])
+        for fut in self._consumers:
+            fut.cancel()
+        for fut in self._writers:
+            fut.cancel()
+        done, pending = await asyncio.wait(self._writers)
+        return True
+
+    async def start_fetch(self, loop):
+        async with aiohttp.ClientSession(loop=loop,
+                                         connector=self._connector(limit=self._session_limit),
+                                         headers=self.headers,
+                                         trace_configs=self._trace_configs) as session:
+            logger.info("BATCH FETCH START")
+            results = await self.fetch(session, loop)
+            logger.info("BATCH FETCH COMPLETE")
+            return results
+
+    async def run(self, reqs=None, token=None, loop=None):
+        if not loop:
+            loop = asyncio.get_event_loop()
+        if reqs:
+            self.reqs = reqs
         else:
-            self._label = label
+            assert(len(self.reqs) > 0)
+        if token:
+            self._token = token
 
-    @property
-    def image(self):
-        return self._image
-
-    @image.setter
-    async def image(self, image):
-        if image and self.label:
-            await self.put([self.label, image])
-        else:
-            self._image = image
-
-    async def put(self, payload):
-        await self.q.put(payload)
-        self._pushed = True
+        fut = await self.run_fetch(loop)
+        await asyncio.sleep(0.250)
+        return fut
 
 
 if __name__ == "__main__":

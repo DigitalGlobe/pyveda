@@ -12,7 +12,7 @@ def write_vedadb(data, db, partition):
     images, labels = data
     pass
 
-def write_fetch(points, datagroup):
+def write_fetch(database, source, partition, token):
     reqs = []
     lut = {}
     for p in points:
