@@ -28,7 +28,7 @@ import dask
 
 import threading
 
-from .hdf5 import VedaBase
+from pyveda.db import VedaBase
 from .rda import MLImage
 from pyveda.utils import NamedTemporaryHDF5Generator
 from pyveda.fetch.compat import write_fetch

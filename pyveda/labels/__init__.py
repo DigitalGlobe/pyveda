@@ -1,1 +1,1 @@
-from pyveda.labels import ClassificationLabel, SegmentationLabel, ObjDetectionLabel
+from pyveda.labels.base import ClassificationLabel, SegmentationLabel, ObjDetectionLabel

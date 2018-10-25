@@ -1,1 +1,1 @@
-from pyveda.db.database import VedaBase
+from pyveda.db.vedabase import VedaBase
