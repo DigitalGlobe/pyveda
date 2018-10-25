@@ -422,7 +422,7 @@ class VedaCollection(BaseSet):
     def mtype(self):
         return self.meta['mlType']
 
-    def ids(self, size=None, page_size=100):
+    def ids(self, size=None, page_size=100, get_urls=True):
         if size is None:
             size = self.count
         def get(pages):
@@ -436,7 +436,20 @@ class VedaCollection(BaseSet):
             for i in ids:
                 count += 1
                 if count <= size:
-                    yield i
+                    if not get_urls:
+                        yield i
+                    else:
+                        yield self._urls_from_id(i)
+
+    def _urls_from_id(self, _id):
+        qs = urlencode({})
+        if self.classes and len(self.classes):
+            params = {"classes": ','.join(self.classes)}
+            qs = urlencode(params)
+        label_url = "{}/datapoints/{}?{}".format(HOST, _id, qs)
+        image_url = "{}/datapoints/{}/image.tif".format(HOST, _id)
+        return [label_url, image_url]
+
 
     def _update_sensors(self, image):
         """ Appends the sensor name to the list of already cached sensors """
