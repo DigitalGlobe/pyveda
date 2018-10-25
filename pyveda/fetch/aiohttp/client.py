@@ -379,8 +379,8 @@ class VedaBaseFetcher(BatchFetchTracer):
                 label_url, image_url = await self._qreq.get()
                 flbl = asyncio.ensure_future(self.fetch_with_retries(label_url, self.session, self.retries))
                 fimg = asyncio.ensure_future(self.fetch_with_retries(image_url, self.session, self.retries, json=False))
-                label, image = await asyncio.gather([flbl.add_done_callback(self.lbl_payload_handler),
-                                            fimg.add_done_callback(self.img_payload_handler)])
+                label, image = await asyncio.gather(flbl.add_done_callback(self.lbl_payload_handler),
+                                            fimg.add_done_callback(self.img_payload_handler))
                 await self._qwrite.put([label, image])
             except CancelledError:
                 break
@@ -392,7 +392,7 @@ class VedaBaseFetcher(BatchFetchTracer):
     async def drive_fetch(self, session, loop):
         self._configure(session, loop)
         producer = await self.produce_reqs()
-        await asyncio.gather([self._qreq.join(), self._qwrite.join()])
+        await asyncio.gather(self._qreq.join(), self._qwrite.join())
         for fut in self._consumers:
             fut.cancel()
         for fut in self._writers:
