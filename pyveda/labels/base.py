@@ -6,6 +6,9 @@ from shapely.geometry import shape, box
 
 
 class BaseLabel(object):
+    def __init__(self, imshape):
+        self.imshape = imshape
+
     def _get_transform(self, bounds, height, width):
         return from_bounds(*bounds, width, height)
 
@@ -18,7 +21,7 @@ class SegmentationLabel(BaseLabel):
     _default_dtype = np.float32
 
     def _from_geo(self, item):
-        out_shape = self._trainer.image_shape[1:]
+        out_shape = self.imshape
         xfm = self._get_transform(item['data']['bounds'], *out_shape)
         out_array = np.zeros(out_shape)
         value = 1
@@ -27,7 +30,7 @@ class SegmentationLabel(BaseLabel):
             value += 1
         return out_array
 
-    def _create_mask(shapes, value, shape, tfm):
+    def _create_mask(self, shapes, value, shape, tfm):
         return rasterize(((shape(g), value) for g in shapes), out_shape=shape, transform=tfm)
 
 
@@ -35,7 +38,7 @@ class ObjDetectionLabel(BaseLabel):
     _default_dtype = np.float32
 
     def _from_geo(self, item):
-        out_shape = self._trainer.image_shape[1:]
+        out_shape = self.imshape
         xfm = self._get_transform(item['data']['bounds'], *out_shape)
         labels = []
         for k, features in item['data']['label'].items():
