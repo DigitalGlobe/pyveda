@@ -56,7 +56,7 @@ def search(params={}):
     r.raise_for_status()
     #try:
     results = r.json()
-    return [VedaCollection.from_doc(s) for s in r.json()]
+    return [VedaCollection.from_doc(s) for s in results]
     #except Exception as err:
     #    print(err)
     #    return []
@@ -138,6 +138,7 @@ class BaseSet(object):
     def __init__(self, id=None):
         self.id = id
         self._data_url = "{}/data".format(HOST)
+        self._bulk_data_url = "{}/data/bulk".format(HOST)
         self._cache_url = "{}/data/{}/cache"
         self._datapoint_url = "{}/datapoints".format(HOST)
         self._chunk_size = int(os.environ.get('VEDA_CHUNK_SIZE', 5000))
@@ -185,6 +186,30 @@ class BaseSet(object):
         data = self.conn.get("{}/data/{}/ids?pageSize={}&pageId={}".format(HOST, self.id, page_size, page_id)).json()
         return data['ids'], data['nextPageId']
 
+    def _bulk_load(self, s3path, **kwargs):
+        meta = self.meta
+        meta.update({
+            "imshape": list(self.imshape),
+            "sensors": self.sensors,
+            "dtype": self.dtype
+        })
+        options = {
+            'default_label': kwargs.get('default_label', None),
+            'label_field':  kwargs.get('label_field', None),
+            's3path': s3path
+        }
+        body = {
+            'metadata': meta,
+            'options': options
+        }
+        if self.id is not None:
+            doc = self.conn.post(self.links["self"]["href"], json=body).json()
+        else:
+            doc = self.conn.post(self._bulk_data_url, json=body).json()
+            self.id = doc["data"]["id"]
+            self._set_links(doc["links"])
+        return doc
+
     def _load(self, geojson, image, **kwargs):
         """
             Loads a geojson file into the VC
@@ -201,8 +226,12 @@ class BaseSet(object):
             'label_field':  kwargs.get('label_field', None),
             'cache_type':  kwargs.get('cache_type', 'stream'),
             'graph': image.rda_id,
-            'node': image.rda.graph()['nodes'][0]['id']
+            'node': image.rda.graph()['nodes'][0]['id'],
+            'workers': kwargs.get('workers', 1)
         }
+        if 'mask' in kwargs:
+            options['mask'] = shape(kwargs.get('mask')).wkt
+
         with open(geojson, 'r') as fh:
             mfile = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
             body = {
@@ -269,9 +298,16 @@ class VedaCollection(BaseSet):
         assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
         super(VedaCollection, self).__init__()
         #default to 0 bands until the first load
+<<<<<<< HEAD
         #assert sum(partition) == 100
         self.shape = [0] + tilesize
         self.imshape = [0] + tilesize
+=======
+        if 'imshape' in kwargs:
+            self.imshape = tuple(map(int, kwargs['imshape']))
+        else:
+            self.imshape = [0] + list(tilesize)
+>>>>>>> development
         self.partition = partition
         self.dtype = kwargs.get('dtype', None)
         self.percent_cached = kwargs.get('percent_cached', 0)
@@ -288,13 +324,18 @@ class VedaCollection(BaseSet):
             "partition": kwargs.get("partition", [100,0,0]),
             "rda_templates": kwargs.get("rda_templates", []),
             "classes": kwargs.get("classes", []),
-            "bbox": kwargs.get("bbox", None)
+            "bbox": kwargs.get("bbox", None),
+            "user_id": kwargs.get("userId", None)
         }
 
         for k,v in self.meta.items():
             setattr(self, k, v)
 
-    def load(self, geojson, image, match="INTERSECT", default_label=None, label_field = None, cache_type="stream"):
+    def bulk_load(self, s3path, **kwargs):
+        self._bulk_load(s3path, **kwargs)
+
+
+    def load(self, geojson, image, match="INTERSECT", default_label=None, label_field = None, cache_type="stream", **kwargs):
         '''Loads a geojson file or object into the VedaCollection
         ARGS
 
@@ -352,7 +393,7 @@ class VedaCollection(BaseSet):
                 if image.shape[0] != 1:
                     raise ValueError('Image must be single band to match previously loaded images')
         self._update_sensors(image)
-        self._load(geojson, image, match=match, default_label=default_label, label_field=label_field, cache_type=cache_type)
+        self._load(geojson, image, match=match, default_label=default_label, label_field=label_field, cache_type=cache_type, **kwargs)
 
     @classmethod
     def from_doc(cls, doc):
