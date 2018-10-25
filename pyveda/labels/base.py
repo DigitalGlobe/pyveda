@@ -30,8 +30,8 @@ class SegmentationLabel(BaseLabel):
             value += 1
         return out_array
 
-    def _create_mask(self, shapes, value, shape, tfm):
-        return rasterize(((shape(g), value) for g in shapes), out_shape=shape, transform=tfm)
+    def _create_mask(self, shapes, value, _shape, tfm):
+        return rasterize(((shape(g), value) for g in shapes), out_shape=_shape, transform=tfm)
 
 
 class ObjDetectionLabel(BaseLabel):
