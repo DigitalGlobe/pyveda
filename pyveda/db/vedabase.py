@@ -1,15 +1,10 @@
 import os
 from collections import OrderedDict, defaultdict
-from rasterio.transform import from_bounds
-from rasterio.features import rasterize
-from shapely.ops import transform
-from shapely.geometry import shape, box
-
 import numpy as np
 import tables
 from pyveda.utils import mktempfilename, _atom_from_dtype
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
-
+from pyveda.db.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
