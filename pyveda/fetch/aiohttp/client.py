@@ -285,36 +285,36 @@ class VedaBaseFetcher(BatchFetchTracer):
                  num_write_threads=1, write_executor=concurrent.futures.ThreadPoolExecutor, max_memarrays=200,
                  run_tracer=False, *args, **kwargs)
 
-    self.reqs = reqs
-    self.max_concurrent_reqs = min(total_count, max_concurrent_requsts)
-    self.max_retries = max_retries
-    self.timeout = timeout
-    self.session = session
-    self._token = token
-    self._session_limit = session_limit
-    self._connector = connector
-    self._trace_configs = []
-    self._run_tracer = run_tracer
-    if run_tracer:
-        trace_config = self._configure_tracer()
-        self._trace_configs.append(trace_config)
+        self.reqs = reqs
+        self.max_concurrent_reqs = min(total_count, max_concurrent_requsts)
+        self.max_retries = max_retries
+        self.timeout = timeout
+        self.session = session
+        self._token = token
+        self._session_limit = session_limit
+        self._connector = connector
+        self._trace_configs = []
+        self._run_tracer = run_tracer
+        if run_tracer:
+            trace_config = self._configure_tracer()
+            self._trace_configs.append(trace_config)
 
-    self.lbl_payload_handler = lbl_payload_handler
-    self.img_payload_handler = img_payload_handler
-    self.write_fn = write_fn
-    self.max_memarrs = max_memarrays
-    self._n_lbl_payload_workers = num_lbl_payload_workers
-    self._n_img_payload_workers = num_img_payload_workers
-    self._n_lbl_payload_threads = num_lbl_payload_threads
-    self._n_img_payload_threads = num_img_payload_threads
-    self._lbl_payload_executor = lbl_payload_executor(max_workers=num_lbl_payload_threads)
-    self._img_payload_executor = img_payload_executor(max_workers=num_img_payload_threads)
-    self._n_write_workers = num_write_workers
-    self._n_write_threads = num_write_threads
-    self._write_executor = write_executor(max_workers=num_write_threads)
-    self._pbar = None
-    if has_tqdm and total_count:
-        self._pbar = tqdm(total=total_count)
+        self.lbl_payload_handler = lbl_payload_handler
+        self.img_payload_handler = img_payload_handler
+        self.write_fn = write_fn
+        self.max_memarrs = max_memarrays
+        self._n_lbl_payload_workers = num_lbl_payload_workers
+        self._n_img_payload_workers = num_img_payload_workers
+        self._n_lbl_payload_threads = num_lbl_payload_threads
+        self._n_img_payload_threads = num_img_payload_threads
+        self._lbl_payload_executor = lbl_payload_executor(max_workers=num_lbl_payload_threads)
+        self._img_payload_executor = img_payload_executor(max_workers=num_img_payload_threads)
+        self._n_write_workers = num_write_workers
+        self._n_write_threads = num_write_threads
+        self._write_executor = write_executor(max_workers=num_write_threads)
+        self._pbar = None
+        if has_tqdm and total_count:
+            self._pbar = tqdm(total=total_count)
 
     @property
     def headers(self):
