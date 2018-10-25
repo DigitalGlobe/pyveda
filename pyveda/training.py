@@ -303,7 +303,7 @@ class VedaCollection(BaseSet):
         else:
             self.imshape = [0] + list(tilesize)
         self.partition = partition
-        self.dtype = kwargs.get('dtype', None)
+        self.dtype = np.dtype(kwargs.get('dtype', None))
         self.percent_cached = kwargs.get('percent_cached', 0)
         self.sensors = kwargs.get('sensors', [])
         self._count = kwargs.get('count', 0)
@@ -470,7 +470,7 @@ class VedaCollection(BaseSet):
         vb = VedaBase(fname, self.mtype, self.meta['classes'], self.imshape, image_dtype=self.dtype, **kwargs)
 
         #write_fetch(points, ds, partition) # does the work
-        write_fetch(vb, pgen, partition=partition, token=gbdx.gbdx_connection.access_token)
+        write_fetch(vb, pgen, partition, size, gbdx.gbdx_connection.access_token)
         vb.flush()
         return vb
 

@@ -58,7 +58,7 @@ class VedaBase(object):
 
         self._framework = framework
         self._fw_loader = lambda x: x
-        self.image_shape = [s for s in image_shape if s != 0]
+        self.image_shape = image_shape
         self.klasses = klasses
 
         if os.path.exists(fname):

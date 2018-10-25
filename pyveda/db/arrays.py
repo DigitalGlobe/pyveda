@@ -71,6 +71,7 @@ class ImageArray(WrappedDataArray):
 class LabelArray(WrappedDataArray):
     def __init__(self, hit_table, *args, **kwargs):
         self._table = hit_table
+        self.imshape = self._trainer.image_shape
         super(WrappedDataArray, self).__init__(*args, **kwargs)
 
     def _add_records(self, labels):
