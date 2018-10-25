@@ -298,16 +298,10 @@ class VedaCollection(BaseSet):
         assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
         super(VedaCollection, self).__init__()
         #default to 0 bands until the first load
-<<<<<<< HEAD
-        #assert sum(partition) == 100
-        self.shape = [0] + tilesize
-        self.imshape = [0] + tilesize
-=======
         if 'imshape' in kwargs:
             self.imshape = tuple(map(int, kwargs['imshape']))
         else:
             self.imshape = [0] + list(tilesize)
->>>>>>> development
         self.partition = partition
         self.dtype = kwargs.get('dtype', None)
         self.percent_cached = kwargs.get('percent_cached', 0)
@@ -473,7 +467,7 @@ class VedaCollection(BaseSet):
 #        points = self.fetch_points(size)
 #        random.shuffle(points) # in-place shuffle
         pgen = self.ids(size)
-        vb = VedaBase(fname, self.mtype, self.meta['classes'], self.shape, image_dtype=self.dtype, **kwargs)
+        vb = VedaBase(fname, self.mtype, self.meta['classes'], self.imshape, image_dtype=self.dtype, **kwargs)
 
         #write_fetch(points, ds, partition) # does the work
         write_fetch(vb, pgen, partition=partition, token=gbdx.gbdx_connection.access_token)
