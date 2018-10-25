@@ -483,7 +483,7 @@ class VedaCollection(BaseSet):
         vb = VedaBase(fname, self.mtype, self.meta['classes'], self.imshape, image_dtype=self.dtype, **kwargs)
 
         #write_fetch(points, ds, partition) # does the work
-        write_fetch(vb, pgen, partition, size, gbdx.gbdx_connection.access_token)
+        write_fetch(vb.train, pgen, partition, size, gbdx.gbdx_connection.access_token)
         vb.flush()
         return vb
 

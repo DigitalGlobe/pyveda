@@ -10,7 +10,6 @@ from concurrent.futures import CancelledError, TimeoutError
 import threading
 
 import numpy as np
-from skimage.io import imread
 
 from tempfile import NamedTemporaryFile
 import os
@@ -286,7 +285,7 @@ class VedaBaseFetcher(BatchFetchTracer):
                  run_tracer=False, *args, **kwargs):
 
         self.reqs = reqs
-        self.max_concurrent_reqs = min(total_count, max_concurrent_requsts)
+        self.max_concurrent_reqs = min(total_count, max_concurrent_requests)
         self.max_retries = max_retries
         self.timeout = timeout
         self.session = session
@@ -386,6 +385,10 @@ class VedaBaseFetcher(BatchFetchTracer):
             except CancelledError:
                 break
 
+    async def produce_reqs(self):
+        for req in self.reqs:
+            await self._qreq.put(req)
+
     async def drive_fetch(self, session, loop):
         self._configure(session, loop)
         producer = await self.produce_reqs()
@@ -403,7 +406,7 @@ class VedaBaseFetcher(BatchFetchTracer):
                                          headers=self.headers,
                                          trace_configs=self._trace_configs) as session:
             logger.info("BATCH FETCH START")
-            results = await self.fetch(session, loop)
+            results = await self.drive_fetch(session, loop)
             logger.info("BATCH FETCH COMPLETE")
             return results
 
@@ -412,12 +415,12 @@ class VedaBaseFetcher(BatchFetchTracer):
             loop = asyncio.get_event_loop()
         if reqs:
             self.reqs = reqs
-        else:
-            assert(len(self.reqs) > 0)
+#        else:
+#            assert(len(self.reqs) > 0)
         if token:
             self._token = token
 
-        fut = await self.run_fetch(loop)
+        fut = await self.start_fetch(loop)
         await asyncio.sleep(0.250)
         return fut
 

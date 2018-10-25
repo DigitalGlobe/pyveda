@@ -4,7 +4,7 @@ import numpy as np
 import tables
 from pyveda.utils import mktempfilename, _atom_from_dtype
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
-from pyveda.db.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray
+from pyveda.db.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, ImageArray
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
@@ -60,6 +60,8 @@ class VedaBase(object):
         self._fw_loader = lambda x: x
         self.image_shape = image_shape
         self.klasses = klasses
+        self._image_klass = ImageArray
+        self._label_klass = mltype_map[mltype]
 
         if os.path.exists(fname):
             if overwrite:

@@ -8,7 +8,7 @@ from pyveda.labels import ClassificationLabel, SegmentationLabel, ObjDetectionLa
 
 class WrappedDataArray(object):
     def __init__(self, array, trainer, output_transform=lambda x: x):
-        self._arr = node
+        self._arr = array
         self._trainer = trainer
         self._read_transform = output_transform
 
@@ -71,8 +71,8 @@ class ImageArray(WrappedDataArray):
 class LabelArray(WrappedDataArray):
     def __init__(self, hit_table, *args, **kwargs):
         self._table = hit_table
+        super(LabelArray, self).__init__(*args, **kwargs)
         self.imshape = self._trainer.image_shape
-        super(WrappedDataArray, self).__init__(*args, **kwargs)
 
     def _add_records(self, labels):
         records = [tuple([self._hit_test(label[klass]) for klass in label]) for label in labels]
