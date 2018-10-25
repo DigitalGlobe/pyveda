@@ -283,7 +283,7 @@ class VedaBaseFetcher(BatchFetchTracer):
                  num_img_payload_threads=10, lbl_payload_executor=concurrent.futures.ThreadPoolExecutor,
                  img_payload_executor=concurrent.futures.ThreadPoolExecutor, num_write_workers=1,
                  num_write_threads=1, write_executor=concurrent.futures.ThreadPoolExecutor, max_memarrays=200,
-                 run_tracer=False, *args, **kwargs)
+                 run_tracer=False, *args, **kwargs):
 
         self.reqs = reqs
         self.max_concurrent_reqs = min(total_count, max_concurrent_requsts)
@@ -381,7 +381,7 @@ class VedaBaseFetcher(BatchFetchTracer):
                 flbl = asyncio.ensure_future(self.fetch_with_retries(label_url, self.session, self.retries))
                 fimg = asyncio.ensure_future(self.fetch_with_retries(image_url, self.session, self.retries, json=False))
                 label, image = await asyncio.gather([flbl.add_done_callback(self.lbl_payload_handler),
-                                            fimg.add_done_callback(self.img_payload_handler])])
+                                            fimg.add_done_callback(self.img_payload_handler)])
                 await self._qwrite.put([label, image])
             except CancelledError:
                 break
