@@ -1,10 +1,12 @@
 import os
 from collections import OrderedDict, defaultdict
 import numpy as np
+from skimage.io import imread
 import tables
 from pyveda.utils import mktempfilename, _atom_from_dtype
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.labels import ClassificationLabel, SegmentationLabel, ObjDetectionLabel
+from tempfile import NamedTemporaryFile
 
 class WrappedDataArray(object):
     def __init__(self, array, trainer, output_transform=lambda x: x):
@@ -50,6 +52,31 @@ class WrappedDataArray(object):
 
 class ImageArray(WrappedDataArray):
     _default_dtype = np.float32
+
+    @staticmethod
+    def on_fail(shape=(3, 256, 256), dtype=np.uint8):
+        return np.zeros(shape, dtype=dtype)
+
+    @staticmethod
+    def bytes_to_array(bstring):
+        if bstring is None:
+            return on_fail()
+        try:
+            fd = NamedTemporaryFile(prefix='gbdxtools', suffix='.tif', delete=False)
+            fd.file.write(bstring)
+            fd.file.flush()
+            fd.close()
+            arr = imread(fd.name)
+            if len(arr.shape) == 3:
+                arr = np.rollaxis(arr, 2, 0)
+            else:
+                arr = np.expand_dims(arr, axis=0)
+        except Exception as e:
+            arr = ImageArrayon_fail()
+        finally:
+            fd.close()
+            os.remove(fd.name)
+        return arr
 
     def _input_fn(self, item):
         dims = item.shape
