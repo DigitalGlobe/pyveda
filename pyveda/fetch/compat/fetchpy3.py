@@ -16,11 +16,13 @@ def vedabase_batch_write(data, database=None, partition=[70, 20, 10]):
     # write training data
     database.train.images.append(images[:ntrain]))
     database.labels.append(labels[:ntrain]))
+
     # write testing data
     test_start = ntrain + 1
     test_stop = ntrain + ntest
     database.test.images.append(images[test_start:test_stop])
     database.test.labels.append(labels[test_start:test_stop])
+
     # write validation data
     val_start = test_stop + 1
     database.validation.images.append(images[val_start:])
