@@ -28,11 +28,12 @@ def vedabase_batch_write(data, database=None, partition=[70, 20, 10]):
     database.validation.images.append(images[val_start:])
     database.validation.labels.append(labels[val_start:])
 
-def build_vedabase(database, source, partition, total, token):
+def build_vedabase(database, source, partition, total, token, label_threads=1, image_threads=10):
     abf = VedaBaseFetcher(source, total_count=total, token=token,
                           write_fn=partial(vedabase_batch_write, database=database, partition=partition),
                           lbl_payload_handler=partial(database._label_klass.from_geo, imshape=database.image_shape),
-                          img_payload_handler=database._image_klass.bytes_to_array)
+                          img_payload_handler=database._image_klass.bytes_to_array,
+                          num_lbl_payload_threads=label_threads, num_img_payload_threads=image_threads)
 
     with ThreadedAsyncioRunner(abf.run) as tar:
         tar(loop=tar._loop)
