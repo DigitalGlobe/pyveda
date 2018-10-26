@@ -31,7 +31,7 @@ import threading
 from pyveda.db import VedaBase
 from .rda import MLImage
 from pyveda.utils import NamedTemporaryHDF5Generator
-from pyveda.fetch.compat import write_fetch
+from pyveda.fetch.compat import build_vedabase
 
 threads = int(os.environ.get('GBDX_THREADS', 64))
 threaded_get = partial(dask.threaded.get, num_workers=threads)
@@ -450,7 +450,6 @@ class VedaCollection(BaseSet):
         image_url = "{}/datapoints/{}/image.tif".format(HOST, _id)
         return [label_url, image_url]
 
-
     def _update_sensors(self, image):
         """ Appends the sensor name to the list of already cached sensors """
         self.sensors.append(image.__class__.__name__)
@@ -477,13 +476,10 @@ class VedaCollection(BaseSet):
         if ext != ".h5":
             fname = namepath + ".h5"
 
-#        points = self.fetch_points(size)
-#        random.shuffle(points) # in-place shuffle
         pgen = self.ids(size)
         vb = VedaBase(fname, self.mtype, self.meta['classes'], self.imshape, image_dtype=self.dtype, **kwargs)
 
-        #write_fetch(points, ds, partition) # does the work
-        write_fetch(vb.train, pgen, partition, size, gbdx.gbdx_connection.access_token)
+        build_vedabase(vb, pgen, partition, size, gbdx.gbdx_connection.access_token)
         vb.flush()
         return vb
 
