@@ -37,31 +37,6 @@ fh.setFormatter(formatter)
 logger.addHandler(fh)
 
 
-def on_fail(shape=(8, 256, 256), dtype=np.float32):
-    return np.zeros(shape, dtype=dtype)
-
-def bytes_to_array(bstring):
-    if bstring is None:
-        return on_fail()
-    try:
-        fd = NamedTemporaryFile(prefix='gbdxtools', suffix='.tif', delete=False)
-        fd.file.write(bstring)
-        fd.file.flush()
-        fd.close()
-        arr = imread(fd.name)
-        if len(arr.shape) == 3:
-            arr = np.rollaxis(arr, 2, 0)
-        else:
-            arr = np.expand_dims(arr, axis=0)
-    except Exception as e:
-        arr = on_fail()
-    finally:
-        fd.close()
-        os.remove(fd.name)
-
-    return arr
-
-
 class ThreadedAsyncioRunner(object):
     def __init__(self, method, loop=None):
         if not loop:
@@ -211,7 +186,7 @@ class AsyncBaseFetcher(BatchFetchTracer):
 
 
 class AsyncArrayFetcher(AsyncBaseFetcher):
-    def __init__(self, write_fn=lambda x: x, payload_handler=bytes_to_array, max_memarrays=200,
+    def __init__(self, write_fn=lambda x: x, payload_handler=lambda x: x, max_memarrays=200,
                  num_write_workers=1, num_write_threads=1, label_lut={}, *args, **kwargs):
 
         super(AsyncArrayFetcher, self).__init__(payload_handler=payload_handler, *args, **kwargs)
@@ -321,15 +296,10 @@ class VedaBaseFetcher(BatchFetchTracer):
             raise AttributeError("Provide an auth token on init or as an argument to run")
         return {"Authorization": "Bearer {}".format(self._token)}
 
-    def _configure(self, session, loop):
-        self._qreq = asyncio.Queue(maxsize=self.max_concurrent_reqs)
-        self._qwrite = asyncio.Queue()
-        self._write_lock = asyncio.Lock()
-        self._consumers = [asyncio.ensure_future(self.consume_reqs(session)) for _ in range(self.max_concurrent_reqs)]
-        self._writers = [asyncio.ensure_future(self.write_stack(loop)) for _ in range(self._n_write_workers)]
-
-    async def fetch_with_retries(self, url, session, retries, json=True):
+    async def fetch_with_retries(self, url, session, json=True):
+        logger.info("in fetch w trei")
         await asyncio.sleep(0.0)
+        retries = self.max_retries
         while retries:
             try:
                 async with session.get(url) as response:
@@ -340,14 +310,14 @@ class VedaBaseFetcher(BatchFetchTracer):
                     else:
                         data = await response.read()
                     await response.release()
-                await self._qreq.task_done()
+                self._qreq.task_done()
                 return data
             except CancelledError: # is this needed?
                 break
             except Exception as e:
                 logger.info("    URL READ ERROR: {}".format(url))
                 retries -= 1
-        await self._qres.task_done()
+        self._qreq.task_done()
         return None
 
     async def write_stack(self, loop):
@@ -355,6 +325,7 @@ class VedaBaseFetcher(BatchFetchTracer):
         while True:
             try:
                 label, image = await self._qwrite.get()
+                logger.info("got an image!")
                 labels.append(label)
                 images.append(image)
                 if len(images) == self.max_memarrs:
@@ -377,21 +348,36 @@ class VedaBaseFetcher(BatchFetchTracer):
         while True:
             try:
                 label_url, image_url = await self._qreq.get()
-                flbl = asyncio.ensure_future(self.fetch_with_retries(label_url, self.session, self.retries))
-                fimg = asyncio.ensure_future(self.fetch_with_retries(image_url, self.session, self.retries, json=False))
-                label, image = await asyncio.gather(flbl.add_done_callback(self.lbl_payload_handler),
-                                            fimg.add_done_callback(self.img_payload_handler))
+                logger.info("got here in consume req")
+                flbl = asyncio.ensure_future(self.fetch_with_retries(label_url, session))
+                fimg = asyncio.ensure_future(self.fetch_with_retries(image_url, session, json=False))
+                flbl.add_done_callback(self.lbl_payload_handler)
+                fimg.add_done_callback(self.img_payload_handler)
+                logger.info("got here before gather")
+                label, image = await asyncio.gather(flbl,fimg)
+                logger.info("got here label={}".format(label.dtype))
                 await self._qwrite.put([label, image])
             except CancelledError:
                 break
 
     async def produce_reqs(self):
         for req in self.reqs:
+            logger.info("req={}".format(req))
             await self._qreq.put(req)
+
+    def _configure(self, session, loop):
+        self._qreq = asyncio.Queue(maxsize=self.max_concurrent_reqs)
+        self._qwrite = asyncio.Queue()
+        self._write_lock = asyncio.Lock()
+        self._consumers = [asyncio.ensure_future(self.consume_reqs(session)) for _ in range(self.max_concurrent_reqs)]
+        self._writers = [asyncio.ensure_future(self.write_stack(loop)) for _ in range(self._n_write_workers)]
+
 
     async def drive_fetch(self, session, loop):
         self._configure(session, loop)
         producer = await self.produce_reqs()
+#        await asyncio.gather(self._qreq.join(), self._qwrite.join())
+#        for fut in self._consumers:
         await asyncio.gather(self._qreq.join(), self._qwrite.join())
         for fut in self._consumers:
             fut.cancel()

@@ -6,6 +6,9 @@ from skimage.io import imread
 from pyveda.utils import extract_load_tasks
 from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, VedaBaseFetcher
 
+def on_fail(shape=(3, 256, 256), dtype=np.uint8):
+    return np.zeros(shape, dtype=dtype)
+
 def bytes_to_array(bstring):
     if bstring is None:
         return on_fail()
