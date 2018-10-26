@@ -231,7 +231,7 @@ class BaseSet(object):
             'workers': kwargs.get('workers', 1)
         }
         if 'mask' in kwargs:
-            options['mask'] = shape(kwargs.get('mask')).wkt 
+            options['mask'] = shp(kwargs.get('mask')).wkt 
 
         with open(geojson, 'r') as fh:
             mfile = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
