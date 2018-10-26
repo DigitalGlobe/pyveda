@@ -321,7 +321,7 @@ class VedaCollection(BaseSet):
             "partition": kwargs.get("partition", [100,0,0]),
             "image_refs": kwargs.get("image_refs", []),
             "classes": kwargs.get("classes", []),
-            "bbox": kwargs.get("bbox", None),
+            "bounds": kwargs.get("bounds", None),
             "user_id": kwargs.get("userId", None)
         }
 
