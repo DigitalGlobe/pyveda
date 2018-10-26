@@ -3,42 +3,35 @@ import os
 from tempfile import NamedTemporaryFile
 import numpy as np
 from skimage.io import imread
-from pyveda.utils import extract_load_tasks
 from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, VedaBaseFetcher
 
-def on_fail(shape=(3, 256, 256), dtype=np.uint8):
-    return np.zeros(shape, dtype=dtype)
-
-def bytes_to_array(bstring):
-    if bstring is None:
-        return on_fail()
-    try:
-        fd = NamedTemporaryFile(prefix='gbdxtools', suffix='.tif', delete=False)
-        fd.file.write(bstring)
-        fd.file.flush()
-        fd.close()
-        arr = imread(fd.name)
-        if len(arr.shape) == 3:
-            arr = np.rollaxis(arr, 2, 0)
-        else:
-            arr = np.expand_dims(arr, axis=0)
-    except Exception as e:
-        arr = on_fail()
-    finally:
-        fd.close()
-        os.remove(fd.name)
-
-    return arr
-
-
-def write_data(data, datagroup=None):
+def vedabase_batch_write(data, database=None, partition=[70, 20, 10]):
+    trainp, testp, valp = partition
+    batch_size = data.shape[0]
+    ntrain = round(batch_size * (trainp * 0.01))
+    ntest = round(batch_size * (testp * 0.01))
+    nval = round(batch_size * (valp * 0.01))
     images, labels = data
-    datagroup.images.append(images)
-    datagroup.labels.append(labels)
 
-def write_fetch(database, source, partition, total, token):
-    abf = VedaBaseFetcher(source, total_count=total, token=token, write_fn=partial(write_data, datagroup=database),
-                          lbl_payload_handler=database.labels._from_geo, img_payload_handler=bytes_to_array)
+    # write training data
+    database.train.images.append(images[:ntrain]))
+    database.labels.append(labels[:ntrain]))
+    # write testing data
+    test_start = ntrain + 1
+    test_stop = ntrain + ntest
+    database.test.images.append(images[test_start:test_stop])
+    database.test.labels.append(labels[test_start:test_stop])
+    # write validation data
+    val_start = test_stop + 1
+    database.validation.images.append(images[val_start:])
+    database.validation.labels.append(labels[val_start:])
+
+def build_vedabase(database, source, partition, total, token):
+    abf = VedaBaseFetcher(source, total_count=total, token=token,
+                          write_fn=partial(vedabase_batch_write, database=database, partition=partition),
+                          lbl_payload_handler=partial(database._label_klass.from_geo, imshape=database.image_shape),
+                          img_payload_handler=database._image_klass.bytes_to_array)
+
     with ThreadedAsyncioRunner(abf.run) as tar:
         tar(loop=tar._loop)
 
