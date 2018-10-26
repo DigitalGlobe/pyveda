@@ -251,7 +251,7 @@ class AsyncArrayFetcher(AsyncBaseFetcher):
 
 class VedaBaseFetcher(BatchFetchTracer):
     def __init__(self, reqs, total_count=0, session=None, token=None, max_retries=5, timeout=20,
-                 session_limit=30, max_concurrent_requests=500, connector=aiohttp.TCPConnector,
+                 session_limit=30, max_concurrent_requests=100, connector=aiohttp.TCPConnector,
                  lbl_payload_handler=lambda x: x, img_payload_handler=lambda x: x, write_fn=lambda x: x,
                  num_lbl_payload_workers=10, num_img_payload_workers=10, num_lbl_payload_threads=10,
                  num_img_payload_threads=10, lbl_payload_executor=concurrent.futures.ThreadPoolExecutor,
@@ -273,12 +273,8 @@ class VedaBaseFetcher(BatchFetchTracer):
             trace_config = self._configure_tracer()
             self._trace_configs.append(trace_config)
 
-        self.lbl_payload_handler = lbl_payload_handler
-        self.img_payload_handler = img_payload_handler
         self.write_fn = write_fn
         self.max_memarrs = max_memarrays
-        self._n_lbl_payload_workers = num_lbl_payload_workers
-        self._n_img_payload_workers = num_img_payload_workers
         self._n_lbl_payload_threads = num_lbl_payload_threads
         self._n_img_payload_threads = num_img_payload_threads
         self._lbl_payload_executor = lbl_payload_executor(max_workers=num_lbl_payload_threads)
@@ -290,19 +286,28 @@ class VedaBaseFetcher(BatchFetchTracer):
         if has_tqdm and total_count:
             self._pbar = tqdm(total=total_count)
 
+        self.lbl_payload_handler = functools.partial(self._payload_handler,
+                                                     executor=lbl_payload_executor(max_workers=num_lbl_payload_threads),
+                                                     fn=lbl_payload_handler)
+        self.img_payload_handler = functools.partial(self._payload_handler,
+                                                     executor=img_payload_executor(max_workers=num_img_payload_threads),
+                                                     fn=img_payload_handler)
     @property
     def headers(self):
         if not self._token:
             raise AttributeError("Provide an auth token on init or as an argument to run")
         return {"Authorization": "Bearer {}".format(self._token)}
 
-    async def fetch_with_retries(self, url, session, json=True):
-        logger.info("in fetch w trei")
+    async def _payload_handler(self, payload, executor=None, fn=lambda x: x):
+        processed_data = await self.loop.run_in_executor(executor, fn, payload)
+        return processed_data
+
+    async def fetch_with_retries(self, url, json=True, callback=None):
         await asyncio.sleep(0.0)
         retries = self.max_retries
         while retries:
             try:
-                async with session.get(url) as response:
+                async with self.session.get(url) as response:
                     response.raise_for_status()
                     logger.info("  URL READ SUCCESS: {}".format(url))
                     if json:
@@ -310,29 +315,34 @@ class VedaBaseFetcher(BatchFetchTracer):
                     else:
                         data = await response.read()
                     await response.release()
-                self._qreq.task_done()
+                if callback:
+                    try:
+                        data = await callback(data)
+                    except Exception as e:
+                        logger.info(e)
                 return data
             except CancelledError: # is this needed?
                 break
             except Exception as e:
+                logger.info(e)
                 logger.info("    URL READ ERROR: {}".format(url))
                 retries -= 1
-        self._qreq.task_done()
         return None
 
-    async def write_stack(self, loop):
+    async def write_stack(self):
+        await asyncio.sleep(0.0)
         labels, images = [], []
         while True:
             try:
                 label, image = await self._qwrite.get()
-                logger.info("got an image!")
                 labels.append(label)
                 images.append(image)
                 if len(images) == self.max_memarrs:
                     data = [np.array(images), np.array(labels)]
                     async with self._write_lock:
-                        await loop.run_in_executor(self._write_executor, self.write_fn, data)
+                        await self.loop.run_in_executor(self._write_executor, self.write_fn, data)
                     labels, images = [], []
+                self._qreq.task_done()
                 self._qwrite.task_done()
                 if self._pbar:
                     self._pbar.update(1)
@@ -340,51 +350,51 @@ class VedaBaseFetcher(BatchFetchTracer):
                 if images:
                     data = [np.array(images), np.array(labels)]
                     async with self._write_lock:
-                        await loop.run_in_executor(self._write_executor, self.write_fn, data)
+                        await self.loop.run_in_executor(self._write_executor, self.write_fn, data)
                 break
         return True
 
-    async def consume_reqs(self, session):
+    async def consume_reqs(self):
         while True:
             try:
                 label_url, image_url = await self._qreq.get()
-                logger.info("got here in consume req")
-                flbl = asyncio.ensure_future(self.fetch_with_retries(label_url, session))
-                fimg = asyncio.ensure_future(self.fetch_with_retries(image_url, session, json=False))
-                flbl.add_done_callback(self.lbl_payload_handler)
-                fimg.add_done_callback(self.img_payload_handler)
-                logger.info("got here before gather")
+                flbl = self.fetch_with_retries(label_url, callback=self.lbl_payload_handler)
+                fimg = self.fetch_with_retries(image_url, json=False, callback=self.img_payload_handler)
                 label, image = await asyncio.gather(flbl,fimg)
-                logger.info("got here label={}".format(label.dtype))
                 await self._qwrite.put([label, image])
             except CancelledError:
                 break
 
     async def produce_reqs(self):
         for req in self.reqs:
-            logger.info("req={}".format(req))
             await self._qreq.put(req)
+        await self._qreq.join()
+        self._source_exhausted.set()
 
     def _configure(self, session, loop):
+        self.session = session
+        self.loop = loop
+        self._source_exhausted = asyncio.Event()
         self._qreq = asyncio.Queue(maxsize=self.max_concurrent_reqs)
         self._qwrite = asyncio.Queue()
         self._write_lock = asyncio.Lock()
-        self._consumers = [asyncio.ensure_future(self.consume_reqs(session)) for _ in range(self.max_concurrent_reqs)]
-        self._writers = [asyncio.ensure_future(self.write_stack(loop)) for _ in range(self._n_write_workers)]
+        self._consumers = [asyncio.ensure_future(self.consume_reqs()) for _ in range(self.max_concurrent_reqs)]
+        self._writers = [asyncio.ensure_future(self.write_stack()) for _ in range(self._n_write_workers)]
 
-
-    async def drive_fetch(self, session, loop):
-        self._configure(session, loop)
-        producer = await self.produce_reqs()
-#        await asyncio.gather(self._qreq.join(), self._qwrite.join())
-#        for fut in self._consumers:
-        await asyncio.gather(self._qreq.join(), self._qwrite.join())
+    async def kill_workers(self):
+        await self._source_exhausted.wait()
+        await self._qwrite.join()
         for fut in self._consumers:
             fut.cancel()
         for fut in self._writers:
             fut.cancel()
         done, pending = await asyncio.wait(self._writers)
         return True
+
+    async def drive_fetch(self, session, loop):
+        self._configure(session, loop)
+        producer = await self.produce_reqs()
+        res = await self.kill_workers()
 
     async def start_fetch(self, loop):
         async with aiohttp.ClientSession(loop=loop,
@@ -401,11 +411,8 @@ class VedaBaseFetcher(BatchFetchTracer):
             loop = asyncio.get_event_loop()
         if reqs:
             self.reqs = reqs
-#        else:
-#            assert(len(self.reqs) > 0)
         if token:
             self._token = token
-
         fut = await self.start_fetch(loop)
         await asyncio.sleep(0.250)
         return fut
