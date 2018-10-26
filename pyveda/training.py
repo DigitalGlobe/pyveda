@@ -215,11 +215,13 @@ class BaseSet(object):
         """
             Loads a geojson file into the VC
         """
+        rda_node = image.rda.graph()['nodes'][0]['id']
         meta = self.meta
         meta.update({
             "imshape": list(self.imshape),
             "sensors": self.sensors,
             "dtype": self.dtype
+            #"rda_node": rda_node
         })
         options = {
             'match':  kwargs.get('match', 'INTERSECTS'),
@@ -227,7 +229,7 @@ class BaseSet(object):
             'label_field':  kwargs.get('label_field', None),
             'cache_type':  kwargs.get('cache_type', 'stream'),
             'graph': image.rda_id,
-            'node': image.rda.graph()['nodes'][0]['id'],
+            'node': rda_node,
             'workers': kwargs.get('workers', 1)
         }
         if 'mask' in kwargs:
@@ -317,7 +319,7 @@ class VedaCollection(BaseSet):
             "mlType": mlType,
             "public": kwargs.get("public", False),
             "partition": kwargs.get("partition", [100,0,0]),
-            "rda_templates": kwargs.get("rda_templates", []),
+            "image_refs": kwargs.get("image_refs", []),
             "classes": kwargs.get("classes", []),
             "bbox": kwargs.get("bbox", None),
             "user_id": kwargs.get("userId", None)
