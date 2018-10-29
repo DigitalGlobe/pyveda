@@ -254,6 +254,7 @@ class VedaBaseFetcher(BatchFetchTracer):
     def __init__(self, reqs, total_count=0, session=None, token=None, max_retries=5, timeout=20,
                  session_limit=30, max_concurrent_requests=200, max_memarrays=100, connector=aiohttp.TCPConnector,
                  lbl_payload_handler=lambda x: x, img_payload_handler=lambda x: x, write_fn=lambda x: x,
+                 img_batch_transform=lambda x: x, lbl_batch_transform=lambda x: x,
                  num_lbl_payload_threads=1, num_img_payload_threads=10, num_write_workers=1, num_write_threads=1,
                  lbl_payload_executor=concurrent.futures.ThreadPoolExecutor,
                  img_payload_executor=concurrent.futures.ThreadPoolExecutor,
@@ -276,6 +277,8 @@ class VedaBaseFetcher(BatchFetchTracer):
 
         self.write_fn = write_fn
         self.max_memarrs = max_memarrays
+        self._lbl_batch_transform = lbl_batch_transform
+        self._img_batch_transform = img_batch_transform
         self._n_lbl_payload_threads = num_lbl_payload_threads
         self._n_img_payload_threads = num_img_payload_threads
         self._lbl_payload_executor = lbl_payload_executor(max_workers=num_lbl_payload_threads)
@@ -339,9 +342,12 @@ class VedaBaseFetcher(BatchFetchTracer):
                 labels.append(label)
                 images.append(image)
                 if len(images) == self.max_memarrs:
-                    data = [np.array(images), np.array(labels)]
+                    data = [self._img_batch_transform(images), self._lbl_batch_transform(labels)]
                     async with self._write_lock:
-                        await self.loop.run_in_executor(self._write_executor, self.write_fn, data)
+                        try:
+                            await self.loop.run_in_executor(self._write_executor, self.write_fn, data)
+                        except Exception as e:
+                            logger.info("Exception is WRITE_STACK: {}".format(e))
                     labels, images = [], []
                 self._qreq.task_done()
                 self._qwrite.task_done()
@@ -349,7 +355,7 @@ class VedaBaseFetcher(BatchFetchTracer):
                     self._pbar.update(1)
             except CancelledError: # write out anything remaining
                 if images:
-                    data = [np.array(images), np.array(labels)]
+                    data = [self._img_batch_transform(images), self._lbl_batch_transform(labels)]
                     async with self._write_lock:
                         await self.loop.run_in_executor(self._write_executor, self.write_fn, data)
                 break
