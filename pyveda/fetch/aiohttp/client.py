@@ -346,6 +346,7 @@ class VedaBaseFetcher(BatchFetchTracer):
                     async with self._write_lock:
                         try:
                             await self.loop.run_in_executor(self._write_executor, self.write_fn, data)
+                            logger.info("SUCCESS WRITE {} DATAPOINTS".format(len(images)))
                         except Exception as e:
                             logger.info("Exception is WRITE_STACK: {}".format(e))
                     labels, images = [], []

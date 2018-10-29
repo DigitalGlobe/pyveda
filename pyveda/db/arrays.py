@@ -3,6 +3,7 @@ from collections import OrderedDict, defaultdict
 import numpy as np
 from skimage.io import imread
 import tables
+import ujson as json
 from pyveda.utils import mktempfilename, _atom_from_dtype
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.labels import ClassificationLabel, SegmentationLabel, ObjDetectionLabel
@@ -169,7 +170,7 @@ class ObjDetectionArray(LabelArray, ObjDetectionLabel):
 
     def _input_fn(self, item):
         assert isinstance(item, list)
-        return np.fromstring(json.dumps(item), dtype=np.float32)
+        return np.fromstring(json.dumps(item), dtype=np.uint8)
 
     def _output_fn(self, item):
         return json.loads(item.tostring())
@@ -183,6 +184,7 @@ class ObjDetectionArray(LabelArray, ObjDetectionLabel):
         if not dtype:
             dtype = cls._default_dtype
         trainer._fileh.create_vlarray(group, "labels",
-                                      atom = _atom_from_dtype(dtype))
+                                      atom = tables.UInt8Atom(),
+                                      filters=tables.Filters(complevel=0))
 
 
