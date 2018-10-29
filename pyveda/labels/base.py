@@ -30,8 +30,11 @@ class SegmentationLabel(BaseLabel):
         out_array = np.zeros(out_shape)
         value = 1
         for k, features in item['data']['label'].items():
-            out_array += SegmentationLabel._create_mask(features, value, out_shape, xfm)
-            value += 1
+            try:
+                out_array += SegmentationLabel._create_mask(features, value, out_shape, xfm)
+                value += 1
+            except Exception as e: # I think this is ValueError from rasterio but need check
+                pass
         return out_array
 
     @staticmethod
