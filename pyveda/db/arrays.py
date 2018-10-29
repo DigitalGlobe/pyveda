@@ -14,6 +14,10 @@ class WrappedDataArray(object):
         self._trainer = trainer
         self._read_transform = output_transform
 
+    @staticmethod
+    def _batch_transform(items):
+        return np.array(items)
+
     def _input_fn(self, item):
         return item
 
@@ -44,6 +48,9 @@ class WrappedDataArray(object):
 
     def append(self, item):
         self._arr.append(self._input_fn(item))
+
+    def append_batch(self, items):
+        self.append(items)
 
     @classmethod
     def create_array(cls, *args, **kwargs):
@@ -117,10 +124,13 @@ class LabelArray(WrappedDataArray):
     def _get_transform(self, bounds, height, width):
         return from_bounds(*bounds, width, height)
 
-    def append(self, labels):
-        super(LabelArray, self).append(labels)
-        #self._add_records(labels)
+    def append(self, label):
+        super(LabelArray, self).append(label)
+        #self._add_records(label)
 
+    def append_batch(self, labels):
+        return self.append(labels)
+        #self._add_records(labels)
 
 class ClassificationArray(LabelArray, ClassificationLabel):
     _default_dtype = np.uint8
@@ -153,13 +163,20 @@ class SegmentationArray(LabelArray, SegmentationLabel):
 class ObjDetectionArray(LabelArray, ObjDetectionLabel):
     _default_dtype = np.float32
 
+    @staticmethod
+    def _batch_transform(items):
+        return items
+
     def _input_fn(self, item):
-        assert item.shape[1] == 4
-        return item.flatten()
+        assert isinstance(item, list)
+        return np.fromstring(json.dumps(item), dtype=np.float32)
 
     def _output_fn(self, item):
-        op_shape = (int(len(item) / 4), 4)
-        return item.reshape(op_shape)
+        return json.loads(item.tostring())
+
+    def append_batch(self, items):
+        for item in items:
+            self.append(item)
 
     @classmethod
     def create_array(cls, trainer, group, dtype):
