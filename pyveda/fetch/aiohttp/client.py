@@ -22,11 +22,11 @@ from pyveda.fetch.diagnostics import BatchFetchTracer
 from pyveda.utils import write_trace_profile
 
 has_tqdm = False
-try:
-    from tqdm import trange, tqdm, tqdm_notebook, tnrange
-    has_tqdm = True
-except ImportError:
-    pass
+#try:
+#    from tqdm import trange, tqdm, tqdm_notebook, tnrange
+#    has_tqdm = True
+#except ImportError:
+#    pass
 
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -249,14 +249,15 @@ class AsyncArrayFetcher(AsyncBaseFetcher):
         return self.results
 
 
+
 class VedaBaseFetcher(BatchFetchTracer):
     def __init__(self, reqs, total_count=0, session=None, token=None, max_retries=5, timeout=20,
-                 session_limit=30, max_concurrent_requests=100, connector=aiohttp.TCPConnector,
+                 session_limit=30, max_concurrent_requests=200, max_memarrays=100, connector=aiohttp.TCPConnector,
                  lbl_payload_handler=lambda x: x, img_payload_handler=lambda x: x, write_fn=lambda x: x,
-                 num_lbl_payload_workers=10, num_img_payload_workers=10, num_lbl_payload_threads=10,
-                 num_img_payload_threads=10, lbl_payload_executor=concurrent.futures.ThreadPoolExecutor,
-                 img_payload_executor=concurrent.futures.ThreadPoolExecutor, num_write_workers=1,
-                 num_write_threads=1, write_executor=concurrent.futures.ThreadPoolExecutor, max_memarrays=200,
+                 num_lbl_payload_threads=1, num_img_payload_threads=10, num_write_workers=1, num_write_threads=1,
+                 lbl_payload_executor=concurrent.futures.ThreadPoolExecutor,
+                 img_payload_executor=concurrent.futures.ThreadPoolExecutor,
+                 write_executor=concurrent.futures.ThreadPoolExecutor,
                  run_tracer=False, *args, **kwargs):
 
         self.reqs = reqs
@@ -287,10 +288,10 @@ class VedaBaseFetcher(BatchFetchTracer):
             self._pbar = tqdm(total=total_count)
 
         self.lbl_payload_handler = functools.partial(self._payload_handler,
-                                                     executor=lbl_payload_executor(max_workers=num_lbl_payload_threads),
+                                                     executor=self._lbl_payload_executor,
                                                      fn=lbl_payload_handler)
         self.img_payload_handler = functools.partial(self._payload_handler,
-                                                     executor=img_payload_executor(max_workers=num_img_payload_threads),
+                                                     executor=self._img_payload_executor,
                                                      fn=img_payload_handler)
     @property
     def headers(self):
@@ -302,7 +303,7 @@ class VedaBaseFetcher(BatchFetchTracer):
         processed_data = await self.loop.run_in_executor(executor, fn, payload)
         return processed_data
 
-    async def fetch_with_retries(self, url, json=True, callback=None):
+    async def fetch_with_retries(self, url, json=True, callback=None, **kwargs):
         await asyncio.sleep(0.0)
         retries = self.max_retries
         while retries:
@@ -317,11 +318,11 @@ class VedaBaseFetcher(BatchFetchTracer):
                     await response.release()
                 if callback:
                     try:
-                        data = await callback(data)
+                        data = await callback(data, **kwargs)
                     except Exception as e:
                         logger.info(e)
                 return data
-            except CancelledError: # is this needed?
+            except CancelledError:
                 break
             except Exception as e:
                 logger.info(e)
@@ -358,8 +359,8 @@ class VedaBaseFetcher(BatchFetchTracer):
         while True:
             try:
                 label_url, image_url = await self._qreq.get()
-                flbl = self.fetch_with_retries(label_url, callback=self.lbl_payload_handler)
-                fimg = self.fetch_with_retries(image_url, json=False, callback=self.img_payload_handler)
+                flbl = asyncio.ensure_future(self.fetch_with_retries(label_url, callback=self.lbl_payload_handler))
+                fimg = asyncio.ensure_future(self.fetch_with_retries(image_url, json=False, callback=self.img_payload_handler))
                 label, image = await asyncio.gather(flbl,fimg)
                 await self._qwrite.put([label, image])
             except CancelledError:
