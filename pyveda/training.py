@@ -116,7 +116,7 @@ class DataPoint(object):
 
     def remove(self):
         """ Removes the datapoint from the set"""
-        return self.conn.delete(self.links["delete"]["href"]).json()
+        self.conn.delete(self.links["delete"]["href"])
 
     def _map_labels(self):
         """ Convert labels to data """
