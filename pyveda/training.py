@@ -20,7 +20,7 @@ from gbdxtools import Interface, CatalogImage
 from .loaders import load_image
 from .utils import transforms
 from rasterio.features import rasterize
-from shapely.geometry import shape as shp, mapping
+from shapely.geometry import shape as shp, mapping, box
 from shapely import ops
 
 from functools import partial
@@ -131,6 +131,22 @@ class DataPoint(object):
 
     def __repr__(self):
         return str(self.data)
+
+    @property
+    def meta(self):
+        ''' returns metadata useful to end users '''
+        data = self.data.copy()
+        parent = self.data['dataset_id']
+        del data['dataset_id']
+        del data['queue']
+        del data['sha']
+        del data['tile_coords']
+        data['parent'] = parent
+        return data
+    
+    @property
+    def __geo_interface__(self):
+        return box(*self.data['bounds']).__geo_interface__
 
 
 class BaseSet(object):
@@ -479,3 +495,7 @@ class VedaCollection(BaseSet):
             start, stop = slc.start, slc.stop
             limit = (stop-1) - start
         return self.fetch_points(limit, offset=start)
+
+    @property
+    def __geo_interface__(self):
+        return box(*self.bounds).__geo_interface__
