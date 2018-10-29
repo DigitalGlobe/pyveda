@@ -54,10 +54,10 @@ class ObjDetectionLabel(BaseLabel):
         labels = []
         for k, features in item['data']['label'].items():
             class_labels = []
-            for f in features:
-                b = _shape(f).bounds
+            for i, f in enumerate(features):
+                b = shape(f).bounds
                 ll, ur = ~xfm * (b[0],b[1]), ~xfm * (b[2],b[3])
                 class_labels.append([*ll, *ur])
             labels.append(class_labels)
-        return np.array(labels)
+        return labels
 
