@@ -80,7 +80,7 @@ class ImageArray(WrappedDataArray):
             else:
                 arr = np.expand_dims(arr, axis=0)
         except Exception as e:
-            arr = ImageArrayon_fail()
+            arr = ImageArray.on_fail()
         finally:
             fd.close()
             os.remove(fd.name)
