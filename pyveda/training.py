@@ -20,7 +20,7 @@ from gbdxtools import Interface, CatalogImage
 from .loaders import load_image
 from .utils import transforms
 from rasterio.features import rasterize
-from shapely.geometry import shape as shp, mapping
+from shapely.geometry import shape as shp, mapping, box
 from shapely import ops
 
 from functools import partial
@@ -116,7 +116,7 @@ class DataPoint(object):
 
     def remove(self):
         """ Removes the datapoint from the set"""
-        return self.conn.delete(self.links["delete"]["href"]).json()
+        self.conn.delete(self.links["delete"]["href"])
 
     def _map_labels(self):
         """ Convert labels to data """
@@ -131,6 +131,22 @@ class DataPoint(object):
 
     def __repr__(self):
         return str(self.data)
+
+    @property
+    def meta(self):
+        ''' returns metadata useful to end users '''
+        data = self.data.copy()
+        parent = self.data['dataset_id']
+        del data['dataset_id']
+        del data['queue']
+        del data['sha']
+        del data['tile_coords']
+        data['parent'] = parent
+        return data
+
+    @property
+    def __geo_interface__(self):
+        return box(*self.data['bounds']).__geo_interface__
 
 
 class BaseSet(object):
@@ -214,11 +230,13 @@ class BaseSet(object):
         """
             Loads a geojson file into the VC
         """
+        rda_node = image.rda.graph()['nodes'][0]['id']
         meta = self.meta
         meta.update({
             "imshape": list(self.imshape),
             "sensors": self.sensors,
             "dtype": self.dtype
+            #"rda_node": rda_node
         })
         options = {
             'match':  kwargs.get('match', 'INTERSECTS'),
@@ -226,11 +244,11 @@ class BaseSet(object):
             'label_field':  kwargs.get('label_field', None),
             'cache_type':  kwargs.get('cache_type', 'stream'),
             'graph': image.rda_id,
-            'node': image.rda.graph()['nodes'][0]['id'],
+            'node': rda_node,
             'workers': kwargs.get('workers', 1)
         }
         if 'mask' in kwargs:
-            options['mask'] = shape(kwargs.get('mask')).wkt
+            options['mask'] = shp(kwargs.get('mask')).wkt
 
         with open(geojson, 'r') as fh:
             mfile = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
@@ -316,9 +334,9 @@ class VedaCollection(BaseSet):
             "mlType": mlType,
             "public": kwargs.get("public", False),
             "partition": kwargs.get("partition", [100,0,0]),
-            "rda_templates": kwargs.get("rda_templates", []),
+            "image_refs": kwargs.get("image_refs", []),
             "classes": kwargs.get("classes", []),
-            "bbox": kwargs.get("bbox", None),
+            "bounds": kwargs.get("bounds", None),
             "user_id": kwargs.get("userId", None)
         }
 
@@ -497,3 +515,7 @@ class VedaCollection(BaseSet):
             start, stop = slc.start, slc.stop
             limit = (stop-1) - start
         return self.fetch_points(limit, offset=start)
+
+    @property
+    def __geo_interface__(self):
+        return box(*self.bounds).__geo_interface__
