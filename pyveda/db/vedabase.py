@@ -8,6 +8,15 @@ from pyveda.db.arrays import ClassificationArray, SegmentationArray, ObjDetectio
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
+MLTYPE_MAP = {"classification": ClassificationArray,
+              "segmentation": SegmentationArray,
+              "object_detection": ObjDetectionArray}
+
+DATA_GROUPS = {"TRAIN": "Data designated for model training",
+               "TEST": "Data designated for model testing",
+               "VALIDATE": "Data designated for model validation"}
+
+
 
 class WrappedDataNode(object):
     def __init__(self, node, trainer):
@@ -40,48 +49,52 @@ class WrappedDataNode(object):
         return len(self._node.images)
 
 
-mltype_map = {"classification": ClassificationArray,
-              "segmentation": SegmentationArray,
-              "object_detection": ObjDetectionArray}
-
-data_groups = {"TRAIN": "Data designated for model training",
-               "TEST": "Data designated for model testing",
-               "VALIDATE": "Data designated for model validation"}
-
 
 class VedaBase(object):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
-    def __init__(self, fname, mltype, klasses, image_shape, image_dtype, framework=None,
-                 title="Unknown", label_dtype=None, overwrite=False):
+    def __init__(self, fname, mltype=None, klasses=None, image_shape=None, image_dtype=None, framework=None,
+                 title="VedaBase", label_dtype=None, overwrite=False, mode="a"):
 
         self._framework = framework
         self._fw_loader = lambda x: x
-        self.image_shape = image_shape
-        self.klasses = klasses
-        self._image_klass = ImageArray
-        self._label_klass = mltype_map[mltype]
 
         if os.path.exists(fname):
             if overwrite:
                 os.remove(fname)
             else:
-                self._load_existing()
+                self._load_existing(fname, mode)
                 return
 
         self._fileh = tables.open_file(fname, mode="a", title=title)
-        for name, desc in data_groups.items():
+        self._fileh.root._v_attrs.mltype = mltype
+        self._fileh.root._v_attrs.klasses = klasses
+        self._fileh.root._v_attrs.image_shape = image_shape
+        self._fileh.root._v_attrs.image_dtype = image_dtype
+
+        self._configure_instance()
+        self._build_filetree()
+
+    def _load_existing(self, fname, mode="a"):
+        if mode == "w":
+            raise ValueError("Opening the file in write mode will overwrite the file")
+        self._fileh = tables.open_file(fname, mode=mode)
+        self._configure_instance()
+
+    def _configure_instance(self, *args, **kwargs):
+        self._image_klass = ImageArray
+        self._label_klass = MLTYPE_MAP[self.mltype]
+        self._classifications = dict([(klass, tables.UInt8Col(pos=idx + 1)) for idx, klass in enumerate(self.klasses)])
+
+    def _build_filetree(self, dg=DATA_GROUPS):
+        # Build group nodes
+        for name, desc in dg.items():
             self._fileh.create_group("/", name.lower(), desc)
-
-        classifications = dict([(klass, tables.UInt8Col(pos=idx + 1)) for idx, klass in enumerate(klasses)])
-
-        self._create_tables(classifications, filters=tables.Filters(0))
-        self._create_arrays(ImageArray, image_dtype)
-        self._create_arrays(mltype_map[mltype])
-
-    def _configure_new(self, *args, **kwargs):
-        pass
+        # Build table, array leaves
+        self._create_tables(self._classifications, filters=tables.Filters(0))
+        self._create_arrays(self._image_klass, self.image_dtype)
+        self._create_arrays(self._label_klass)
 
     def _image_array_factory(self, *args, **kwargs):
         return self._image_klass(*args, **kwargs)
@@ -100,6 +113,22 @@ class VedaBase(object):
 
     def _build_label_tables(self, rebuild=True):
         pass
+
+    @property
+    def mltype(self):
+        return self._fileh.root._v_attrs.mltype
+
+    @property
+    def klasses(self):
+        return self._fileh.root._v_attrs.klasses
+
+    @property
+    def image_shape(self):
+        return self._fileh.root._v_attrs.image_shape
+
+    @property
+    def image_dtype(self):
+        return self._fileh.root._v_attrs.image_dtype
 
     @property
     def _groups(self):
