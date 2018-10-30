@@ -82,7 +82,6 @@ class DataPoint(object):
         #if self.ml_type is not None and self.ml_type == 'segmentation':
         #    self.data['label'] = vec_to_raster(self.data['label'], self.imshape)
 
-
     @property
     def id(self):
         return self.data["id"]
@@ -90,6 +89,20 @@ class DataPoint(object):
     @property
     def label(self):
         return self.data['label']
+
+    @property
+    def bounds(self):
+        if 'bounds' in self.data:
+            return self.data['bounds']
+        else:
+            return None 
+
+    @property
+    def tile_coords(self):
+        if 'tile_coords' in self.data:
+            return self.data['tile_coords']
+        else:
+            return None
 
     @property
     def y(self):
