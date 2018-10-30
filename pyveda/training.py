@@ -92,7 +92,10 @@ class DataPoint(object):
 
     @property
     def bounds(self):
-        return self.data['bounds']
+        if 'bounds' in self.data:
+            return self.data['bounds']
+        else:
+            return None 
 
     @property
     def tile_coords(self):
