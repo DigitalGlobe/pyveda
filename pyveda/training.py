@@ -488,7 +488,7 @@ class VedaCollection(BaseSet):
         assert self.id is not None, 'You can only release a loaded VedaCollection. Call the load method first.'
         return self._release(version)
 
-    def to_dataset(self, size, fname, partition=[70, 20, 10], **kwargs):
+    def store(self, size, fname, partition=[70, 20, 10], **kwargs):
         """ Build an hdf5 database from this collection and return it as a DataSet instance """
         namepath, ext = os.path.splitext(fname)
         if ext != ".h5":
