@@ -92,6 +92,14 @@ class DataPoint(object):
         return self.data['label']
 
     @property
+    def bounds(self):
+        return self.data['bounds']
+
+    @property
+    def tile_coords(self):
+        return self.data['tile_coords']
+
+    @property
     def y(self):
         if self._y is None:
             self._y = self._map_labels()
