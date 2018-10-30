@@ -166,6 +166,9 @@ class VedaBase(object):
     def remove(self):
         raise NotImplementedError
 
+    def __len__(self):
+        return sum([len(self.train), len(self.test), len(self.validate)])
+
     def __repr__(self):
         return self._fileh.__str__()
 
