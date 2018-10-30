@@ -207,7 +207,7 @@ class BaseSet(object):
         meta.update({
             "imshape": list(self.imshape),
             "sensors": self.sensors,
-            "dtype": self.dtype
+            "dtype": self.dtype.name
         })
         options = {
             'default_label': kwargs.get('default_label', None),
@@ -235,8 +235,7 @@ class BaseSet(object):
         meta.update({
             "imshape": list(self.imshape),
             "sensors": self.sensors,
-            "dtype": self.dtype
-            #"rda_node": rda_node
+            "dtype": self.dtype.name
         })
         options = {
             'match':  kwargs.get('match', 'INTERSECTS'),
