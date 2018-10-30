@@ -9,13 +9,13 @@ class MLImage(RDAImage):
         - acomped
         - RGB bands adjusted with Histogram DRA '''
     
-    def __new__(cls, cat_id, bands="MS", **kwargs): 
-        try:
+    def __new__(cls, cat_id, pansharpen=False, **kwargs): 
+        if pansharpen:
             strip = rda.DigitalGlobeStrip(catId=cat_id, CRS=kwargs.get("proj","EPSG:4326"), GSD=kwargs.get("gsd",""), 
                                       correctionType="ACOMP", 
                                       bands="PANSHARP", 
                                       fallbackToTOA=True)
-        except:
+        else:
             strip = rda.DigitalGlobeStrip(catId=cat_id, CRS=kwargs.get("proj","EPSG:4326"), GSD=kwargs.get("gsd",""), 
                                       correctionType="ACOMP", 
                                       bands="MS", 
