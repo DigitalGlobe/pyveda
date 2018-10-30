@@ -28,10 +28,10 @@ import dask
 
 import threading
 
-from .hdf5 import ImageTrainer
+from pyveda.db import VedaBase
 from .rda import MLImage
 from pyveda.utils import NamedTemporaryHDF5Generator
-from pyveda.fetch.compat import write_fetch
+from pyveda.fetch.compat import build_vedabase
 
 threads = int(os.environ.get('GBDX_THREADS', 64))
 threaded_get = partial(dask.threaded.get, num_workers=threads)
@@ -143,7 +143,7 @@ class DataPoint(object):
         del data['tile_coords']
         data['parent'] = parent
         return data
-    
+
     @property
     def __geo_interface__(self):
         return box(*self.data['bounds']).__geo_interface__
@@ -225,7 +225,6 @@ class BaseSet(object):
             self.id = doc["data"]["id"]
             self._set_links(doc["links"])
         return doc
-        
 
     def _load(self, geojson, image, **kwargs):
         """
@@ -249,7 +248,7 @@ class BaseSet(object):
             'workers': kwargs.get('workers', 1)
         }
         if 'mask' in kwargs:
-            options['mask'] = shp(kwargs.get('mask')).wkt 
+            options['mask'] = shp(kwargs.get('mask')).wkt
 
         with open(geojson, 'r') as fh:
             mfile = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
@@ -322,7 +321,7 @@ class VedaCollection(BaseSet):
         else:
             self.imshape = [0] + list(tilesize)
         self.partition = partition
-        self.dtype = kwargs.get('dtype', None)
+        self.dtype = np.dtype(kwargs.get('dtype', None))
         self.percent_cached = kwargs.get('percent_cached', 0)
         self.sensors = kwargs.get('sensors', [])
         self._count = kwargs.get('count', 0)
@@ -343,10 +342,10 @@ class VedaCollection(BaseSet):
 
         for k,v in self.meta.items():
             setattr(self, k, v)
-    
+
     def bulk_load(self, s3path, **kwargs):
         self._bulk_load(s3path, **kwargs)
-        
+
 
     def load(self, geojson, image, match="INTERSECT", default_label=None, label_field = None, cache_type="stream", **kwargs):
         '''Loads a geojson file or object into the VedaCollection
@@ -366,28 +365,24 @@ class VedaCollection(BaseSet):
 
         - `INSIDE`: the feature must be contained inside the tile bounds to generate a tile.
         - `INTERSECTS`: the feature only needs to intersect the tile. The feature will be cropped to the tile boundary (default).
-        - `ALL`: Generate all possible tiles that cover the bounding box of the input features, whether or not they contain or intersect features. 
+        - `ALL`: Generate all possible tiles that cover the bounding box of the input features, whether or not they contain or intersect features.
 
         `default_label`: default label value to apply to all features when  `label` in the geojson `Properties` is missing.
 
         `label_field`: Field in the geojson `Properties` to use for the label instead of `label`.
-        
-        `cache_type`: The type of caching to use on the server. Valid types are `stream` and `fetch`.
 
-        `workers`: The number of workers on the server to use for caching.'''
+        `cache_type`: The type of caching to use on the server. Valid types are `stream` and `fetch`.'''
 
-        
+
         assert match.upper() in valid_matches, "match {} not supported. Must be one of {}".format(match, valid_matches)
         # set up the geojson file for upload
-        if type(geojson) == str: 
+        if type(geojson) == str:
             if not os.path.exists(geojson):
                 raise ValueError('{} does not exist'.format(geojson))
         else:
-            with NamedTemporaryFile(prefix="veda", suffix="json", delete=False) as temp:
-                with open(temp.name, 'w') as fh:
-                    geojson = json.loads(json.dumps(geojson)) # seriously wtf
-                    fh.write(json.dumps(geojson))
-                geojson = temp.name
+            with NamedTemporaryFile(mode="w+t", prefix="veda", suffix="json", delete=False) as temp:
+                temp.file.write(json.dumps(geojson))
+            geojson = temp.name
         if not self.dtype:
             self.dtype = image.dtype.name
         else:
@@ -398,7 +393,7 @@ class VedaCollection(BaseSet):
         if self.imshape[0] == 0:
             if image.shape[0] > 1:
                 self.imshape[0] = image.shape[0]
-            else: 
+            else:
                 self.imshape = self.imshape[1:]
         else:
             # multiband X,N,M
@@ -429,7 +424,7 @@ class VedaCollection(BaseSet):
     @property
     def count(self):
         return self._count
-    
+
     @property
     def status(self):
         # update percent_cached?
@@ -442,10 +437,10 @@ class VedaCollection(BaseSet):
 
 
     @property
-    def type(self):
+    def mtype(self):
         return self.meta['mlType']
 
-    def ids(self, size=None, page_size=100):
+    def ids(self, size=None, page_size=100, get_urls=True):
         if size is None:
             size = self.count
         def get(pages):
@@ -459,7 +454,19 @@ class VedaCollection(BaseSet):
             for i in ids:
                 count += 1
                 if count <= size:
-                    yield i
+                    if not get_urls:
+                        yield i
+                    else:
+                        yield self._urls_from_id(i)
+
+    def _urls_from_id(self, _id):
+        qs = urlencode({})
+        if self.classes and len(self.classes):
+            params = {"classes": ','.join(self.classes)}
+            qs = urlencode(params)
+        label_url = "{}/datapoints/{}?{}".format(HOST, _id, qs)
+        image_url = "{}/datapoints/{}/image.tif".format(HOST, _id)
+        return [label_url, image_url]
 
     def _update_sensors(self, image):
         """ Appends the sensor name to the list of already cached sensors """
@@ -480,6 +487,19 @@ class VedaCollection(BaseSet):
         """ Create a released version of this VedaCollection. Publishes the entire set to s3."""
         assert self.id is not None, 'You can only release a loaded VedaCollection. Call the load method first.'
         return self._release(version)
+
+    def to_dataset(self, size, fname, partition=[70, 20, 10], **kwargs):
+        """ Build an hdf5 database from this collection and return it as a DataSet instance """
+        namepath, ext = os.path.splitext(fname)
+        if ext != ".h5":
+            fname = namepath + ".h5"
+
+        pgen = self.ids(size)
+        vb = VedaBase(fname, self.mtype, self.meta['classes'], self.imshape, image_dtype=self.dtype, **kwargs)
+
+        build_vedabase(vb, pgen, partition, size, gbdx.gbdx_connection.access_token, label_threads=1, image_threads=10)
+        vb.flush()
+        return vb
 
     def refresh(self):
         """ Create a released version of this VedaCollection. Publishes the entire set to s3."""
