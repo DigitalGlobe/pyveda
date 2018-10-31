@@ -16,15 +16,12 @@ def vedabase_batch_write(data, database=None, partition=[70, 20, 10]):
     database.train.labels.append_batch(labels[:ntrain])
 
     # write testing data
-    test_start = ntrain + 1
-    test_stop = test_start + ntest
-    database.test.images.append_batch(images[test_start:test_stop])
-    database.test.labels.append_batch(labels[test_start:test_stop])
+    database.test.images.append_batch(images[ntrain:ntrain + ntest])
+    database.test.labels.append_batch(labels[ntrain:ntrain + ntest])
 
     # write validation data
-    val_start = test_stop + 1
-    database.validate.images.append_batch(images[val_start:])
-    database.validate.labels.append_batch(labels[val_start:])
+    database.validate.images.append_batch(images[ntrain + ntest:])
+    database.validate.labels.append_batch(labels[ntrain + ntest:])
 
 def build_vedabase(database, source, partition, total, token, label_threads=1, image_threads=10):
     abf = VedaBaseFetcher(source, total_count=total, token=token,
