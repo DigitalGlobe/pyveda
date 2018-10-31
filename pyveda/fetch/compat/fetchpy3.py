@@ -17,7 +17,7 @@ def vedabase_batch_write(data, database=None, partition=[70, 20, 10]):
 
     # write testing data
     test_start = ntrain + 1
-    test_stop = ntrain + ntest
+    test_stop = test_start + ntest
     database.test.images.append_batch(images[test_start:test_stop])
     database.test.labels.append_batch(labels[test_start:test_stop])
 
