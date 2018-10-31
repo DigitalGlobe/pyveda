@@ -130,8 +130,13 @@ def _atom_from_dtype(_type):
         return tables.Atom.from_dtype(_type)
     return tables.Atom.from_dtype(np.dtype(_type))
 
-def ignore_warnings(fn):
+def ignore_warnings(fn, _warning=None):
     def wrapper(*args, **kwargs):
         with warnings.catch_warnings():
+            if not _warning:
+                warnings.simplefilter("ignore")
+            else:
+                warnings.simplefilter("ignore", _warning)
             return fn(*args, **kwargs)
     return wrapper
+
