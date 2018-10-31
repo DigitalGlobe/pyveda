@@ -7,6 +7,7 @@ import shutil
 import h5py
 import tables
 import numpy as np
+import warnings
 
 from shapely.geometry import box
 
@@ -129,4 +130,8 @@ def _atom_from_dtype(_type):
         return tables.Atom.from_dtype(_type)
     return tables.Atom.from_dtype(np.dtype(_type))
 
-
+def ignore_warnings(fn):
+    def wrapper(*args, **kwargs):
+        with warnings.catch_warnings():
+            return fn(*args, **kwargs)
+    return wrapper

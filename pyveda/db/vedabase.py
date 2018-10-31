@@ -1,8 +1,9 @@
 import os
+import warnings
 from collections import OrderedDict, defaultdict
 import numpy as np
 import tables
-from pyveda.utils import mktempfilename, _atom_from_dtype
+from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.db.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, ImageArray
 
@@ -106,6 +107,7 @@ class VedaBase(object):
         for name, group in self._groups.items():
             data_klass.create_array(self, group, data_dtype)
 
+    @ignore_warnings
     def _create_tables(self, classifications, filters=tables.Filters(0)):
         for name, group in self._groups.items():
             self._fileh.create_table(group, "hit_table", classifications,
