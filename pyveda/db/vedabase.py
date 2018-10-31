@@ -1,5 +1,5 @@
 import os
-import warnings
+from functools import partial
 from collections import OrderedDict, defaultdict
 import numpy as np
 import tables
@@ -17,7 +17,7 @@ DATA_GROUPS = {"TRAIN": "Data designated for model training",
                "TEST": "Data designated for model testing",
                "VALIDATE": "Data designated for model validation"}
 
-
+ignore_NaturalNameWarning = partial(ignore_warnings, _warning=tables.NaturalNameWarning)
 
 class WrappedDataNode(object):
     def __init__(self, node, trainer):
@@ -103,11 +103,12 @@ class VedaBase(object):
     def _label_array_factory(self, *args, **kwargs):
         return self._label_klass(*args, **kwargs)
 
+    @ignore_NaturalNameWarning
     def _create_arrays(self, data_klass, data_dtype=None):
         for name, group in self._groups.items():
             data_klass.create_array(self, group, data_dtype)
 
-    @ignore_warnings
+    @ignore_NaturalNameWarning
     def _create_tables(self, classifications, filters=tables.Filters(0)):
         for name, group in self._groups.items():
             self._fileh.create_table(group, "hit_table", classifications,
