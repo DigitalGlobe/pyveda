@@ -54,12 +54,12 @@ valid_matches = ['INSIDE', 'INTERSECT', 'ALL']
 def search(params={}):
     r = conn.post('{}/{}'.format(HOST, "search"), json=params)
     r.raise_for_status()
-    #try:
-    results = r.json()
-    return [VedaCollection.from_doc(s) for s in results]
-    #except Exception as err:
-    #    print(err)
-    #    return []
+    try:
+        results = r.json()
+        return [VedaCollection.from_doc(s) for s in results]
+    except Exception as err:
+        print(err)
+        return []
 
 def vec_to_raster(vectors, shape):
     try:
@@ -70,21 +70,27 @@ def vec_to_raster(vectors, shape):
 
 class DataPoint(object):
     """ Methods for accessing training data pairs """
-    def __init__(self, item, shape=(3,256,256), dtype="uint8", **kwargs):
+    def __init__(self, item, shape=(3,256,256), **kwargs):
         self.conn = conn
-        self.data = item["data"]
-        self.links = item["links"]
+        self.links = item["properties"]["links"]
         self.imshape = tuple(map(int, shape))
-        self.dtype = dtype
-        self.ml_type = kwargs.get('mlType')
         self._y = None
-
-        #if self.ml_type is not None and self.ml_type == 'segmentation':
-        #    self.data['label'] = vec_to_raster(self.data['label'], self.imshape)
+        
+        del item['properties']['links']
+        self.data = item['properties']
+      
 
     @property
     def id(self):
         return self.data["id"]
+
+    @property
+    def ml_type(self):
+        return self.data.get('mlType')
+
+    @property
+    def dtype(self):
+        return self.data.get('dtype', 'uint8')
 
     @property
     def label(self):
@@ -150,16 +156,19 @@ class DataPoint(object):
         ''' returns metadata useful to end users '''
         data = self.data.copy()
         parent = self.data['dataset_id']
-        del data['dataset_id']
-        del data['queue']
-        del data['sha']
-        del data['tile_coords']
+        try: 
+            del data['dataset_id']
+            del data['queue']
+            del data['sha']
+            del data['tile_coords']
+        except:
+            pass
         data['parent'] = parent
         return data
 
     @property
     def __geo_interface__(self):
-        return box(*self.data['bounds']).__geo_interface__
+        return box(*self.bounds).__geo_interface__
 
 
 class BaseSet(object):
@@ -235,8 +244,8 @@ class BaseSet(object):
             doc = self.conn.post(self.links["self"]["href"], json=body).json()
         else:
             doc = self.conn.post(self._bulk_data_url, json=body).json()
-            self.id = doc["data"]["id"]
-            self._set_links(doc["links"])
+            self.id = doc["properties"]["id"]
+            self._set_links(doc["properties"]["links"])
         return doc
 
     def _load(self, geojson, image, **kwargs):
@@ -273,8 +282,8 @@ class BaseSet(object):
                 doc = self.conn.post(self.links["self"]["href"], files=body).json()
             else:
                 doc = self.conn.post(self._data_url, files=body).json()
-                self.id = doc["data"]["id"]
-                self._set_links(doc["links"])
+                self.id = doc["properties"]["id"]
+                self._set_links(doc["properties"]["links"])
         return doc
 
     def create(self, data):
@@ -315,7 +324,7 @@ class BaseSet(object):
 
 class VedaCollection(BaseSet):
     """
-      Creates, persists, and provided access to ML training data via the Sandman Api
+      Creates, persists, and provided access to ML training data via the Veda Api
 
       Args:
           name (str): a name for the TrainingSet
@@ -396,9 +405,9 @@ class VedaCollection(BaseSet):
                 temp.file.write(json.dumps(geojson))
             geojson = temp.name
         if not self.dtype:
-            self.dtype = image.dtype.name
+            self.dtype = image.dtype
         else:
-            if self.dtype != image.dtype.name:
+            if self.dtype.name != image.dtype.name:
                 raise ValueError('Image dtype must be {} to match previous images'.format(self.dtype))
         # set the image bands
         # imshape is N,M for single band; X,N,M for multiband
@@ -422,8 +431,7 @@ class VedaCollection(BaseSet):
     @classmethod
     def from_doc(cls, doc):
         """ Helper method that converts a db doc to a VedaCollection"""
-        doc['data']['links'] = doc['links']
-        return cls(**doc['data'])
+        return cls(**doc['properties'])
 
     @classmethod
     def from_id(cls, _id):
