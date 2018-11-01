@@ -30,7 +30,7 @@ def search(params={}):
 
 class Model(object):
     """ Methods for accessing training data pairs """
-    def __init__(self, name, model_path=None, mlType="classification", bbox=[], shape=(3,256,256), dtype="uint8", **kwargs):
+    def __init__(self, name, model_path=None, mlType="classification", bounds=[], shape=(3,256,256), dtype="uint8", **kwargs):
         self.id = kwargs.get('id', None)
         self.links = kwargs.get('links')
         self.shape = tuple(shape)
@@ -40,7 +40,7 @@ class Model(object):
         }
         self.meta = {
             "name": name,
-            "bbox": bbox,
+            "bounds": bounds,
             "mlType": mlType,
             "public": kwargs.get("public", False),
             "training_set": kwargs.get("training_set", None),
@@ -56,8 +56,7 @@ class Model(object):
     @classmethod
     def from_doc(cls, doc):
         """ Helper method that converts a db doc to a Model """
-        doc['data']['links'] = doc['links']
-        return cls(**doc['data'])
+        return cls(**doc['properties'])
 
     @classmethod
     def from_id(cls, _id):
@@ -85,9 +84,10 @@ class Model(object):
         r = conn.post(url, data=payload, headers={'Content-Type': payload.content_type})
         r.raise_for_status()
         doc = r.json()
-        self.id = doc["data"]["id"]
-        self.links = doc["links"]
-        self.meta.update(doc['data'])
+        self.id = doc["properties"]["id"]
+        self.links = doc["properties"]["links"]
+        del doc["properties"]["links"]
+        self.meta.update(doc['properties'])
         return self
 
     def deploy(self):
