@@ -13,6 +13,9 @@ class BaseLabel(object):
     def _get_transform(bounds, height, width):
         return from_bounds(*bounds, width, height)
 
+    @staticmethod
+    def _parse_response(res):
+        return res['properties']['label']
 
 class ClassificationLabel(BaseLabel):
     _default_dtype = np.uint8
@@ -44,6 +47,11 @@ class SegmentationLabel(BaseLabel):
 
 class ObjDetectionLabel(BaseLabel):
     _default_dtype = np.float32
+
+    @staticmethod
+    def from_pixels(item, klasses=[]):
+        payload = ObjDetectionLabel._parse_response(item)
+        return [payload[klass] for klass in klasses]
 
     @staticmethod
     def from_geo(item, imshape):
