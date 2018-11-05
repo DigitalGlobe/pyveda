@@ -343,6 +343,8 @@ class VedaCollection(BaseSet):
             self.imshape = [0] + list(tilesize)
         self.partition = partition
         self.dtype = kwargs.get('dtype', None)
+        if self.dtype is not None:
+            self.dtype = np.dtype(self.dtype)
         self.percent_cached = kwargs.get('percent_cached', 0)
         self.sensors = kwargs.get('sensors', [])
         self._count = kwargs.get('count', 0)
