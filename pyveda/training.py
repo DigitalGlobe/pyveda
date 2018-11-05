@@ -90,7 +90,7 @@ class DataPoint(object):
 
     @property
     def dtype(self):
-        return self.data.get('dtype', 'uint8')
+        return np.dtype(self.data.get('dtype', 'uint8'))
 
     @property
     def label(self):
@@ -342,7 +342,7 @@ class VedaCollection(BaseSet):
         else:
             self.imshape = [0] + list(tilesize)
         self.partition = partition
-        self.dtype = np.dtype(kwargs.get('dtype', None))
+        self.dtype = kwargs.get('dtype', None)
         self.percent_cached = kwargs.get('percent_cached', 0)
         self.sensors = kwargs.get('sensors', [])
         self._count = kwargs.get('count', 0)
@@ -404,7 +404,7 @@ class VedaCollection(BaseSet):
             with NamedTemporaryFile(mode="w+t", prefix="veda", suffix="json", delete=False) as temp:
                 temp.file.write(json.dumps(geojson))
             geojson = temp.name
-        if not self.dtype:
+        if self.dtype is None:
             self.dtype = image.dtype
         else:
             if self.dtype.name != image.dtype.name:
