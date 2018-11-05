@@ -75,10 +75,10 @@ class DataPoint(object):
         self.links = item["properties"]["links"]
         self.imshape = tuple(map(int, shape))
         self._y = None
-        
+
         del item['properties']['links']
         self.data = item['properties']
-      
+
 
     @property
     def id(self):
@@ -101,7 +101,7 @@ class DataPoint(object):
         if 'bounds' in self.data:
             return self.data['bounds']
         else:
-            return None 
+            return None
 
     @property
     def tile_coords(self):
@@ -156,7 +156,7 @@ class DataPoint(object):
         ''' returns metadata useful to end users '''
         data = self.data.copy()
         parent = self.data['dataset_id']
-        try: 
+        try:
             del data['dataset_id']
             del data['queue']
             del data['sha']
@@ -514,7 +514,9 @@ class VedaCollection(BaseSet):
         if ext != ".h5":
             fname = namepath + ".h5"
 
-        pgen = self.ids(size)
+        if size is None:
+            size = self.count
+
         vb = VedaBase(fname, self.mtype, self.meta['classes'], self.imshape, image_dtype=self.dtype, **kwargs)
 
         build_vedabase(vb, pgen, partition, size, gbdx.gbdx_connection.access_token, label_threads=1, image_threads=10)
