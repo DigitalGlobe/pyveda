@@ -517,6 +517,7 @@ class VedaCollection(BaseSet):
         if size is None:
             size = self.count
 
+        pgen = self.ids(size=size)
         vb = VedaBase(fname, self.mtype, self.meta['classes'], self.imshape, image_dtype=self.dtype, **kwargs)
 
         build_vedabase(vb, pgen, partition, size, gbdx.gbdx_connection.access_token, label_threads=1, image_threads=10)
