@@ -37,22 +37,18 @@ threads = int(os.environ.get('GBDX_THREADS', 64))
 threaded_get = partial(dask.threaded.get, num_workers=threads)
 gbdx = Interface()
 
-HOST = os.environ.get('SANDMAN_API')
-if not HOST:
-    HOST = "https://veda-api.geobigdata.io"
+HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
 
-if 'https:' in HOST:
-    conn = gbdx.gbdx_connection
-else:
-    headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
-    conn = requests.Session()
-    conn.headers.update(headers)
+headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
+conn = requests.Session()
+conn.headers.update(headers)
 
 valid_mltypes = ['classification', 'object_detection', 'segmentation']
 valid_matches = ['INSIDE', 'INTERSECT', 'ALL']
 
-def search(params={}):
-    r = conn.post('{}/{}'.format(HOST, "search"), json=params)
+
+def search(params={}, host=HOST):
+    r = conn.post('{}/{}'.format(host, "search"), json=params)
     r.raise_for_status()
     try:
         results = r.json()
@@ -61,12 +57,6 @@ def search(params={}):
         print(err)
         return []
 
-def vec_to_raster(vectors, shape):
-    try:
-        arr = rasterize(((g, 1) for g in vectors), out_shape=shape[1:])
-    except Exception as err:
-        arr = np.zeros(shape[1:])
-    return np.array(arr)
 
 class DataPoint(object):
     """ Methods for accessing training data pairs """
@@ -173,12 +163,13 @@ class DataPoint(object):
 
 class BaseSet(object):
     """ Base class for handling all API interactions on sets."""
-    def __init__(self, id=None):
+    def __init__(self, id=None, host=HOST):
         self.id = id
-        self._data_url = "{}/data".format(HOST)
-        self._bulk_data_url = "{}/data/bulk".format(HOST)
+        self._host = host
+        self._data_url = "{}/data".format(self._host)
+        self._bulk_data_url = "{}/data/bulk".format(self._host)
         self._cache_url = "{}/data/{}/cache"
-        self._datapoint_url = "{}/datapoints".format(HOST)
+        self._datapoint_url = "{}/datapoints".format(self._host)
         self._chunk_size = int(os.environ.get('VEDA_CHUNK_SIZE', 5000))
         self.conn = conn
 
@@ -197,16 +188,16 @@ class BaseSet(object):
         if self.classes and len(self.classes):
             params["classes"] = ','.join(self.classes)
         qs = urlencode(params)
-        p = self.conn.get("{}/data/{}/datapoints?{}".format(HOST, self.id, qs)).json()[0]
+        p = self.conn.get("{}/data/{}/datapoints?{}".format(self._host, self.id, qs)).json()[0]
         return DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
 
     def fetch(self, _id, **kwargs):
         """ Fetch a point for a given ID """
-        params = {"includeLinks": True, **kwargs}
+        params = {"includeLinks": True}
         if self.classes and len(self.classes):
             params.update({"classes": ','.join(self.classes)})
             qs = urlencode(params)
-        return DataPoint(self.conn.get("{}/datapoints/{}?{}".format(HOST, _id, qs)).json(),
+        return DataPoint(self.conn.get("{}/datapoints/{}?{}".format(self._host, _id, qs)).json(),
                   shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
 
     def fetch_points(self, limit, offset=0, **kwargs):
@@ -216,12 +207,12 @@ class BaseSet(object):
             params["classes"] = ','.join(self.classes)
         qs = self._querystring(limit, **params)
         points = [DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
-                      for p in self.conn.get('{}/data/{}/datapoints?{}'.format(HOST, self.id, qs)).json()]
+                      for p in self.conn.get('{}/data/{}/datapoints?{}'.format(self._host, self.id, qs)).json()]
         return points
 
     def fetch_ids(self, page_size=100, page_id=None):
         """ Fetch a point for a given ID """
-        data = self.conn.get("{}/data/{}/ids?pageSize={}&pageId={}".format(HOST, self.id, page_size, page_id)).json()
+        data = self.conn.get("{}/data/{}/ids?pageSize={}&pageId={}".format(self._host, self.id, page_size, page_id)).json()
         return data['ids'], data['nextPageId']
 
     def _bulk_load(self, s3path, **kwargs):
@@ -313,7 +304,7 @@ class BaseSet(object):
 
     def _set_links(self, links):
         self.links = links
-        if HOST == "http://localhost:3002":
+        if self._host == "http://localhost:3002":
             _links = self.links.copy()
             for key in _links:
                 href = _links[key]['href']
@@ -351,6 +342,7 @@ class VedaCollection(BaseSet):
         self._datapoints = None
         self.id = kwargs.get('id', None)
         self.links = kwargs.get('links')
+        self._host = kwargs.get('host', HOST)
 
         self.meta = {
             "name": name,
@@ -436,12 +428,14 @@ class VedaCollection(BaseSet):
         return cls(**doc['properties'])
 
     @classmethod
-    def from_id(cls, _id):
+    def from_id(cls, _id, host=HOST):
         """ Helper method that fetches an id into a VedaCollection """
-        url = "{}/data/{}".format(HOST, _id)
+        url = "{}/data/{}".format(host, _id)
         r = conn.get(url)
         r.raise_for_status()
-        return cls.from_doc(r.json())
+        doc = r.json()
+        doc['properties']['host'] = host
+        return cls.from_doc(doc)
 
     @property
     def count(self):
@@ -486,8 +480,8 @@ class VedaCollection(BaseSet):
         if self.classes and len(self.classes):
             params = {"classes": ','.join(self.classes)}
             qs = urlencode(params)
-        label_url = "{}/datapoints/{}?{}".format(HOST, _id, qs)
-        image_url = "{}/datapoints/{}/image.tif".format(HOST, _id)
+        label_url = "{}/datapoints/{}?{}".format(self._host, _id, qs)
+        image_url = "{}/datapoints/{}/image.tif".format(self._host, _id)
         return [label_url, image_url]
 
     def _update_sensors(self, image):
