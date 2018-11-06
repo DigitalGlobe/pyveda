@@ -26,14 +26,6 @@ DATA_GROUPS = {"TRAIN": "Data designated for model training",
 
 ignore_NaturalNameWarning = partial(ignore_warnings, _warning=tables.NaturalNameWarning)
 
-def _format_image(image):
-    if len(image.shape) == 2:
-        return image
-    elif len(image.shape) == 3:
-        if image.shape[0] == 3:
-            return np.rollaxis(image, 0, 3)
-    raise ValueError("Image is not greyscale or 3-band")
-
 
 class WrappedDataNode(object):
     def __init__(self, node, trainer):
@@ -64,24 +56,6 @@ class WrappedDataNode(object):
 
     def __len__(self):
         return len(self._node.images)
-
-    def _plot_overlay(self, idx=0):
-        image, label = self[idx]
-        rgb = _format_image(image)
-        image_label_overlay = label2rgb(label, image=rgb, bg_label=0)
-        fig, axes = plt.subplots(1, 2, figsize=(12, 8), sharey=True)
-        axes[0].imshow(rgb, cmap=plt.cm.gray, interpolation='nearest')
-        axes[1].imshow(image_label_overlay, interpolation='nearest')
-
-        for a in axes:
-            a.axis('off')
-        plt.tight_layout()
-        plt.show()
-
-#    @interact(idx=widgets.IntSlider(min=0,max=100,step=1,value=0))
-    def preview(self):
-        interact(self._plot_overlay, idx=widgets.IntSlider(min=0, max=99, step=1, value=0))
-
 
 
 class VedaBase(object):
