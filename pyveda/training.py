@@ -72,7 +72,7 @@ class DataPoint(object):
     """ Methods for accessing training data pairs """
     def __init__(self, item, shape=(3,256,256), **kwargs):
         self.conn = conn
-        self.links = item["properties"]["links"]
+        self.links = item["properties"].get("links")
         self.imshape = tuple(map(int, shape))
         self._y = None
 
@@ -200,18 +200,18 @@ class BaseSet(object):
         p = self.conn.get("{}/data/{}/datapoints?{}".format(HOST, self.id, qs)).json()[0]
         return DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
 
-    def fetch(self, _id):
+    def fetch(self, _id, **kwargs):
         """ Fetch a point for a given ID """
-        qs = urlencode({})
+        params = {"includeLinks": True, **kwargs}
         if self.classes and len(self.classes):
-            params = {"classes": ','.join(self.classes)}
+            params.update({"classes": ','.join(self.classes)})
             qs = urlencode(params)
         return DataPoint(self.conn.get("{}/datapoints/{}?{}".format(HOST, _id, qs)).json(),
                   shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
 
     def fetch_points(self, limit, offset=0, **kwargs):
         """ Fetch a list of datapoints """
-        params = {"offset": offset}
+        params = {"offset": offset, "includeLinks": True}
         if self.classes and len(self.classes):
             params["classes"] = ','.join(self.classes)
         qs = self._querystring(limit, **params)
