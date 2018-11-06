@@ -451,11 +451,6 @@ class VedaCollection(BaseSet):
         else:
             return {'status':'BUILDING'}
 
-
-    @property
-    def mltype(self):
-        return self.meta['mltype']
-
     def ids(self, size=None, page_size=100, get_urls=True):
         if size is None:
             size = self.count
