@@ -13,13 +13,36 @@ class BaseLabel(object):
     def _get_transform(bounds, height, width):
         return from_bounds(*bounds, width, height)
 
+    @staticmethod
+    def _parse_response(res):
+        return res['properties']['label']
 
 class ClassificationLabel(BaseLabel):
     _default_dtype = np.uint8
 
+    @staticmethod
+    def from_pixels(item, klasses=[]):
+        payload = ClassificationLabel._parse_response(item)
+        return payload
+
 
 class SegmentationLabel(BaseLabel):
     _default_dtype = np.float32
+
+    @staticmethod
+    def from_pixels(item, klasses=[], out_shape=None):
+        payload = SegmentationLabel._parse_response(item)
+        if len(out_shape) == 3:
+            out_shape = out_shape[-2:]
+        out_array = np.zeros(out_shape)
+        value = 1
+        for klass in klasses:
+            shapes = payload[klass]
+            try:
+                out_array += rasterize(((shape(g), value) for g in shapes), out_shape=out_shape)
+            except Exception as e:
+                pass
+        return out_array
 
     @staticmethod
     def from_geo(item, imshape):
@@ -44,6 +67,11 @@ class SegmentationLabel(BaseLabel):
 
 class ObjDetectionLabel(BaseLabel):
     _default_dtype = np.float32
+
+    @staticmethod
+    def from_pixels(item, klasses=[], out_shape=None):
+        payload = ObjDetectionLabel._parse_response(item)
+        return [payload[klass] for klass in klasses]
 
     @staticmethod
     def from_geo(item, imshape):

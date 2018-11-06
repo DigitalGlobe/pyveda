@@ -29,7 +29,9 @@ def build_vedabase(database, source, partition, total, token, label_threads=1, i
                           img_batch_transform=database._image_klass._batch_transform,
                           lbl_batch_transform=database._label_klass._batch_transform,
                           img_payload_handler=database._image_klass.bytes_to_array,
-                          lbl_payload_handler=partial(database._label_klass.from_geo, imshape=database.image_shape),
+                          lbl_payload_handler=partial(database._label_klass.from_pixels,
+                                                      klasses=database.klasses,
+                                                      out_shape=database.image_shape),
                           num_lbl_payload_threads=label_threads, num_img_payload_threads=image_threads)
 
     with ThreadedAsyncioRunner(abf.run) as tar:

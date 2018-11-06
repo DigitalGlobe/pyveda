@@ -1,11 +1,18 @@
 import os
-from functools import partial
+from functools import partial, wraps
 from collections import OrderedDict, defaultdict
 import numpy as np
 import tables
 from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.db.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, ImageArray
+
+from ipywidgets import interact
+from IPython.display import Image, display
+import ipywidgets as widgets
+import numpy as np
+from skimage.color import label2rgb
+import matplotlib.pyplot as plt
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
@@ -18,6 +25,7 @@ DATA_GROUPS = {"TRAIN": "Data designated for model training",
                "VALIDATE": "Data designated for model validation"}
 
 ignore_NaturalNameWarning = partial(ignore_warnings, _warning=tables.NaturalNameWarning)
+
 
 class WrappedDataNode(object):
     def __init__(self, node, trainer):
@@ -48,7 +56,6 @@ class WrappedDataNode(object):
 
     def __len__(self):
         return len(self._node.images)
-
 
 
 class VedaBase(object):

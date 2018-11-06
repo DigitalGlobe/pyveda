@@ -22,11 +22,11 @@ from pyveda.fetch.diagnostics import BatchFetchTracer
 from pyveda.utils import write_trace_profile
 
 has_tqdm = False
-#try:
-#    from tqdm import trange, tqdm, tqdm_notebook, tnrange
-#    has_tqdm = True
-#except ImportError:
-#    pass
+try:
+    from tqdm import trange, tqdm, tqdm_notebook, tnrange
+    has_tqdm = True
+except ImportError:
+    pass
 
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')

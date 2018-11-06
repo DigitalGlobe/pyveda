@@ -72,13 +72,13 @@ class DataPoint(object):
     """ Methods for accessing training data pairs """
     def __init__(self, item, shape=(3,256,256), **kwargs):
         self.conn = conn
-        self.links = item["properties"]["links"]
+        self.links = item["properties"].get("links")
         self.imshape = tuple(map(int, shape))
         self._y = None
-        
+
         del item['properties']['links']
         self.data = item['properties']
-      
+
 
     @property
     def id(self):
@@ -90,7 +90,7 @@ class DataPoint(object):
 
     @property
     def dtype(self):
-        return self.data.get('dtype', 'uint8')
+        return np.dtype(self.data.get('dtype', 'uint8'))
 
     @property
     def label(self):
@@ -101,7 +101,7 @@ class DataPoint(object):
         if 'bounds' in self.data:
             return self.data['bounds']
         else:
-            return None 
+            return None
 
     @property
     def tile_coords(self):
@@ -156,7 +156,7 @@ class DataPoint(object):
         ''' returns metadata useful to end users '''
         data = self.data.copy()
         parent = self.data['dataset_id']
-        try: 
+        try:
             del data['dataset_id']
             del data['queue']
             del data['sha']
@@ -200,18 +200,18 @@ class BaseSet(object):
         p = self.conn.get("{}/data/{}/datapoints?{}".format(HOST, self.id, qs)).json()[0]
         return DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
 
-    def fetch(self, _id):
+    def fetch(self, _id, **kwargs):
         """ Fetch a point for a given ID """
-        qs = urlencode({})
+        params = {"includeLinks": True, **kwargs}
         if self.classes and len(self.classes):
-            params = {"classes": ','.join(self.classes)}
+            params.update({"classes": ','.join(self.classes)})
             qs = urlencode(params)
         return DataPoint(self.conn.get("{}/datapoints/{}?{}".format(HOST, _id, qs)).json(),
                   shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
 
     def fetch_points(self, limit, offset=0, **kwargs):
         """ Fetch a list of datapoints """
-        params = {"offset": offset}
+        params = {"offset": offset, "includeLinks": True}
         if self.classes and len(self.classes):
             params["classes"] = ','.join(self.classes)
         qs = self._querystring(limit, **params)
@@ -342,7 +342,9 @@ class VedaCollection(BaseSet):
         else:
             self.imshape = [0] + list(tilesize)
         self.partition = partition
-        self.dtype = np.dtype(kwargs.get('dtype', None))
+        self.dtype = kwargs.get('dtype', None)
+        if self.dtype is not None:
+            self.dtype = np.dtype(self.dtype)
         self.percent_cached = kwargs.get('percent_cached', 0)
         self.sensors = kwargs.get('sensors', [])
         self._count = kwargs.get('count', 0)
@@ -404,7 +406,7 @@ class VedaCollection(BaseSet):
             with NamedTemporaryFile(mode="w+t", prefix="veda", suffix="json", delete=False) as temp:
                 temp.file.write(json.dumps(geojson))
             geojson = temp.name
-        if not self.dtype:
+        if self.dtype is None:
             self.dtype = image.dtype
         else:
             if self.dtype.name != image.dtype.name:
@@ -514,7 +516,10 @@ class VedaCollection(BaseSet):
         if ext != ".h5":
             fname = namepath + ".h5"
 
-        pgen = self.ids(size)
+        if size is None:
+            size = self.count
+
+        pgen = self.ids(size=size)
         vb = VedaBase(fname, self.mtype, self.meta['classes'], self.imshape, image_dtype=self.dtype, **kwargs)
 
         build_vedabase(vb, pgen, partition, size, gbdx.gbdx_connection.access_token, label_threads=1, image_threads=10)
