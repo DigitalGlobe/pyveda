@@ -75,7 +75,7 @@ class DataPoint(object):
         return self.data["id"]
 
     @property
-    def ml_type(self):
+    def mltype(self):
         return self.data.get('mlType')
 
     @property
@@ -129,7 +129,7 @@ class DataPoint(object):
 
     def _map_labels(self):
         """ Convert labels to data """
-        _type = self.ml_type
+        _type = self.mltype
         if _type is not None:
             if _type == 'classification':
                 return [int(self.label[key]) for key in list(self.label.keys())]
@@ -189,7 +189,7 @@ class BaseSet(object):
             params["classes"] = ','.join(self.classes)
         qs = urlencode(params)
         p = self.conn.get("{}/data/{}/datapoints?{}".format(self._host, self.id, qs)).json()[0]
-        return DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
+        return DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mltype)
 
     def fetch(self, _id, **kwargs):
         """ Fetch a point for a given ID """
@@ -198,7 +198,7 @@ class BaseSet(object):
             params.update({"classes": ','.join(self.classes)})
             qs = urlencode(params)
         return DataPoint(self.conn.get("{}/datapoints/{}?{}".format(self._host, _id, qs)).json(),
-                  shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
+                  shape=self.imshape, dtype=self.dtype, mlType=self.mltype)
 
     def fetch_points(self, limit, offset=0, **kwargs):
         """ Fetch a list of datapoints """
@@ -206,7 +206,7 @@ class BaseSet(object):
         if self.classes and len(self.classes):
             params["classes"] = ','.join(self.classes)
         qs = self._querystring(limit, **params)
-        points = [DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mlType)
+        points = [DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mltype)
                       for p in self.conn.get('{}/data/{}/datapoints?{}'.format(self._host, self.id, qs)).json()]
         return points
 
@@ -346,7 +346,7 @@ class VedaCollection(BaseSet):
 
         self.meta = {
             "name": name,
-            "mlType": mlType,
+            "mltype": mlType,
             "public": kwargs.get("public", False),
             "partition": kwargs.get("partition", [100,0,0]),
             "image_refs": kwargs.get("image_refs", []),
@@ -453,8 +453,8 @@ class VedaCollection(BaseSet):
 
 
     @property
-    def mtype(self):
-        return self.meta['mlType']
+    def mltype(self):
+        return self.meta['mltype']
 
     def ids(self, size=None, page_size=100, get_urls=True):
         if size is None:
@@ -514,7 +514,7 @@ class VedaCollection(BaseSet):
             size = self.count
 
         pgen = self.ids(size=size)
-        vb = VedaBase(fname, self.mtype, self.meta['classes'], self.imshape, image_dtype=self.dtype, **kwargs)
+        vb = VedaBase(fname, self.mltype, self.meta['classes'], self.imshape, image_dtype=self.dtype, **kwargs)
 
         build_vedabase(vb, pgen, partition, size, gbdx.gbdx_connection.access_token, label_threads=1, image_threads=10)
         vb.flush()
