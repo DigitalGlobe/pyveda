@@ -151,7 +151,7 @@ class DataPoint(object):
             del data['queue']
             del data['sha']
             del data['tile_coords']
-        except:
+        except KeyError:
             pass
         data['parent'] = parent
         return data
