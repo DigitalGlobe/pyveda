@@ -344,7 +344,7 @@ class VedaCollection(BaseSet):
         self.sensors = sensors
         self._count = _count
         self._datapoints = None
-        self.dataset_id = dataset_id
+        self.id = dataset_id
         self.links = kwargs.get('links')
         self._host = kwargs.get('host', HOST)
 
