@@ -326,7 +326,7 @@ class VedaCollection(BaseSet):
     """
     def __init__(self, name, mlType="classification", tilesize=[256,256], partition=[100,0,0],
                 imshape=None, dtype=None, percent_cached=0, sensors=[], _count=0,
-                id=None, image_refs=None,classes=[], bounds=None,
+                dataset_id=None, image_refs=None,classes=[], bounds=None,
                 user_id=None, public=False, host=HOST, links=None):
 
         assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
@@ -344,7 +344,7 @@ class VedaCollection(BaseSet):
         self.sensors = sensors
         self._count = _count
         self._datapoints = None
-        self.id = id
+        self.dataset_id = dataset_id
         self.links = kwargs.get('links')
         self._host = kwargs.get('host', HOST)
 
