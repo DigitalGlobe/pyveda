@@ -324,35 +324,39 @@ class VedaCollection(BaseSet):
           tilesize (tuple): the shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
           partition (str):internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
     """
-    def __init__(self, name, mlType="classification", tilesize=[256,256], partition=[100,0,0], **kwargs):
+    def __init__(self, name, mlType="classification", tilesize=[256,256], partition=[100,0,0],
+                imshape=None, dtype=None, percent_cached=0, sensors=[], _count=0,
+                dataset_id=None, image_refs=None,classes=[], bounds=None,
+                user_id=None, public=False, host=HOST, links=None):
+
         assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
         super(VedaCollection, self).__init__()
         #default to 0 bands until the first load
-        if 'imshape' in kwargs:
-            self.imshape = tuple(map(int, kwargs['imshape']))
+        if 'imshape':
+            self.imshape = tuple(map(int, imshape))
         else:
             self.imshape = [0] + list(tilesize)
         self.partition = partition
-        self.dtype = kwargs.get('dtype', None)
+        self.dtype = dtype
         if self.dtype is not None:
             self.dtype = np.dtype(self.dtype)
-        self.percent_cached = kwargs.get('percent_cached', 0)
-        self.sensors = kwargs.get('sensors', [])
-        self._count = kwargs.get('count', 0)
+        self.percent_cached = percent_cached
+        self.sensors = sensors
+        self._count = _count
         self._datapoints = None
-        self.id = kwargs.get('id', None)
-        self.links = kwargs.get('links')
-        self._host = kwargs.get('host', HOST)
+        self.id = dataset_id
+        self.links = links
+        self._host = host 
 
         self.meta = {
             "name": name,
             "mltype": mlType,
-            "public": kwargs.get("public", False),
-            "partition": kwargs.get("partition", [100,0,0]),
-            "image_refs": kwargs.get("image_refs", []),
-            "classes": kwargs.get("classes", []),
-            "bounds": kwargs.get("bounds", None),
-            "user_id": kwargs.get("userId", None)
+            "public": public,
+            "partition": partition,
+            "image_refs": image_refs,
+            "classes": classes,
+            "bounds": bounds,
+            "user_id": user_id
         }
 
         for k,v in self.meta.items():
