@@ -345,8 +345,8 @@ class VedaCollection(BaseSet):
         self._count = _count
         self._datapoints = None
         self.id = dataset_id
-        self.links = kwargs.get('links')
-        self._host = kwargs.get('host', HOST)
+        self.links = links
+        self._host = host 
 
         self.meta = {
             "name": name,
