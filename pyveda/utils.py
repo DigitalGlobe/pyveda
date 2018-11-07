@@ -140,3 +140,14 @@ def ignore_warnings(fn, _warning=None):
             return fn(*args, **kwargs)
     return wrapper
 
+def in_ipython_runtime_env():
+    try:
+        shell = get_ipython().__class__.__name__
+        if shell == "ZMQInteractiveShell":
+            return True   # Jupyter notebook or qtconsole
+        elif shell == "TerminalInteractiveShell":
+            return True   # Terminal running Ipython
+        else:
+            return False  # Other type (?)
+    except NameError:
+        return False      # Non-interactive runtime
