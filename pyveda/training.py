@@ -338,7 +338,7 @@ class VedaCollection(BaseSet):
         assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
         super(VedaCollection, self).__init__()
         #default to 0 bands until the first load
-        if 'imshape':
+        if imshape:
             self.imshape = tuple(map(int, imshape))
         else:
             self.imshape = [0] + list(tilesize)
