@@ -17,7 +17,6 @@ test_json = os.path.join(test_dir, 'responses', 'datapoint.json')
 
 
 class DataPointTest(unittest.TestCase):
-
     def setUp(self):
         with open(test_json) as source:
             self.json = json.load(source)
