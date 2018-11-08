@@ -76,7 +76,7 @@ class DataPoint(object):
 
     @property
     def mltype(self):
-        return self.data.get('mlType')
+        return self.data.get('mltype')
 
     @property
     def dtype(self):
@@ -189,7 +189,7 @@ class BaseSet(object):
             params["classes"] = ','.join(self.classes)
         qs = urlencode(params)
         p = self.conn.get("{}/data/{}/datapoints?{}".format(self._host, self.id, qs)).json()[0]
-        return DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mltype)
+        return DataPoint(p, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
 
     def fetch(self, _id, **kwargs):
         """ Fetch a point for a given ID """
@@ -199,7 +199,7 @@ class BaseSet(object):
             qs = urlencode(params)
         r = self.conn.get("{}/datapoints/{}?{}".format(self._host, _id, qs))
         r.raise_for_status()
-        return DataPoint(r.json(), shape=self.imshape, dtype=self.dtype, mlType=self.mltype)
+        return DataPoint(r.json(), shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
 
     def fetch_points(self, limit, offset=0, **kwargs):
         """ Fetch a list of datapoints """
@@ -207,7 +207,7 @@ class BaseSet(object):
         if self.classes and len(self.classes):
             params["classes"] = ','.join(self.classes)
         qs = self._querystring(limit, **params)
-        points = [DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mltype)
+        points = [DataPoint(p, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
                       for p in self.conn.get('{}/data/{}/datapoints?{}'.format(self._host, self.id, qs)).json()]
         return points
 
@@ -320,7 +320,7 @@ class VedaCollection(BaseSet):
 
       Args:
           name (str): A name for the TrainingSet.
-          mlType (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
+          mltype (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
           tilesize (tuple): The shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
           partition (str):Internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
           imshape (tuple): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
@@ -338,12 +338,12 @@ class VedaCollection(BaseSet):
           links (dict): API endpoint URLs for the VedaCollection.
 
     """
-    def __init__(self, name, mlType="classification", tilesize=[256,256], partition=[100,0,0],
+    def __init__(self, name, mltype="classification", tilesize=[256,256], partition=[100,0,0],
                 imshape=None, dtype=None, percent_cached=0, sensors=[], count=0,
                 dataset_id=None, image_refs=None,classes=[], bounds=None,
                 user_id=None, public=False, host=HOST, links=None, **kwargs):
 
-        assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
+        assert mltype in valid_mltypes, "mltype {} not supported. Must be one of {}".format(mltype, valid_mltypes)
         super(VedaCollection, self).__init__()
         #default to 0 bands until the first load
         if 'imshape':
@@ -363,7 +363,7 @@ class VedaCollection(BaseSet):
 
         self.meta = {
             "name": name,
-            "mltype": mlType,
+            "mltype": mltype,
             "public": public,
             "partition": partition,
             "image_refs": image_refs,
