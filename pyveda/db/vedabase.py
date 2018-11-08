@@ -7,13 +7,6 @@ from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.db.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, ImageArray
 
-# from ipywidgets import interact
-# from IPython.display import Image, display
-# import ipywidgets as widgets
-# import numpy as np
-# from skimage.color import label2rgb
-# import matplotlib.pyplot as plt
-
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
 MLTYPE_MAP = {"classification": ClassificationArray,
