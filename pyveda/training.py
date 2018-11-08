@@ -327,7 +327,7 @@ class VedaCollection(BaseSet):
           partition (str):internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
     """
     def __init__(self, name, mlType="classification", tilesize=[256,256], partition=[100,0,0],
-                imshape=None, dtype=None, percent_cached=0, sensors=[], _count=0,
+                imshape=None, dtype=None, percent_cached=0, sensors=[], count=0,
                 dataset_id=None, image_refs=None,classes=[], bounds=None,
                 user_id=None, public=False, host=HOST, links=None, **kwargs):
 
@@ -344,7 +344,7 @@ class VedaCollection(BaseSet):
             self.dtype = np.dtype(self.dtype)
         self.percent_cached = percent_cached
         self.sensors = sensors
-        self._count = _count
+        self._count = count
         self.id = dataset_id
         self.links = links
         self._host = host 
