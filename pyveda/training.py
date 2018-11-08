@@ -61,6 +61,7 @@ def search(params={}, host=HOST):
 class DataPoint(object):
     """ Methods for accessing training data pairs """
     def __init__(self, item, shape=(3,256,256), **kwargs):
+        print(item)
         self.conn = conn
         self.links = item["properties"].get("links")
         self.imshape = tuple(map(int, shape))
@@ -197,8 +198,9 @@ class BaseSet(object):
         if self.classes and len(self.classes):
             params.update({"classes": ','.join(self.classes)})
             qs = urlencode(params)
-        return DataPoint(self.conn.get("{}/datapoints/{}?{}".format(self._host, _id, qs)).json(),
-                  shape=self.imshape, dtype=self.dtype, mlType=self.mltype)
+        r = self.conn.get("{}/datapoints/{}?{}".format(self._host, _id, qs))
+        r.raise_for_status()
+        return DataPoint(r.json(), shape=self.imshape, dtype=self.dtype, mlType=self.mltype)
 
     def fetch_points(self, limit, offset=0, **kwargs):
         """ Fetch a list of datapoints """
@@ -327,7 +329,7 @@ class VedaCollection(BaseSet):
     def __init__(self, name, mlType="classification", tilesize=[256,256], partition=[100,0,0],
                 imshape=None, dtype=None, percent_cached=0, sensors=[], _count=0,
                 dataset_id=None, image_refs=None,classes=[], bounds=None,
-                user_id=None, public=False, host=HOST, links=None):
+                user_id=None, public=False, host=HOST, links=None, **kwargs):
 
         assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
         super(VedaCollection, self).__init__()
@@ -343,7 +345,6 @@ class VedaCollection(BaseSet):
         self.percent_cached = percent_cached
         self.sensors = sensors
         self._count = _count
-        self._datapoints = None
         self.id = dataset_id
         self.links = links
         self._host = host 
@@ -429,6 +430,9 @@ class VedaCollection(BaseSet):
     @classmethod
     def from_doc(cls, doc):
         """ Helper method that converts a db doc to a VedaCollection"""
+        if 'id' in doc['properties']:
+            doc['properties']['dataset_id'] = doc['properties']['id']
+            del doc['properties']['id']
         return cls(**doc['properties'])
 
     @classmethod
