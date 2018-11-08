@@ -37,7 +37,7 @@ class DataPointTest(unittest.TestCase):
         ])
         self.assertEqual(dp.tile_coords, ["962", "179"])
         self.assertEqual(type(shape(dp)), Polygon)
-        self.assertEqual(dp.data['dataset_id'], 'e91fb673-4a31-4221-a8ef-01706b6d9b63')
+        self.assertEqual(dp.dataset_id, 'e91fb673-4a31-4221-a8ef-01706b6d9b63')
 
     def test_datapoint_fetch(self):
         #vc = VedaCollection('fake')
@@ -47,6 +47,5 @@ class DataPointTest(unittest.TestCase):
         self.assertEqual(dp.id, 'ae91f7df-ae37-4d31-9506-d9176f50403c')
         self.assertEqual(dp.mltype, vc.mltype)
         self.assertTrue(isinstance(shape(vc), Polygon))
-        self.assertEqual(dp.data['dataset_id'], 'e91fb673-4a31-4221-a8ef-01706b6d9b63')
-        self.assertEqual(dp.meta['parent'], 'e91fb673-4a31-4221-a8ef-01706b6d9b63')
+        self.assertEqual(dp.dataset_id, 'e91fb673-4a31-4221-a8ef-01706b6d9b63')
         self.assertEqual(dp.dtype, vc.dtype) # should inherit
