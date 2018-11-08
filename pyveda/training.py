@@ -320,11 +320,24 @@ class VedaCollection(BaseSet):
       Creates, persists, and provided access to ML training data via the Veda Api
 
       Args:
-          name (str): a name for the TrainingSet
-      Params:
-          mlType (str): the type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'
-          tilesize (tuple): the shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
-          partition (str):internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
+          name (str): A name for the TrainingSet.
+          mlType (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
+          tilesize (tuple): The shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
+          partition (str):Internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
+          imshape (tuple): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
+          dtype (str): Data type of image data.
+          percent_cached (int): Percent of data currently cached between 0 and 100.
+          sensors(lst): The different satellites/sensors used for image sources in this VedaCollection.
+          _count (int): Number of image label pairs.
+          dataset_id (str): Unique identifier for dataset.
+          image_refs (lst): RDA template used to create data for Veda Collection.
+          classes (lst): Unique types of objects in data.
+          bounds (lst): Spatial extent of the data.
+          user_id (str): Unique identifier for user who created dataset.
+          public (bool): Indicates if data is publically available for others to access.
+          host (str): Overrides setting the API endpoint to be specific to the VedaCollection.
+          links (dict): API endpoint URLs for the VedaCollection.
+
     """
     def __init__(self, name, mlType="classification", tilesize=[256,256], partition=[100,0,0],
                 imshape=None, dtype=None, percent_cached=0, sensors=[], _count=0,
@@ -347,7 +360,7 @@ class VedaCollection(BaseSet):
         self._count = _count
         self.id = dataset_id
         self.links = links
-        self._host = host 
+        self._host = host
 
         self.meta = {
             "name": name,
