@@ -43,7 +43,7 @@ class DataPointTest(unittest.TestCase):
         #vc = VedaCollection('fake')
         vc = VedaCollection.from_id('e91fb673-4a31-4221-a8ef-01706b6d9b63')
         dp = vc.fetch('ae91f7df-ae37-4d31-9506-d9176f50403c')
-        self.assertTrue(isinstance(dp, DataPoint))
+        assertisinstance(dp, DataPoint))
         assertEqual(dp.id, 'ae91f7df-ae37-4d31-9506-d9176f50403c')
         assertEqual(dp.mltype, vc.mltype)
         self.assertTrue(isinstance(shape(vc), Polygon))
