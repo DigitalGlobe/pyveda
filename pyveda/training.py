@@ -60,15 +60,13 @@ def search(params={}, host=HOST):
 
 class DataPoint(object):
     """ Methods for accessing training data pairs """
-    def __init__(self, item, shape=(3,256,256), **kwargs):
+    def __init__(self, item, shape=(3,256,256), dtype='uint8', **kwargs):
         self.conn = conn
         self.links = item["properties"].get("links")
         self.imshape = tuple(map(int, shape))
         self._y = None
-
-        del item['properties']['links']
         self.data = item['properties']
-
+        self._dtype = dtype
 
     @property
     def id(self):
@@ -80,11 +78,18 @@ class DataPoint(object):
 
     @property
     def dtype(self):
-        return np.dtype(self.data.get('dtype', 'uint8'))
+        if 'dtype' in self.data:
+            return np.dtype(self.data['dtype'])
+        else:
+            return np.dtype(self._dtype)
 
     @property
     def label(self):
         return self.data['label']
+
+    @property
+    def dataset_id(self):
+        return self.data['dataset_id']
 
     @property
     def bounds(self):
@@ -139,22 +144,9 @@ class DataPoint(object):
             return None
 
     def __repr__(self):
-        return str(self.data)
-
-    @property
-    def meta(self):
-        ''' returns metadata useful to end users '''
         data = self.data.copy()
-        parent = self.data['dataset_id']
-        try:
-            del data['dataset_id']
-            del data['queue']
-            del data['sha']
-            del data['tile_coords']
-        except KeyError:
-            pass
-        data['parent'] = parent
-        return data
+        del data['links']
+        return str(data)
 
     @property
     def __geo_interface__(self):
@@ -346,7 +338,7 @@ class VedaCollection(BaseSet):
         assert mltype in valid_mltypes, "mltype {} not supported. Must be one of {}".format(mltype, valid_mltypes)
         super(VedaCollection, self).__init__()
         #default to 0 bands until the first load
-        if 'imshape':
+        if imshape:
             self.imshape = tuple(map(int, imshape))
         else:
             self.imshape = [0] + list(tilesize)

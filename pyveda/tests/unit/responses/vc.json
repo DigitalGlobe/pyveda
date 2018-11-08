@@ -1,0 +1,100 @@
+{
+    "type": "Feature",
+    "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+            [
+                [
+                    [
+                        -97.767934,
+                        30.265703
+                    ],
+                    [
+                        -97.767934,
+                        30.271354
+                    ],
+                    [
+                        -97.733246,
+                        30.271354
+                    ],
+                    [
+                        -97.733246,
+                        30.265703
+                    ],
+                    [
+                        -97.767934,
+                        30.265703
+                    ]
+                ]
+            ]
+        ]
+    },
+    "properties": {
+        "mlType": "classification",
+        "image_refs": [
+            {
+                "template": "adcee8c20924d34327129b7bbca94023830d9092ea73f0ec8f8261608802993e",
+                "node": "tile_size"
+            }
+        ],
+        "classes": [
+            "building"
+        ],
+        "dtype": "int8",
+        "userId": "auth0|5ac52c560043574440853f22",
+        "imshape": [
+            "3",
+            "256",
+            "256"
+        ],
+        "releases": {},
+        "partition": [
+            "100",
+            "0",
+            "0"
+        ],
+        "sensors": [
+            "DraImage"
+        ],
+        "public": "true",
+        "user_id": null,
+        "queues": [
+            "veda-e91fb673-4a31-4221-a8ef-01706b6d9b63-b7286dlg9ma5"
+        ],
+        "bounds": [
+            -97.767934,
+            30.265703,
+            -97.733246,
+            30.271354
+        ],
+        "name": "Austin Buildings Classification",
+        "id": "e91fb673-4a31-4221-a8ef-01706b6d9b63",
+        "count": 250,
+        "percent_cached": 100,
+        "links": {
+            "self": {
+                "href": "https://veda-api-development.geobigdata.io/data/e91fb673-4a31-4221-a8ef-01706b6d9b63"
+            },
+            "update": {
+                "href": "https://veda-api-development.geobigdata.io/data/e91fb673-4a31-4221-a8ef-01706b6d9b63",
+                "method": "PUT"
+            },
+            "publish": {
+                "href": "https://veda-api-development.geobigdata.io/data/e91fb673-4a31-4221-a8ef-01706b6d9b63/publish",
+                "method": "PUT"
+            },
+            "delete": {
+                "href": "https://veda-api-development.geobigdata.io/data/e91fb673-4a31-4221-a8ef-01706b6d9b63",
+                "method": "DELETE"
+            },
+            "create": {
+                "href": "https://veda-api-development.geobigdata.io/datapoints",
+                "method": "POST"
+            },
+            "release": {
+                "href": "https://veda-api-development.geobigdata.io/data/e91fb673-4a31-4221-a8ef-01706b6d9b63/release",
+                "method": "POST"
+            }
+        }
+    }
+}
