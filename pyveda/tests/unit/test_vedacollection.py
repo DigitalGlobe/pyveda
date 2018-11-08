@@ -108,6 +108,7 @@ class VCFetchTest(unittest.TestCase):
     def test_fetch_index(self):
         dp = self.vc.fetch_index(0)
         self.assertTrue(isinstance(dp, DataPoint))
+        pass 
 
     @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_fetch_points.yaml', filter_headers=['authorization'])
     def test_fetch_points(self):
