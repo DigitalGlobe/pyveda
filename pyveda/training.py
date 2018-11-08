@@ -61,7 +61,6 @@ def search(params={}, host=HOST):
 class DataPoint(object):
     """ Methods for accessing training data pairs """
     def __init__(self, item, shape=(3,256,256), **kwargs):
-        print(item)
         self.conn = conn
         self.links = item["properties"].get("links")
         self.imshape = tuple(map(int, shape))
