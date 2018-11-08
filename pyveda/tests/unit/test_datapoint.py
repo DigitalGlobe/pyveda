@@ -17,7 +17,6 @@ test_json = os.path.join(test_dir, 'responses', 'datapoint.json')
 
 
 class DataPointTest(unittest.TestCase):
-
     def setUp(self):
         with open(test_json) as source:
             self.json = json.load(source)
@@ -25,28 +24,28 @@ class DataPointTest(unittest.TestCase):
     def test_datapoint(self):
         dp = DataPoint(self.json)
         self.assertTrue(isinstance(dp, DataPoint))
-        assert dp.id == 'ae91f7df-ae37-4d31-9506-d9176f50403c' 
-        assert dp.mltype == 'classification' 
-        assert dp.dtype == 'uint8' # based on init logic and sample json
-        assert dp.label == {"building": 0}
-        assert dp.bounds == [
+        self.assertEqual(dp.id, 'ae91f7df-ae37-4d31-9506-d9176f50403c')
+        self.assertEqual(dp.mltype, 'classification')
+        self.assertEqual(dp.dtype, 'uint8') # based on init logic and sample json
+        self.assertEqual(dp.label, {"building": 0})
+        self.assertEqual(dp.bounds, [
             -97.74107094008983,
             30.270496899310096,
             -97.74029824874955,
             30.271269590650377
-        ]
-        assert dp.tile_coords ==["962", "179"]
-        assert type(shape(dp)) == Polygon
-        assert dp.data['dataset_id'] == 'e91fb673-4a31-4221-a8ef-01706b6d9b63'
+        ])
+        self.assertEqual(dp.tile_coords, ["962", "179"])
+        self.assertEqual(type(shape(dp)), Polygon)
+        self.assertEqual(dp.data['dataset_id'], 'e91fb673-4a31-4221-a8ef-01706b6d9b63')
 
     def test_datapoint_fetch(self):
         #vc = VedaCollection('fake')
         vc = VedaCollection.from_id('e91fb673-4a31-4221-a8ef-01706b6d9b63')
         dp = vc.fetch('ae91f7df-ae37-4d31-9506-d9176f50403c')
         self.assertTrue(isinstance(dp, DataPoint))
-        assert dp.id == 'ae91f7df-ae37-4d31-9506-d9176f50403c' 
-        assert dp.mltype == vc.mltype
-        assert type(shape(dp)) == Polygon
-        assert dp.data['dataset_id'] == 'e91fb673-4a31-4221-a8ef-01706b6d9b63'
-        assert dp.meta['parent'] == 'e91fb673-4a31-4221-a8ef-01706b6d9b63'
-        assert dp.dtype == vc.dtype # should inherit
+        self.assertEqual(dp.id, 'ae91f7df-ae37-4d31-9506-d9176f50403c')
+        self.assertEqual(dp.mltype, vc.mltype)
+        self.assertTrue(isinstance(shape(vc), Polygon))
+        self.assertEqual(dp.data['dataset_id'], 'e91fb673-4a31-4221-a8ef-01706b6d9b63')
+        self.assertEqual(dp.meta['parent'], 'e91fb673-4a31-4221-a8ef-01706b6d9b63')
+        self.assertEqual(dp.dtype, vc.dtype) # should inherit
