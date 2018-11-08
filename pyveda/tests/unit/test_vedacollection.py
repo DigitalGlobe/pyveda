@@ -27,26 +27,22 @@ class VedaCollectionTest(unittest.TestCase):
                             count = self.json['properties']['count'],
                             bounds = self.json['properties']['bounds'])
         self.assertTrue(isinstance(vc, VedaCollection))
-        assert vc.mltype == 'classification'
-        assert vc.percent_cached == 100
-        assert vc.partition == [100, 0, 0]
-        assert vc.name == 'Austin Buildings Classification'
-        assert vc.dtype == 'int8'
-        assert vc.count == 250
-        assert vc.__geo_interface__ == box(*vc.bounds).__geo_interface__
+        self.assertEqual(vc.mltype, 'classification')
+        self.assertEqual(vc.percent_cached, 100)
+        self.assertEqual(vc.partition, [100, 0, 0])
+        self.assertEqual(vc.name,'Austin Buildings Classification')
+        self.assertEqual(vc.dtype, 'int8')
+        self.assertEqual(vc.count, 250)
+        self.assertEqual(vc.__geo_interface__, box(*vc.bounds).__geo_interface__)
 
     def test_vedacollection_from_id(self):
         vc = VedaCollection.from_id('e91fb673-4a31-4221-a8ef-01706b6d9b63')
         self.assertTrue(isinstance(vc, VedaCollection))
 
-    # def test_vedacollection_ids(self):
+    # def test_vedacollection_points(self):
     #     vc = VedaCollection.from_id('e91fb673-4a31-4221-a8ef-01706b6d9b63')
-    #     assert type(next(vc.ids()) == list
-
-    def test_vedacollection_points(self):
-        vc = VedaCollection.from_id('e91fb673-4a31-4221-a8ef-01706b6d9b63')
-        assert len(vc[0:250]) == 250
-        assert len(vc[0:500]) == 250 #should there me an error or warning message instead?
+    #     assertEqual(len(vc[0:250]), 250)
+    #     assertEqual(len(vc[0:500]), 250) #should there me an error or warning message instead?
 
 
 # a valid vedacollection ID
