@@ -1,0 +1,7 @@
+gbdxtools
+h5py
+pytables
+requests_toolbelt
+ujson
+aiohttp
+rasterio>=1.0.9

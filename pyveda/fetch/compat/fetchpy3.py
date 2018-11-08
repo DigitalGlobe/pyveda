@@ -1,22 +1,39 @@
 from functools import partial
+import os
+import numpy as np
+from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, VedaBaseFetcher
 
-from pyveda.utils import extract_load_tasks
-from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, AsyncArrayFetcher
-
-def write_data(data, labelgroup=None, datagroup=None):
+def vedabase_batch_write(data, database=None, partition=[70, 20, 10]):
+    trainp, testp, valp = partition
     images, labels = data
-    datagroup.image.append(images)
-    labelgroup.append(labels)
+    batch_size = images.shape[0]
+    ntrain = round(batch_size * (trainp * 0.01))
+    ntest = round(batch_size * (testp * 0.01))
+    nval = round(batch_size * (valp * 0.01))
 
-def write_fetch(points, labelgroup, datagroup):
-    reqs = []
-    lut = {}
-    for p in points:
-        url, token = extract_load_tasks(p.image.dask)
-        reqs.append([url])
-        lut[url] = p.y
+    # write training data
+    database.train.images.append_batch(images[:ntrain])
+    database.train.labels.append_batch(labels[:ntrain])
 
-    abf = AsyncArrayFetcher(reqs=reqs, token=token, label_lut=lut, write_fn=partial(write_data, labelgroup=labelgroup, datagroup=datagroup))
+    # write testing data
+    database.test.images.append_batch(images[ntrain:ntrain + ntest])
+    database.test.labels.append_batch(labels[ntrain:ntrain + ntest])
+
+    # write validation data
+    database.validate.images.append_batch(images[ntrain + ntest:])
+    database.validate.labels.append_batch(labels[ntrain + ntest:])
+
+def build_vedabase(database, source, partition, total, token, label_threads=1, image_threads=10):
+    abf = VedaBaseFetcher(source, total_count=total, token=token,
+                          write_fn=partial(vedabase_batch_write, database=database, partition=partition),
+                          img_batch_transform=database._image_klass._batch_transform,
+                          lbl_batch_transform=database._label_klass._batch_transform,
+                          img_payload_handler=database._image_klass.bytes_to_array,
+                          lbl_payload_handler=partial(database._label_klass.from_pixels,
+                                                      klasses=database.klasses,
+                                                      out_shape=database.image_shape),
+                          num_lbl_payload_threads=label_threads, num_img_payload_threads=image_threads)
+
     with ThreadedAsyncioRunner(abf.run) as tar:
         tar(loop=tar._loop)
 
