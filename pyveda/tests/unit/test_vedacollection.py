@@ -77,7 +77,7 @@ class VedaCollectionTest_vcr(unittest.TestCase):
         self.assertEqual(vc.mlType, 'classification')
         self.assertEqual(vc.bounds, None)
         self.assertEqual(vc.count, 0)
-        pass
+        
     @skip
     @my_vcr.use_cassette('tests/unit/cassettes/test_vc_search.yaml', filter_headers=['authorization'])
     def test_vc_search(self):
@@ -86,7 +86,7 @@ class VedaCollectionTest_vcr(unittest.TestCase):
         self.assertTrue(isinstance(vc, VedaCollection))
         self.assertGreater(vc.count, 0)
         self.assertEqual(type(shape(vc)), 'Polygon')
-        pass
+
     @skip
     @my_vcr.use_cassette('tests/unit/cassettes/test_vedacollection_id.yaml', filter_headers=['authorization'])
     def test_vedacollection_id(self):
@@ -94,7 +94,7 @@ class VedaCollectionTest_vcr(unittest.TestCase):
         self.assertEqual(vc.id, vc_id)
         self.assertEqual(vc.imshape, (3, 128, 128))
         self.assertEqual(vc.mlType,'classification')
-        pass
+
 
 @skip("skipping for now")
 class VCFetchTest(unittest.TestCase):
@@ -102,27 +102,27 @@ class VCFetchTest(unittest.TestCase):
     @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch.yaml', filter_headers=['authorization'])
     def setUp(self):
         self.vc = VedaCollection.from_id(VC_ID)
-        pass
+
 
     @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_fetch_index.yaml', filter_headers=['authorization'])
     def test_fetch_index(self):
         dp = self.vc.fetch_index(0)
         self.assertTrue(isinstance(dp, DataPoint))
 
+
     @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_fetch_points.yaml', filter_headers=['authorization'])
     def test_fetch_points(self):
         dps = vc.fetch_points(5)
         self.assertEqual(len(dps), 5)
-        pass
+
 
     @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_fetch_points_index.yaml', filter_headers=['authorization'])
     def test_fetch_points_offset(self):
         dps = vc.fetch_points(10,5)
         self.assertEqual(len(dps), 10)
-        pass
+
 
     @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_fetch_ids.yaml', filter_headers=['authorization'])
     def test_fetch_ids(self):
         ids = vc.fetch_ids(page_size=50)
         self.assertEqual(len(ids), 50)
-        pass
