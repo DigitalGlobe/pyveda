@@ -4,4 +4,6 @@ pytables
 requests
 requests_toolbelt
 ujson
+shapely
+numpy
 rasterio>=1.0.9
