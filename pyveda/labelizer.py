@@ -48,16 +48,17 @@ class Labelizer():
 
     def _plot_polygons(self):
         #figure out how to get labels from link
-    for pxb in shp:
-        if np.size(s)==4:
-            ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
-                    (pxb[3]-pxb[1]),edgecolor='red',fill=False, lw=2))
+        for pxb in shp:
+            if np.size(s)==4:
+                ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
+                        (pxb[3]-pxb[1]),edgecolor='red',fill=False, lw=2))
 
     def _compute_image(self):
         token = gbdx.gbdx_connection.access_token
         load = load_image(self.links["image"]["href"], token, self.imshape,
                           dtype=self.dtype)
-        return da.from_delayed(load, shape=self.imshape, dtype=self.dtype).compute()
+        dask_array = da.from_delayed(load, shape=self.imshape, dtype=self.dtype)
+        return dask_array.compute()
 
     def _display_image(self):
             plt.figure(figsize = (7, 7))
