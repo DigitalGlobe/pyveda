@@ -196,47 +196,8 @@ class BaseSet(object):
                 _links[key]['href'] = href
             self.links = _links
 
-class BaseCollection(BaseSet):
-    """
-      Access to VedaCollection at the API level 
 
-      Args:
-        item (dict): an API response for the VedaCollection. Keys are:
-            name (str): A name for the TrainingSet.
-            mltype (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
-            tilesize (tuple): The shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
-            partition (str):Internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
-            imshape (tuple): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
-            dtype (str): Data type of image data.
-            percent_cached (int): Percent of data currently cached between 0 and 100.
-            sensors(lst): The different satellites/sensors used for image sources in this VedaCollection.
-            _count (int): Number of image label pairs.
-            dataset_id (str): Unique identifier for dataset.
-            image_refs (lst): RDA template used to create data for Veda Collection.
-            classes (lst): Unique types of objects in data.
-            bounds (lst): Spatial extent of the data.
-            user_id (str): Unique identifier for user who created dataset.
-            public (bool): Indicates if data is publically available for others to access.
-            host (str): Overrides setting the API endpoint to be specific to the VedaCollection.
-            links (dict): API endpoint URLs for the VedaCollection.
-    """
-    def __init__(self, item):
-        super(BaseCollection, self).__init__()
-
-        for k,v in item.items():
-            try:
-                setattr(self, k, v)
-            except AttributeError:
-                pass
-
-        self.imshape = tuple(map(int, item['imshape']))
-        self.partition = tuple(map(int, item['partition']))
-        self.dtype = item.get('dtype', None)
-        if self.dtype is not None:
-            self.dtype = np.dtype(self.dtype)
-
-
-class VedaCollection(BaseCollection):
+class VedaCollection(BaseSet):
     """
     Public interface for VedaCollections
 
@@ -248,16 +209,16 @@ class VedaCollection(BaseCollection):
     """
 
     def __init__(self, name, mltype="classification", tilesize=[256,256], partition=[100,0,0]):
-
         #default to 0 bands until the first load
         imshape = [0] + list(tilesize)
-        item = {
+        # bootstrap with a minimal API document
+        doc = {
             'name': name,
             'mltype': mltype,
             'imshape': imshape,
             'partition': partition
         }
-        super(VedaCollection, self).__init__(item)
+        self.load_doc(doc)
         
 
     def bulk_load(self, s3path, **kwargs):
@@ -324,6 +285,22 @@ class VedaCollection(BaseCollection):
         self._update_sensors(image)
         self._load(geojson, image, match=match, default_label=default_label, label_field=label_field, cache_type=cache_type, **kwargs)
 
+    def load_doc(self, doc):
+        '''loads attributes from an API document
+
+            see OpenAPI documentation at https://studio.apicur.io/apis/4247
+        '''
+        for k,v in doc.items():
+            try:
+                setattr(self, k, v)
+            except AttributeError:
+                pass
+        self.imshape = tuple(map(int, doc['imshape']))
+        self.partition = tuple(map(int, doc['partition']))
+        self.dtype = doc.get('dtype', None)
+        if self.dtype is not None:
+            self.dtype = np.dtype(self.dtype)
+
     @classmethod
     def from_doc(cls, doc):
         """ Helper method that converts a db doc to a VedaCollection"""
@@ -331,8 +308,8 @@ class VedaCollection(BaseCollection):
         if 'id' in props:
             props['dataset_id'] = props['id']
             del props['id']
-        vc = cls(props['name']) 
-        super(VedaCollection, vc).__init__(props)
+        vc =  cls(props['name'])
+        vc.load_doc(props)
         return vc
 
     @classmethod
