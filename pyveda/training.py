@@ -203,13 +203,13 @@ class VedaCollection(BaseSet):
       Args:
           name (str): A name for the TrainingSet.
           mltype (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
-          tilesize (tuple): The shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
-          partition (str):Internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
-          imshape (tuple): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
+          tile_size (list): The shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
+          partition (list):Internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
+          imshape (list): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
           dtype (str): Data type of image data.
           percent_cached (int): Percent of data currently cached between 0 and 100.
           sensors(lst): The different satellites/sensors used for image sources in this VedaCollection.
-          _count (int): Number of image label pairs.
+          count (int): Number of image label pairs.
           dataset_id (str): Unique identifier for dataset.
           image_refs (lst): RDA template used to create data for Veda Collection.
           classes (lst): Unique types of objects in data.
@@ -229,7 +229,7 @@ class VedaCollection(BaseSet):
         super(VedaCollection, self).__init__()
         #default to 0 bands until the first load
         if imshape:
-            self.imshape = tuple(map(int, imshape))
+            self.imshape = imshape
         else:
             self.imshape = [0] + list(tilesize)
         self.partition = partition
