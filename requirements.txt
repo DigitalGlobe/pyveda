@@ -1,7 +1,9 @@
-gbdxtools
+gbdx-auth>=0.2.6
 h5py
-pytables
+tables
+requests
 requests_toolbelt
 ujson
-aiohttp
+shapely
+numpy
 rasterio>=1.0.9
