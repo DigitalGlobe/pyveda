@@ -1,2 +1,3 @@
-from pyveda.training import TrainingSet, search
+from pyveda.training import VedaCollection, search, MLImage
+from pyveda.datapoint import DataPoint
 from pyveda.models import Model

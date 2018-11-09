@@ -5,6 +5,9 @@ import uuid
 import tempfile
 import shutil
 import h5py
+import tables
+import numpy as np
+import warnings
 
 from shapely.geometry import box
 
@@ -106,8 +109,8 @@ def extract_load_tasks(dsk):
 
 def rda(dsk):
     return [json.dumps({
-      'graph': dsk.ipe_id,
-      'node': dsk.ipe.graph()['nodes'][0]['id'],
+      'graph': dsk.rda_id,
+      'node': dsk.rda.graph()['nodes'][0]['id'],
       'bounds': dsk.bounds,
       'bounds_wgs84': dsk._reproject(box(*dsk.bounds), from_proj=dsk.proj, to_proj="EPSG:4326").bounds
     })]
@@ -121,3 +124,30 @@ def maps_api(dsk):
 
 def transforms(source):
     return rda if source == 'rda' else maps_api
+
+def _atom_from_dtype(_type):
+    if isinstance(_type, np.dtype):
+        return tables.Atom.from_dtype(_type)
+    return tables.Atom.from_dtype(np.dtype(_type))
+
+def ignore_warnings(fn, _warning=None):
+    def wrapper(*args, **kwargs):
+        with warnings.catch_warnings():
+            if not _warning:
+                warnings.simplefilter("ignore")
+            else:
+                warnings.simplefilter("ignore", _warning)
+            return fn(*args, **kwargs)
+    return wrapper
+
+def in_ipython_runtime_env():
+    try:
+        shell = get_ipython().__class__.__name__
+        if shell == "ZMQInteractiveShell":
+            return True   # Jupyter notebook or qtconsole
+        elif shell == "TerminalInteractiveShell":
+            return True   # Terminal running Ipython
+        else:
+            return False  # Other type (?)
+    except NameError:
+        return False      # Non-interactive runtime
