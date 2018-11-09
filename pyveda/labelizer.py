@@ -1,8 +1,8 @@
-try: 
+try:
     import ipywidgets as widgets
     from ipywidgets import Button, HBox, VBox
     has_ipywidgets = True
-except: 
+except:
     has_ipywidgets = False
 
 try:
@@ -11,15 +11,15 @@ try:
 except:
     has_ipy = False
 
-try:     
+try:
     import matplotlib.pyplot as plt
     import matplotlib.patches as patches
     has_plt = True
-except: 
+except:
     has_plt = False
 
 from shapely.geometry.geo import shape
-from gbdxtools import Interface 
+from gbdxtools import Interface
 from shapely.geometry.geo import shape
 import numpy as np
 import requests
@@ -34,13 +34,13 @@ conn.headers.update(headers)
 
 class Labelizer():
     def __init__(self, ids, count, imshape, dtype, mltype):
-        """ 
+        """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaCollection
           Params:
             ids (generator): A Url generator for datapoints to be viewed
             count (int): the number of datapoints to process
             imshape (tuple): shape of each incoming image
-            dtype (str): the datatype of the images    
+            dtype (str): the datatype of the images
             mltype (str): the mltype of the veda collection
         """
         assert has_ipywidgets, 'Labelizer requires ipywidgets to be installed'

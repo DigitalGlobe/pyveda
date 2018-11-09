@@ -5,8 +5,8 @@ from shapely.geometry import shape as shp, mapping, box
 from shapely import ops
 import requests
 
-from gbdxtools import Interface
-gbdx = Interface()
+from pyveda.auth import Auth
+gbdx = Auth()
 headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
 conn = requests.Session()
 conn.headers.update(headers)
@@ -20,6 +20,7 @@ class DataPoint(object):
         self._y = None
         self.data = item['properties']
         self._dtype = dtype
+        self.classes = kwargs.get('classes')
 
     @property
     def id(self):
