@@ -23,13 +23,14 @@ class VedaCollectionTest(unittest.TestCase):
         with open(test_json) as source:
             self.json = json.load(source)
 
-    @skip
+    
     def test_vedacollection(self):
-        vc = VedaCollection(name = self.json['properties']['name'], dtype = self.json['properties']['dtype'],
-                            percent_cached = self.json['properties']['percent_cached'],
-                            count = self.json['properties']['count'],
-                            bounds = self.json['properties']['bounds'])
+        vc = VedaCollection(name='test', mltype='classification', tilesize=[128,128],partition=[100,0,0])
         self.assertTrue(isinstance(vc, VedaCollection))
+        self.assertEqual(vc.imshape, (0, 128, 128))
+        self.assertEqual(vc.mltype, 'classification')
+        self.assertEqual(vc.partition, (100, 0, 0))
+        self.assertEqual(vc.name,'test')
 
     def test_vedacollection_from_id(self):
         vc = VedaCollection.from_id('e91fb673-4a31-4221-a8ef-01706b6d9b63')
