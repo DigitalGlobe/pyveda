@@ -7,3 +7,4 @@ ujson
 shapely
 numpy
 rasterio>=1.0.9
+scikit-image
