@@ -23,6 +23,7 @@ class DataPointTest(unittest.TestCase):
 
     def test_datapoint(self):
         dp = DataPoint(self.json)
+        print(dp)
         self.assertTrue(isinstance(dp, DataPoint))
         self.assertEqual(dp.id, 'ae91f7df-ae37-4d31-9506-d9176f50403c')
         self.assertEqual(dp.mltype, 'classification')

@@ -74,7 +74,11 @@ class DataPoint(object):
 
     @property
     def mltype(self):
-        return self.data.get('mltype')
+        try:
+            return self.data['mltype']
+        except:
+            return self.data.get('mlType')
+            
 
     @property
     def dtype(self):
