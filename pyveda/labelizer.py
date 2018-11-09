@@ -1,26 +1,38 @@
 import ipywidgets as widgets
 from ipywidgets import Button, HBox, VBox
 from IPython.display import display, clear_output
-from rasterio import features
 from shapely.geometry.geo import shape
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from gbdxtools import Interface, TmsImage, CatalogImage, IpeImage
-gbdx=Interface()
-from rasterio import features
+from gbdxtools import Interface 
 from shapely.geometry.geo import shape
-import dask.array as da
-from .loaders import load_image
 import numpy as np
+import requests
+
+from pyveda import DataPoint
+
+gbdx=Interface()
+headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
+conn = requests.Session()
+conn.headers.update(headers)
 
 
 class Labelizer():
-    def __init__(self, ids, count, conn, imshape, dtype):
-        self.ids = list(ids)
+    def __init__(self, ids, count, imshape, dtype, mltype):
+        """ 
+          Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaCollection
+          Params:
+            ids (generator): A Url generator for datapoints to be viewed
+            count (int): the number of datapoints to process
+            imshape (tuple): shape of each incoming image
+            dtype (str): the datatype of the images    
+            mltype (str): the mltype of the veda collection
+        """
+        self.ids = ids
         self.count = count
-        self.conn = conn
         self.imshape = imshape
         self.dtype = dtype
+        self.mltype = mltype
         self.index = 0
 
     def _create_buttons(self):
@@ -49,7 +61,8 @@ class Labelizer():
             self.index += 1
         elif b.description == 'Exit':
             self.index = self.count
-        self._clean()
+        # TODO should call next i think...
+        self.clean()
 
     def _plot_polygons(self):
         #figure out how to get labels from link
@@ -58,33 +71,35 @@ class Labelizer():
                 ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
                         (pxb[3]-pxb[1]),edgecolor='red',fill=False, lw=2))
 
-    def _compute_image(self):
-        token = gbdx.gbdx_connection.access_token
-        _link = self.ids[self.index]
-        load = load_image(_link[1], token, self.imshape,
-                          dtype=self.dtype)
-        dask_array = da.from_delayed(load, shape=self.imshape, dtype=self.dtype)
-        return dask_array
-
-    def _display_image(self):
+    def _display_image(self, dp):
         plt.figure(figsize = (7, 7))
         ax = plt.subplot()
         ax.axis("off")
-        image = self._compute_image()
-        img = np.rollaxis(image.compute(),0,3)
+        img = np.rollaxis(dp.image.compute(),0,3)
         ax.imshow(img)
         #self._plot_polygons()
         plt.title('Is this tile correct?')
 
-    def _clean(self):
+    def get_next(self):
+        try:
+            dp_url, img_url = self.ids.__next__()
+            r = conn.get(dp_url).json()
+            return DataPoint(r, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
+        except Exception as err:
+            return None
+
+    def clean(self):
         clear_output()
         buttons = self._create_buttons()
         for b in buttons:
             b.on_click(self._handle_buttons)
-        if self.index < self.count:
+
+        dp = self.get_next()
+
+        if dp is not None:
             print("%0.f tiles out of %0.f tiles have been cleaned" %
                  (self.index, self.count))
-            self._display_image()
+            self._display_image(dp)
             display(HBox(buttons))
-        if self.index >= self.count:
+        else:
             print('all tiles have been cleaned')

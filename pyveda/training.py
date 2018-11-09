@@ -339,6 +339,7 @@ class VedaCollection(BaseSet):
         r.raise_for_status()
         doc = r.json()
         doc['properties']['host'] = host
+        doc['properties']['id'] = _id
         return cls.from_doc(doc)
 
     @property
@@ -355,7 +356,7 @@ class VedaCollection(BaseSet):
         else:
             return {'status':'BUILDING'}
 
-    def ids(self, size=None, page_size=100, get_urls=True):
+    def ids(self, size=None, page_size=100, get_urls=True, links=False):
         if size is None:
             size = self.count
         def get(pages):
@@ -372,13 +373,14 @@ class VedaCollection(BaseSet):
                     if not get_urls:
                         yield i
                     else:
-                        yield self._urls_from_id(i)
+                        yield self._urls_from_id(i, includeLinks=links)
 
-    def _urls_from_id(self, _id):
+    def _urls_from_id(self, _id, includeLinks=False):
         qs = urlencode({})
+        params = {'includeLinks': includeLinks}
         if self.classes and len(self.classes):
-            params = {"classes": ','.join(self.classes)}
-            qs = urlencode(params)
+            params.update({"classes": ','.join(self.classes)})
+        qs = urlencode(params)
         label_url = "{}/datapoints/{}?{}".format(self._host, _id, qs)
         image_url = "{}/datapoints/{}/image.tif".format(self._host, _id)
         return [label_url, image_url]
@@ -425,7 +427,7 @@ class VedaCollection(BaseSet):
         return self._refresh()
 
     def clean(self):
-        Labelizer(self.ids(get_urls=True), self.count, self.conn, self.imshape, self.dtype)._clean()
+        Labelizer(self.ids(get_urls=True), self.count, self.imshape, self.dtype).clean()
 
     def __getitem__(self, slc):
         """ Enable slicing of the VedaCollection by index/slice """
