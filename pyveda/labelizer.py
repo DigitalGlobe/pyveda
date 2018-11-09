@@ -61,14 +61,14 @@ class Labelizer():
         return dask_array.compute()
 
     def _display_image(self):
-            plt.figure(figsize = (7, 7))
-            ax = plt.subplot()
-            ax.axis("off")
-            image=_compute_image()
-            img=np.rollaxis(image,0,3)
-            ax.imshow(img)
-            #self._plot_polygons()
-            plt.title('Is this tile correct?')
+        plt.figure(figsize = (7, 7))
+        ax = plt.subplot()
+        ax.axis("off")
+        image = _compute_image()
+        img = np.rollaxis(image,0,3)
+        ax.imshow(img)
+        #self._plot_polygons()
+        plt.title('Is this tile correct?')
 
      def _clean(self):
         clear_output()
