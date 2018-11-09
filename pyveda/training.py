@@ -3,39 +3,25 @@ import os, shutil, json, math
 import time
 import sys
 import mmap
-import random
-import h5py
 from collections import defaultdict
 try:
     from urllib.parse import urlencode
 except:
     from urllib import urlencode
 import requests
-from requests_futures.sessions import FuturesSession
 from tempfile import NamedTemporaryFile
 import numpy as np
-from dask import delayed
-import dask.array as da
-from gbdxtools import Interface, CatalogImage
-from .loaders import load_image
-from .utils import transforms
-from rasterio.features import rasterize
+from gbdxtools import Interface
 from shapely.geometry import shape as shp, mapping, box
-from shapely import ops
-
 from functools import partial
-import dask
-
-import threading
 
 from pyveda.db import VedaBase
 from .rda import MLImage
+from pyveda.datapoint import DataPoint
 from pyveda.utils import NamedTemporaryHDF5Generator
 from pyveda.fetch.compat import build_vedabase
 from .labelizer import Labelizer
 
-threads = int(os.environ.get('GBDX_THREADS', 64))
-threaded_get = partial(dask.threaded.get, num_workers=threads)
 gbdx = Interface()
 
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
@@ -57,101 +43,6 @@ def search(params={}, host=HOST):
     except Exception as err:
         print(err)
         return []
-
-
-class DataPoint(object):
-    """ Methods for accessing training data pairs """
-    def __init__(self, item, shape=(3,256,256), dtype='uint8', **kwargs):
-        self.conn = conn
-        self.links = item["properties"].get("links")
-        self.imshape = tuple(map(int, shape))
-        self._y = None
-        self.data = item['properties']
-        self._dtype = dtype
-
-    @property
-    def id(self):
-        return self.data["id"]
-
-    @property
-    def mltype(self):
-        return self.data.get('mlType')
-
-    @property
-    def dtype(self):
-        if 'dtype' in self.data:
-            return np.dtype(self.data['dtype'])
-        else:
-            return np.dtype(self._dtype)
-
-    @property
-    def label(self):
-        return self.data['label']
-
-    @property
-    def dataset_id(self):
-        return self.data['dataset_id']
-
-    @property
-    def bounds(self):
-        if 'bounds' in self.data:
-            return self.data['bounds']
-        else:
-            return None
-
-    @property
-    def tile_coords(self):
-        if 'tile_coords' in self.data:
-            return self.data['tile_coords']
-        else:
-            return None
-
-    @property
-    def y(self):
-        if self._y is None:
-            self._y = self._map_labels()
-        return self._y
-
-    @property
-    def image(self):
-        """ Returns a delayed dask call for fetching the image for a data point """
-        token = gbdx.gbdx_connection.access_token
-        load = load_image(self.links["image"]["href"], token, self.imshape, dtype=self.dtype)
-        return da.from_delayed(load, shape=self.imshape, dtype=self.dtype)
-
-    def save(self, data):
-        """ Saves/updates the datapoint in the database """
-        return self.conn.put(self.links["update"]["href"], json=data).json()
-
-    def update(self, new_data, save=True):
-        """ Updates data for the datapoint in the database """
-        self.data.update(new_data)
-        if save:
-            self.save(new_data)
-
-    def remove(self):
-        """ Removes the datapoint from the set"""
-        self.conn.delete(self.links["delete"]["href"])
-
-    def _map_labels(self):
-        """ Convert labels to data """
-        _type = self.mltype
-        if _type is not None:
-            if _type == 'classification':
-                return [int(self.label[key]) for key in list(self.label.keys())]
-            else:
-                return self.label
-        else:
-            return None
-
-    def __repr__(self):
-        data = self.data.copy()
-        del data['links']
-        return str(data)
-
-    @property
-    def __geo_interface__(self):
-        return box(*self.bounds).__geo_interface__
 
 
 class BaseSet(object):
@@ -182,7 +73,7 @@ class BaseSet(object):
             params["classes"] = ','.join(self.classes)
         qs = urlencode(params)
         p = self.conn.get("{}/data/{}/datapoints?{}".format(self._host, self.id, qs)).json()[0]
-        return DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mltype)
+        return DataPoint(p, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
 
     def fetch(self, _id, **kwargs):
         """ Fetch a point for a given ID """
@@ -192,7 +83,7 @@ class BaseSet(object):
             qs = urlencode(params)
         r = self.conn.get("{}/datapoints/{}?{}".format(self._host, _id, qs))
         r.raise_for_status()
-        return DataPoint(r.json(), shape=self.imshape, dtype=self.dtype, mlType=self.mltype)
+        return DataPoint(r.json(), shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
 
     def fetch_points(self, limit, offset=0, **kwargs):
         """ Fetch a list of datapoints """
@@ -200,7 +91,7 @@ class BaseSet(object):
         if self.classes and len(self.classes):
             params["classes"] = ','.join(self.classes)
         qs = self._querystring(limit, **params)
-        points = [DataPoint(p, shape=self.imshape, dtype=self.dtype, mlType=self.mltype)
+        points = [DataPoint(p, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
                       for p in self.conn.get('{}/data/{}/datapoints?{}'.format(self._host, self.id, qs)).json()]
         return points
 
@@ -313,7 +204,7 @@ class VedaCollection(BaseSet):
 
       Args:
           name (str): A name for the TrainingSet.
-          mlType (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
+          mltype (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
           tilesize (tuple): The shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
           partition (str):Internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
           imshape (tuple): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
@@ -331,12 +222,12 @@ class VedaCollection(BaseSet):
           links (dict): API endpoint URLs for the VedaCollection.
 
     """
-    def __init__(self, name, mlType="classification", tilesize=[256,256], partition=[100,0,0],
+    def __init__(self, name, mltype="classification", tilesize=[256,256], partition=[100,0,0],
                 imshape=None, dtype=None, percent_cached=0, sensors=[], count=0,
                 dataset_id=None, image_refs=None,classes=[], bounds=None,
                 user_id=None, public=False, host=HOST, links=None, **kwargs):
 
-        assert mlType in valid_mltypes, "mlType {} not supported. Must be one of {}".format(mlType, valid_mltypes)
+        assert mltype in valid_mltypes, "mltype {} not supported. Must be one of {}".format(mltype, valid_mltypes)
         super(VedaCollection, self).__init__()
         #default to 0 bands until the first load
         if imshape:
@@ -356,7 +247,7 @@ class VedaCollection(BaseSet):
 
         self.meta = {
             "name": name,
-            "mltype": mlType,
+            "mltype": mltype,
             "public": public,
             "partition": partition,
             "image_refs": image_refs,
