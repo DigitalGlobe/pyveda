@@ -32,6 +32,7 @@ from pyveda.db import VedaBase
 from .rda import MLImage
 from pyveda.utils import NamedTemporaryHDF5Generator
 from pyveda.fetch.compat import build_vedabase
+from .labelizer import Labelizer
 
 threads = int(os.environ.get('GBDX_THREADS', 64))
 threaded_get = partial(dask.threaded.get, num_workers=threads)
