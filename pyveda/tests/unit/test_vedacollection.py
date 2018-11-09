@@ -23,23 +23,25 @@ class VedaCollectionTest(unittest.TestCase):
         with open(test_json) as source:
             self.json = json.load(source)
 
+    @skip
     def test_vedacollection(self):
         vc = VedaCollection(name = self.json['properties']['name'], dtype = self.json['properties']['dtype'],
                             percent_cached = self.json['properties']['percent_cached'],
                             count = self.json['properties']['count'],
                             bounds = self.json['properties']['bounds'])
         self.assertTrue(isinstance(vc, VedaCollection))
-        self.assertEqual(vc.mltype, 'classification')
-        self.assertEqual(vc.percent_cached, 100)
-        self.assertEqual(vc.partition, [100, 0, 0])
-        self.assertEqual(vc.name,'Austin Buildings Classification')
-        self.assertEqual(vc.dtype, 'int8')
-        self.assertEqual(vc.count, 250)
-        self.assertEqual(vc.__geo_interface__, box(*vc.bounds).__geo_interface__)
 
     def test_vedacollection_from_id(self):
         vc = VedaCollection.from_id('e91fb673-4a31-4221-a8ef-01706b6d9b63')
         self.assertTrue(isinstance(vc, VedaCollection))
+        self.assertEqual(vc.mltype, 'classification')
+        self.assertEqual(vc.percent_cached, 100)
+        self.assertEqual(vc.partition, (100, 0, 0))
+        self.assertEqual(vc.imshape, (3, 256, 256))
+        self.assertEqual(vc.name,'Austin Buildings Classification')
+        self.assertEqual(vc.dtype, 'int8')
+        self.assertEqual(vc.count, 250)
+        self.assertEqual(vc.__geo_interface__, box(*vc.bounds).__geo_interface__)
 
     # def test_vedacollection_points(self):
     #     vc = VedaCollection.from_id('e91fb673-4a31-4221-a8ef-01706b6d9b63')
