@@ -534,7 +534,7 @@ class VedaCollection(BaseSet):
         return self._refresh()
 
     def clean(self):
-        Labelizer._clean(self.links, self.count, self.conn)
+        Labelizer(self.ids(get_urls=True), self.count, self.conn, self.imshape, self.dtype)._clean()
 
     def __getitem__(self, slc):
         """ Enable slicing of the VedaCollection by index/slice """

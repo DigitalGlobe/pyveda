@@ -11,13 +11,16 @@ from rasterio import features
 from shapely.geometry.geo import shape
 import dask.array as da
 from .loaders import load_image
+import numpy as np
 
 
 class Labelizer():
-    def __init__(self, links, count, conn):
-        self.links = links
+    def __init__(self, ids, count, conn, imshape, dtype):
+        self.ids = list(ids)
         self.count = count
         self.conn = conn
+        self.imshape = imshape
+        self.dtype = dtype
         self.index = 0
 
     def _create_buttons(self):
@@ -27,7 +30,7 @@ class Labelizer():
             buttons: A list of ipywidget Button() objects
         """
         buttons = []
-        actions = [('Yes', 'success'), ('No', 'danger')]
+        actions = [('Yes', 'success'), ('No', 'danger'), ('Exit', 'info' )]
         for b in actions:
             btn = Button(description=b[0], button_style=b[1])
             buttons.append(btn)
@@ -38,13 +41,15 @@ class Labelizer():
         Callback and handling of widget buttons.
         """
         if b.description == 'Yes':
-            next(self.links)
-            index += 1
+            #next(self.ids)
+            self.index += 1
         elif b.description == 'No':
-            self.conn.delete(self.links["delete"]["href"])
-            next(self.links)
-            index += 1
-        self.clean()
+            #figure out how to delete
+            #next(self.ids)
+            self.index += 1
+        elif b.description == 'Exit':
+            self.index = self.count
+        self._clean()
 
     def _plot_polygons(self):
         #figure out how to get labels from link
@@ -55,17 +60,18 @@ class Labelizer():
 
     def _compute_image(self):
         token = gbdx.gbdx_connection.access_token
-        load = load_image(self.links["image"]["href"], token, self.imshape,
+        _link = self.ids[self.index]
+        load = load_image(_link[1], token, self.imshape,
                           dtype=self.dtype)
         dask_array = da.from_delayed(load, shape=self.imshape, dtype=self.dtype)
-        return dask_array.compute()
+        return dask_array
 
     def _display_image(self):
         plt.figure(figsize = (7, 7))
         ax = plt.subplot()
         ax.axis("off")
-        image = _compute_image()
-        img = np.rollaxis(image,0,3)
+        image = self._compute_image()
+        img = np.rollaxis(image.compute(),0,3)
         ax.imshow(img)
         #self._plot_polygons()
         plt.title('Is this tile correct?')
@@ -78,8 +84,7 @@ class Labelizer():
         if self.index < self.count:
             print("%0.f tiles out of %0.f tiles have been cleaned" %
                  (self.index, self.count))
-            display(HBox(buttons))
             self._display_image()
-
-        if self.index >= len(self.count):
+            display(HBox(buttons))
+        if self.index >= self.count:
             print('all tiles have been cleaned')
