@@ -1,6 +1,6 @@
 gbdx-auth>=0.2.6
 h5py
-pytables
+tables
 requests
 requests_toolbelt
 ujson
