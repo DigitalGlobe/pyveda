@@ -11,7 +11,7 @@ except:
 import requests
 from tempfile import NamedTemporaryFile
 import numpy as np
-from gbdxtools import Interface
+from pyveda.auth import Auth
 from shapely.geometry import shape as shp, mapping, box
 from functools import partial
 
@@ -21,8 +21,7 @@ from pyveda.datapoint import DataPoint
 from pyveda.utils import NamedTemporaryHDF5Generator
 from pyveda.fetch.compat import build_vedabase
 
-gbdx = Interface()
-
+gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
 
 headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}

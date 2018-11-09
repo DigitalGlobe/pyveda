@@ -5,7 +5,6 @@ from rasterio import features
 from shapely.geometry.geo import shape
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from gbdxtools import Interface, TmsImage, CatalogImage, IpeImage
 from rasterio import features
 from shapely.geometry.geo import shape
 
