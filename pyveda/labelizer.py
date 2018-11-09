@@ -1,9 +1,24 @@
-import ipywidgets as widgets
-from ipywidgets import Button, HBox, VBox
-from IPython.display import display, clear_output
+try: 
+    import ipywidgets as widgets
+    from ipywidgets import Button, HBox, VBox
+    has_ipywidgets = True
+except: 
+    has_ipywidgets = False
+
+try:
+    from IPython.display import display, clear_output
+    has_ipy = True
+except:
+    has_ipy = False
+
+try:     
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+    has_plt = True
+except: 
+    has_plt = False
+
 from shapely.geometry.geo import shape
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 from gbdxtools import Interface 
 from shapely.geometry.geo import shape
 import numpy as np
@@ -28,6 +43,10 @@ class Labelizer():
             dtype (str): the datatype of the images    
             mltype (str): the mltype of the veda collection
         """
+        assert has_ipywidgets, 'Labelizer requires ipywidgets to be installed'
+        assert has_ipy, 'Labelizer requires ipython to be installed'
+        assert has_plt, 'Labelizer requires matplotlib to be installed'
+
         self.ids = ids
         self.count = count
         self.imshape = imshape
