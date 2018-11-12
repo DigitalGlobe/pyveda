@@ -53,6 +53,8 @@ class Labelizer():
         self.dtype = dtype
         self.mltype = mltype
         self.index = 0
+        self.dp = self.get_next()
+        self.flagged_tiles=[]
 
     def _create_buttons(self):
         """
@@ -72,31 +74,39 @@ class Labelizer():
         Callback and handling of widget buttons.
         """
         if b.description == 'Yes':
-            #next(self.ids)
             self.index += 1
+            self.dp = self.get_next()
         elif b.description == 'No':
-            #figure out how to delete
-            #next(self.ids)
+            self.flagged_tiles.append(self.dp)
             self.index += 1
+            self.dp = self.get_next()
         elif b.description == 'Exit':
             self.index = self.count
+
         # TODO should call next i think...
         self.clean()
 
-    def _plot_polygons(self):
-        #figure out how to get labels from link
-        for pxb in shp:
-            if np.size(s)==4:
-                ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
-                        (pxb[3]-pxb[1]),edgecolor='red',fill=False, lw=2))
+    def _display_polygons(self):
+        label = list(self.dp.label.items())
+        label_shp = [l[1] for l in label]
+        label_type = [l[0] for l in label]
+        ax = plt.subplot()
+        for i,shp in enumerate(label_shp):
+            if len(shp) is not 0:
+                face_color = np.random.rand(3,)
+                for pxb in shp:
+                    ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
+                            (pxb[3]-pxb[1]),edgecolor=face_color,
+                            fill=False, lw=2, label=label_type[i]))
+                #ax.legend()
 
-    def _display_image(self, dp):
+
+    def _display_image(self):
         plt.figure(figsize = (7, 7))
         ax = plt.subplot()
         ax.axis("off")
-        img = np.rollaxis(dp.image.compute(),0,3)
+        img = np.rollaxis(self.dp.image.compute(),0,3)
         ax.imshow(img)
-        #self._plot_polygons()
         plt.title('Is this tile correct?')
 
     def get_next(self):
@@ -113,12 +123,13 @@ class Labelizer():
         for b in buttons:
             b.on_click(self._handle_buttons)
 
-        dp = self.get_next()
-
-        if dp is not None:
+        #dp = self.get_next()
+        if self.dp is not None and self.index != self.count:
             print("%0.f tiles out of %0.f tiles have been cleaned" %
                  (self.index, self.count))
-            self._display_image(dp)
+            self._display_image()
+            self._display_polygons()
             display(HBox(buttons))
         else:
             print('all tiles have been cleaned')
+            ## TOOD: add validation function for flagged tiles here
