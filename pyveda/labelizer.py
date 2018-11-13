@@ -114,11 +114,11 @@ class Labelizer():
             print("All flagged tiles have been cleaned.")
 
     def _display_polygons(self, dp):
-         """
-         Adds DataPoint object label geometries to the image tile plot.
-         Params:
-            dp: A DataPoint object for the VedaCollection.
-         """
+        """
+        Adds DataPoint object label geometries to the image tile plot.
+        Params:
+        dp: A DataPoint object for the VedaCollection.
+        """
         label = list(dp.label.items())
         label_shp = [l[1] for l in label]
         label_type = [l[0] for l in label]
