@@ -16,7 +16,6 @@ from shapely.geometry import shape as shp, mapping, box
 from functools import partial
 
 from pyveda.db import VedaBase
-from .rda import MLImage
 from pyveda.datapoint import DataPoint
 from pyveda.utils import NamedTemporaryHDF5Generator
 from pyveda.fetch.compat import build_vedabase
