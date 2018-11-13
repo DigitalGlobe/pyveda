@@ -213,7 +213,7 @@ class VedaCollection(BaseSet):
           image_refs (lst): RDA template used to create data for Veda Collection.
           classes (lst): Unique types of objects in data.
           bounds (lst): Spatial extent of the data.
-          user_id (str): Unique identifier for user who created dataset.
+          userId (str): Unique identifier for user who created dataset.
           public (bool): Indicates if data is publically available for others to access.
           host (str): Overrides setting the API endpoint to be specific to the VedaCollection.
           links (dict): API endpoint URLs for the VedaCollection.
@@ -222,7 +222,7 @@ class VedaCollection(BaseSet):
     def __init__(self, name, mltype="classification", tilesize=[256,256], partition=[100,0,0],
                 imshape=None, dtype=None, percent_cached=0, sensors=[], count=0,
                 dataset_id=None, image_refs=None,classes=[], bounds=None,
-                user_id=None, public=False, host=HOST, links=None, **kwargs):
+                userId=None, public=False, host=HOST, links=None, **kwargs):
 
         assert mltype in valid_mltypes, "mltype {} not supported. Must be one of {}".format(mltype, valid_mltypes)
         super(VedaCollection, self).__init__()
@@ -250,13 +250,19 @@ class VedaCollection(BaseSet):
             "image_refs": image_refs,
             "classes": classes,
             "bounds": bounds,
-            "user_id": user_id
+            "userId": userId
         }
 
         for k,v in self.meta.items():
             setattr(self, k, v)
 
-    def bulk_load(self, s3path, **kwargs):
+    def bulk_load(self, s3path, label_field = None, **kwargs):
+        '''Bulk Loads a tarball into the VedaCollection
+        ARGS
+
+        `s3path` (str): the full S3 path to a `.tar.gz` containing image/labels of training data
+        `label_field` (str): Field in the geojson `Properties` to use for the label instead of `label`.
+        '''
         self._bulk_load(s3path, **kwargs)
 
 
@@ -353,6 +359,18 @@ class VedaCollection(BaseSet):
             return {'status':'BUILDING'}
 
     def ids(self, size=None, page_size=100, get_urls=True):
+        """ Creates a generator of Datapoint IDs or URLs for every datapoint in the VedaCollection
+            This is useful for gaining access to the ID or the URL for datapoints. 
+    
+            Args:
+            `size` (int): the total number of points to fetch, defaults to None
+            `page_size` (int): the size of the pages to use in the API.
+            `get_urls` (bool): generate urls tuples ((`dp_url`, `dp_image_url`)) instead of IDs.  
+
+            Returns:
+              generator of IDs
+
+        """
         if size is None:
             size = self.count
         def get(pages):
