@@ -77,7 +77,7 @@ class Labelizer():
             self.index += 1
             self.dp = self.get_next()
         elif b.description == 'No':
-            self.flagged_tiles.append(next(self.ids))
+            self.flagged_tiles.append(self.dp)
             self.index += 1
             self.dp = self.get_next()
         elif b.description == 'Exit':
@@ -98,19 +98,20 @@ class Labelizer():
         return buttons
 
     def _handle_flag_buttons(self, b):
-        id = iter(self.flagged_tiles)
-        if b.description == 'Keep':
-            print('dp %s has been stored' %self.dp.id)
-            self.dp = self.get_next()
-        elif b.description == 'Remove':
-            self.dp.remove()
-            print('dp %s has been removed' %self.dp.id)
-            self.dp = self.get_next()
-        self.clean_flags()
+        try:
+            if b.description == 'Keep':
+                print('dp %s has been stored' %self.dp.id)
+                self.dp = next(self.flagged_tiles)
+            elif b.description == 'Remove':
+                self.dp.remove()
+                print('dp %s has been removed' %self.dp.id)
+                self.dp = next(self.flagged_tiles)
+            self.clean_flags()
+        except StopIteration:
+            print("All flagged tiles have been cleaned.")
 
-
-    def _display_polygons(self):
-        label = list(self.dp.label.items())
+    def _display_polygons(self, dp):
+        label = list(dp.label.items())
         label_shp = [l[1] for l in label]
         label_type = [l[0] for l in label]
         ax = plt.subplot()
@@ -123,19 +124,19 @@ class Labelizer():
                             fill=False, lw=2, label=label_type[i]))
                 #ax.legend() ##TODO: figure out optimal legend/label formatting.
 
-
-    def _display_image(self):
+    def _display_image(self, dp):
         plt.figure(figsize = (7, 7))
         ax = plt.subplot()
         ax.axis("off")
-        img = np.rollaxis(self.dp.image.compute(),0,3)
+        img = np.rollaxis(dp.image.compute(),0,3)
         ax.imshow(img)
 
     def get_next(self):
         try:
             dp_url, img_url = self.ids.__next__()
             r = conn.get(dp_url).json()
-            return DataPoint(r, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
+            self.dp = DataPoint(r, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
+            return self.dp
         except Exception as err:
             return None
 
@@ -144,13 +145,10 @@ class Labelizer():
         for b in buttons:
             b.on_click(self._handle_flag_buttons)
         if self.dp is not None:
-            self._display_image()
-            self._display_polygons()
+            self._display_image(self.dp)
+            self._display_polygons(self.dp)
             plt.title('Do you want to remove this tile?')
             display(HBox(buttons))
-        else:
-            print("All flagged tiles have been cleaned.")
-
 
     def clean(self):
         clear_output()
@@ -160,12 +158,12 @@ class Labelizer():
         if self.dp is not None and self.index != self.count:
             print("%0.f tiles out of %0.f tiles have been cleaned" %
                  (self.index, self.count))
-            self._display_image()
-            self._display_polygons()
+            self._display_image(self.dp)
+            self._display_polygons(self.dp)
             plt.title('Is this tile correct?')
             display(HBox(buttons))
         else:
             print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
-            self.ids = iter(self.flagged_tiles)
-            self.dp = self.get_next()
+            self.flagged_tiles = iter(self.flagged_tiles)
+            self.dp = next(self.flagged_tiles)
             self.clean_flags()
