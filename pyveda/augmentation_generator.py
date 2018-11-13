@@ -2,12 +2,11 @@
 # Link: https://github.com/bernardohenz/ExtendableImageDatagen
 
 import numpy as np
-import keras
-from keras_preprocessing import image
-from keras.preprocessing.image import ImageDataGenerator
+
 import scipy.ndimage as ndi
 from random import randint
 from random import sample
+
 
 # Pre-processing Functions
 
@@ -77,7 +76,7 @@ def random_rotation_f(x, rg, row_index=1, col_index=2, channel_index=0,
     return x
 
 
-class DataGenerator(keras.utils.Sequence):
+class DataGenerator():
     '''
     cache:
     batch_size: Int.
@@ -93,13 +92,13 @@ class DataGenerator(keras.utils.Sequence):
     #how should VedaBase be initalized?
 
 
-    def __init__(self, cache, batch_size, shape, shuffle=True, dataset = None,
+    def __init__(self, cache, batch_size, shape, dataset, shuffle=True,
                  rescale_toa=False, bands_subset=None,
                  random_rotation=False, horizontal_flip=False,
                  vertical_flip=False):
 
         self.dataset = dataset
-        self.cache = getattr(cache, dataset.train)
+        self.cache = getattr(cache, self.dataset.train)
         self.batch_size = batch_size
         self.list_ids = [i for i in range(0, len(self.cache))]
         self.shuffle = shuffle
@@ -164,7 +163,8 @@ class DataGenerator(keras.utils.Sequence):
                     else:
                         x = func(x)
                 X[i, ] = x
-            y[i] = self.cache.classification[_id]
+            #y[i] = self.cache.classification[_id]
+            y[i] = 1 #change when VB.label is working again 
         return X, y
 
     def __len__(self):
