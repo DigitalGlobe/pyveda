@@ -214,6 +214,7 @@ class VedaCollection(BaseSet):
           classes (lst): Unique types of objects in data.
           bounds (lst): Spatial extent of the data.
           userId (str): Unique identifier for user who created dataset.
+          description (str): An optional description of the training dataset. Useful for attaching external info and links to a collection.
           public (bool): Indicates if data is publically available for others to access.
           host (str): Overrides setting the API endpoint to be specific to the VedaCollection.
           links (dict): API endpoint URLs for the VedaCollection.
@@ -222,7 +223,7 @@ class VedaCollection(BaseSet):
     def __init__(self, name, mltype="classification", tilesize=[256,256], partition=[100,0,0],
                 imshape=None, dtype=None, percent_cached=0, sensors=[], count=0,
                 dataset_id=None, image_refs=None,classes=[], bounds=None,
-                userId=None, public=False, host=HOST, links=None, **kwargs):
+                userId=None, public=False, host=HOST, links=None, description="", **kwargs):
 
         assert mltype in valid_mltypes, "mltype {} not supported. Must be one of {}".format(mltype, valid_mltypes)
         super(VedaCollection, self).__init__()
@@ -250,7 +251,8 @@ class VedaCollection(BaseSet):
             "image_refs": image_refs,
             "classes": classes,
             "bounds": bounds,
-            "userId": userId
+            "userId": userId,
+            "description": description
         }
 
         for k,v in self.meta.items():
