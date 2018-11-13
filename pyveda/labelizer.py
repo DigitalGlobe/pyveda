@@ -54,7 +54,7 @@ class Labelizer():
         self.mltype = mltype
         self.index = 0
         self.dp = self.get_next()
-        self.flagged_tiles=[]
+        self.flagged_tiles = []
 
     def _create_buttons(self):
         """
@@ -77,7 +77,7 @@ class Labelizer():
             self.index += 1
             self.dp = self.get_next()
         elif b.description == 'No':
-            self.flagged_tiles.append(self.ids)
+            self.flagged_tiles.append(next(self.ids))
             self.index += 1
             self.dp = self.get_next()
         elif b.description == 'Exit':
@@ -132,23 +132,24 @@ class Labelizer():
         ax.imshow(img)
 
     def get_next(self):
-        # try:
-        dp_url, img_url = self.ids.__next__()
-        r = conn.get(dp_url).json()
-        return DataPoint(r, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
-        # except Exception as err:
-        #     #print('no more DataPoints')
-        #     print(err)
-        #     return None
+        try:
+            dp_url, img_url = self.ids.__next__()
+            r = conn.get(dp_url).json()
+            return DataPoint(r, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
+        except Exception as err:
+            return None
 
     def clean_flags(self):
-            buttons = self._create_flag_buttons()
-            for b in buttons:
-                b.on_click(self._handle_flag_buttons)
-            if self.dp is not None:
-                self._display_image()
-                self._display_polygons()
-                display(HBox(buttons))
+        buttons = self._create_flag_buttons()
+        for b in buttons:
+            b.on_click(self._handle_flag_buttons)
+        if self.dp is not None:
+            self._display_image()
+            self._display_polygons()
+            plt.title('Do you want to remove this tile?')
+            display(HBox(buttons))
+        else:
+            print("All flagged tiles have been cleaned.")
 
 
     def clean(self):
@@ -164,8 +165,7 @@ class Labelizer():
             plt.title('Is this tile correct?')
             display(HBox(buttons))
         else:
-            ##todo: add conditionals and index to exit when all tiles have been flagged
             print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
             self.ids = iter(self.flagged_tiles)
-            # self.dp = self.get_next()
+            self.dp = self.get_next()
             self.clean_flags()
