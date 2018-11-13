@@ -1,6 +1,6 @@
 try:
     import ipywidgets as widgets
-    from ipywidgets import Button, HBox, VBox
+    from ipywidgets import Button, HBox, VBox, RadioButtons
     has_ipywidgets = True
 except:
     has_ipywidgets = False
@@ -77,14 +77,37 @@ class Labelizer():
             self.index += 1
             self.dp = self.get_next()
         elif b.description == 'No':
-            self.flagged_tiles.append(self.dp)
+            self.flagged_tiles.append(self.ids)
             self.index += 1
             self.dp = self.get_next()
         elif b.description == 'Exit':
             self.index = self.count
-
-        # TODO should call next i think...
         self.clean()
+
+    def _create_flag_buttons(self):
+        """
+        Creates ipywidget widget buttons for flagged tiles
+        Returns:
+            radio_buttons: A list of ipywidget button() objects
+        """
+        buttons = []
+        actions = [('Keep', 'success'), ('Remove', 'danger')]
+        for b in actions:
+            btn = Button(description=b[0], button_style=b[1])
+            buttons.append(btn)
+        return buttons
+
+    def _handle_flag_buttons(self, b):
+        id = iter(self.flagged_tiles)
+        if b.description == 'Keep':
+            print('dp %s has been stored' %self.dp.id)
+            self.dp = self.get_next()
+        elif b.description == 'Remove':
+            self.dp.remove()
+            print('dp %s has been removed' %self.dp.id)
+            self.dp = self.get_next()
+        self.clean_flags()
+
 
     def _display_polygons(self):
         label = list(self.dp.label.items())
@@ -98,7 +121,7 @@ class Labelizer():
                     ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
                             (pxb[3]-pxb[1]),edgecolor=face_color,
                             fill=False, lw=2, label=label_type[i]))
-                #ax.legend()
+                #ax.legend() ##TODO: figure out optimal legend/label formatting.
 
 
     def _display_image(self):
@@ -107,29 +130,42 @@ class Labelizer():
         ax.axis("off")
         img = np.rollaxis(self.dp.image.compute(),0,3)
         ax.imshow(img)
-        plt.title('Is this tile correct?')
 
     def get_next(self):
-        try:
-            dp_url, img_url = self.ids.__next__()
-            r = conn.get(dp_url).json()
-            return DataPoint(r, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
-        except Exception as err:
-            return None
+        # try:
+        dp_url, img_url = self.ids.__next__()
+        r = conn.get(dp_url).json()
+        return DataPoint(r, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
+        # except Exception as err:
+        #     #print('no more DataPoints')
+        #     print(err)
+        #     return None
+
+    def clean_flags(self):
+            buttons = self._create_flag_buttons()
+            for b in buttons:
+                b.on_click(self._handle_flag_buttons)
+            if self.dp is not None:
+                self._display_image()
+                self._display_polygons()
+                display(HBox(buttons))
+
 
     def clean(self):
         clear_output()
         buttons = self._create_buttons()
         for b in buttons:
             b.on_click(self._handle_buttons)
-
-        #dp = self.get_next()
         if self.dp is not None and self.index != self.count:
             print("%0.f tiles out of %0.f tiles have been cleaned" %
                  (self.index, self.count))
             self._display_image()
             self._display_polygons()
+            plt.title('Is this tile correct?')
             display(HBox(buttons))
         else:
-            print('all tiles have been cleaned')
-            ## TOOD: add validation function for flagged tiles here
+            ##todo: add conditionals and index to exit when all tiles have been flagged
+            print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
+            self.ids = iter(self.flagged_tiles)
+            # self.dp = self.get_next()
+            self.clean_flags()
