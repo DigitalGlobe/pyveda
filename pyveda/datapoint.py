@@ -16,7 +16,7 @@ class DataPoint(object):
     def __init__(self, item, shape=(3,256,256), dtype='uint8', **kwargs):
         self.conn = conn
         self.links = item["properties"].get("links")
-        self.imshape = tuple(map(int, shape))
+        self.imshape = list(shape)
         self._y = None
         self.data = item['properties']
         self._dtype = dtype
