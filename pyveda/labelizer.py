@@ -86,9 +86,9 @@ class Labelizer():
 
     def _create_flag_buttons(self):
         """
-        Creates ipywidget widget buttons for flagged tiles
+        Creates ipywidget widget buttons for tiles that have been flagged for review.
         Returns:
-            radio_buttons: A list of ipywidget button() objects
+            buttons: A list of ipywidget Button() objects
         """
         buttons = []
         actions = [('Keep', 'success'), ('Remove', 'danger')]
@@ -98,6 +98,9 @@ class Labelizer():
         return buttons
 
     def _handle_flag_buttons(self, b):
+        """
+        Callback and handling of widget buttons for flagged tiles.
+        """
         try:
             if b.description == 'Keep':
                 print('dp %s has been stored' %self.dp.id)
@@ -111,6 +114,11 @@ class Labelizer():
             print("All flagged tiles have been cleaned.")
 
     def _display_polygons(self, dp):
+         """
+         Adds DataPoint object label geometries to the image tile plot.
+         Params:
+            dp: A DataPoint object for the VedaCollection.
+         """
         label = list(dp.label.items())
         label_shp = [l[1] for l in label]
         label_type = [l[0] for l in label]
@@ -125,6 +133,11 @@ class Labelizer():
                 #ax.legend() ##TODO: figure out optimal legend/label formatting.
 
     def _display_image(self, dp):
+        """
+        Displays image tile for a given DataPoint object.
+        Params:
+           dp: A DataPoint object for the VedaCollection.
+        """
         plt.figure(figsize = (7, 7))
         ax = plt.subplot()
         ax.axis("off")
@@ -132,6 +145,9 @@ class Labelizer():
         ax.imshow(img)
 
     def get_next(self):
+        """
+        Fetches the next DataPoint object from VedaCollection ids.
+        """
         try:
             dp_url, img_url = self.ids.__next__()
             r = conn.get(dp_url).json()
@@ -141,6 +157,9 @@ class Labelizer():
             return None
 
     def clean_flags(self):
+        """
+        Method for verifying DataPoints that were flagged with clean()
+        """
         buttons = self._create_flag_buttons()
         for b in buttons:
             b.on_click(self._handle_flag_buttons)
@@ -151,6 +170,13 @@ class Labelizer():
             display(HBox(buttons))
 
     def clean(self):
+        """
+        Method for verifying each DataPoint as image data with associated polygons.
+        Displays a polygon overlayed on image chip with associated ipywidget
+        buttons. Allows user to click through each DataPoint object and decide
+        whether to keep or remove the object.
+        """
+
         clear_output()
         buttons = self._create_buttons()
         for b in buttons:
