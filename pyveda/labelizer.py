@@ -124,14 +124,14 @@ class Labelizer():
         label_type = [l[0] for l in label]
         legend_elements = []
         ax = plt.subplot()
-        plt.title('Is this tile correct?')
+        plt.title('Is this tile correct?', fontsize=14)
         for i,shp in enumerate(label_shp):
             if len(shp) is not 0:
                 edge_color = np.random.rand(3,)
                 handle = patches.Patch(edgecolor=edge_color, fill=False, label = label_type[i])
                 legend_elements.append(handle)
                 ax.legend(handles=legend_elements, loc='lower center',
-                         bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True)
+                         bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
                 for pxb in shp:
                     ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
                             (pxb[3]-pxb[1]),edgecolor=edge_color,
@@ -152,7 +152,7 @@ class Labelizer():
         for i, binary_class in enumerate(label_class):
             if binary_class != 0:
                 positive_classes.append(label_type[i])
-        plt.title('Does this tile contain: %s?' % ', '.join(positive_classes))
+        plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
 
     def _display_segmentation(self, dp):
         """
@@ -165,14 +165,14 @@ class Labelizer():
         label_type = [l[0] for l in label]
         legend_elements = []
         ax = plt.subplot()
-        plt.title('Is this tile correct?')
+        plt.title('Is this tile correct?', fontsize=14)
         for i, shp in enumerate(label_shp):
             if len(shp) is not 0:
                 face_color = np.random.rand(3,)
                 handle = patches.Patch(color=face_color, label = label_type[i])
                 legend_elements.append(handle)
                 ax.legend(handles=legend_elements, loc='lower center',
-                         bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True)
+                         bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
             for coord in shp:
                 if coord['type']=='Polygon':
                     geom = Polygon(coord['coordinates'][0])
