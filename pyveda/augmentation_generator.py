@@ -7,6 +7,8 @@ import scipy.ndimage as ndi
 from random import randint
 from random import sample
 
+#import keras
+
 
 # Pre-processing Functions
 
@@ -76,7 +78,7 @@ def random_rotation_f(x, rg, row_index=1, col_index=2, channel_index=0,
     return x
 
 
-class BatchGenerator():
+class BatchGenerator(object): #keras.utils.Sequence
     '''
     cache: VedaBase training object
     mltype: Str. Type of ml type: classification, segmentation, or object_detection
@@ -108,6 +110,7 @@ class BatchGenerator():
         self.random_rotation = random_rotation
         self.horizontal_flip = horizontal_flip
         self.vertical_flip = vertical_flip
+        self.index = 0
 
     def process(self, random_rotation, horizontal_flip, vertical_flip):
         augmentation_list = []
@@ -163,15 +166,15 @@ class BatchGenerator():
                         x = func(x)
                 X[i, ] = x
             #y[i] = self.cache.classification[_id]
-            if mltype == 'classification':
+            if self.mltype == 'classification':
                 y[i] = 1 #change when VB.label is working again y[i] = self.cache.labels[_id]
                     #[1]?
-            if mltype == 'object_detection':
+            if self.mltype == 'object_detection':
                 pass
-            if mltype == 'segmentation':
+            if self.mltype == 'segmentation':
                 pass
             else:
-                raise NotImplementedError
+                pass
         return X, y
         #yield X, y
 
@@ -179,8 +182,10 @@ class BatchGenerator():
         '''Denotes the number of batches per epoch'''
         return int(np.floor(len(self.list_ids) / self.batch_size))
 
-    def __getitem__(self, index):
+    def __getitem__(self, index): #does index need keras.utils.Sequence??
         '''Generate one batch of data'''
+        if index > len(self):
+            raise IndexError("index is invalid")
         indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
         list_ids_temp = [self.list_ids[k] for k in indexes]
         X, y = self.data_generation(list_ids_temp)
@@ -190,10 +195,13 @@ class BatchGenerator():
     def __iter__(self):
         """Create a generator that iterates over the Sequence."""
         for item in (self[i] for i in range(len(self))):
+            self.index += 1
             yield item
-
+    #
     def __next__(self):
         try:
-            self.data_generation(list_ids_temp)
+            item = self[self.index] #index???
         except IndexError:
             raise StopIteration
+        self.index += 1
+        return item
