@@ -130,7 +130,8 @@ class Labelizer():
                     ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
                             (pxb[3]-pxb[1]),edgecolor=face_color,
                             fill=False, lw=2, label=label_type[i]))
-                #ax.legend() ##TODO: figure out optimal legend/label formatting.
+            # ax.set_label(label_type[i])
+            ax.legend() ##TODO: figure out optimal legend/label formatting.
 
     def _display_image(self, dp):
         """
@@ -141,8 +142,9 @@ class Labelizer():
         plt.figure(figsize = (7, 7))
         ax = plt.subplot()
         ax.axis("off")
-        img = np.rollaxis(dp.image.compute(),0,3)
-        ax.imshow(img)
+        img = dp.image.compute()
+        img /= img.max()
+        ax.imshow(np.moveaxis(img, 0, -1))
 
     def get_next(self):
         """
@@ -189,7 +191,10 @@ class Labelizer():
             plt.title('Is this tile correct?')
             display(HBox(buttons))
         else:
-            print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
-            self.flagged_tiles = iter(self.flagged_tiles)
-            self.dp = next(self.flagged_tiles)
-            self.clean_flags()
+            try:
+                print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
+                self.flagged_tiles = iter(self.flagged_tiles)
+                self.dp = next(self.flagged_tiles)
+                self.clean_flags()
+            except StopIteration:
+                print("All tiles have been cleaned.")
