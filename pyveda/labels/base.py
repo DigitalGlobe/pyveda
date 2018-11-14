@@ -21,16 +21,16 @@ class ClassificationLabel(BaseLabel):
     _default_dtype = np.uint8
 
     @staticmethod
-    def from_pixels(item, klasses=[]):
+    def from_pixels(item, klasses=[], **kwargs):
         payload = ClassificationLabel._parse_response(item)
-        return payload
+        return [payload[klass] for klass in klasses]
 
 
 class SegmentationLabel(BaseLabel):
     _default_dtype = np.float32
 
     @staticmethod
-    def from_pixels(item, klasses=[], out_shape=None):
+    def from_pixels(item, klasses=[], out_shape=None, **kwargs):
         payload = SegmentationLabel._parse_response(item)
         if len(out_shape) == 3:
             out_shape = out_shape[-2:]
@@ -69,7 +69,7 @@ class ObjDetectionLabel(BaseLabel):
     _default_dtype = np.float32
 
     @staticmethod
-    def from_pixels(item, klasses=[], out_shape=None):
+    def from_pixels(item, klasses=[], out_shape=None, **kwargs):
         payload = ObjDetectionLabel._parse_response(item)
         return [payload[klass] for klass in klasses]
 
