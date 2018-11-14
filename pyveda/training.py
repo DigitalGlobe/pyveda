@@ -258,13 +258,16 @@ class VedaCollection(BaseSet):
         for k,v in self.meta.items():
             setattr(self, k, v)
 
-    def bulk_load(self, s3path, label_field = None, **kwargs):
+    def bulk_load(self, s3path, label_field = None, dtype='uint8', **kwargs):
         '''Bulk Loads a tarball into the VedaCollection
         ARGS
 
         `s3path` (str): the full S3 path to a `.tar.gz` containing image/labels of training data
         `label_field` (str): Field in the geojson `Properties` to use for the label instead of `label`.
+        `dtype` (str): The dtype in the metadata for the collection.
         '''
+        if self.dtype is None:
+            self.dtype = np.dtype(dtype)
         self._bulk_load(s3path, **kwargs)
 
 
