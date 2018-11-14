@@ -36,7 +36,7 @@ class WrappedDataNode(object):
         return self._trainer._label_array_factory(self._node.hit_table, self._node.labels,  self._trainer)
 
     def batch_generator(self, batch_size, **kwargs):
-        return BatchGenerator(self, batch_size = batch_size, **kwargs)
+        return BatchGenerator(self, batch_size = batch_size, mltype=self._trainer.mltype, **kwargs)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):
