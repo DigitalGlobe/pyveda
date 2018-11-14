@@ -35,13 +35,9 @@ This sets up an image for us to use as smaller images in our training data. Next
 
 .. code-block:: python
 
-    from pyveda import TrainingSet
+    from pyveda import VedaCollection
 
-    td = TrainingSet('Some Fake Data', 
-                 classes = ['class1'], 
-                 source = "rda", 
-                 mlType = "classification", 
-                 bbox = image.bounds)
+    vc = VedaCollection('Some Fake Data', mltype = "classification", tile_size=[256,256]) 
 
 Now we have an image to pull imagery from and a TrainingSet in which we can store pairs. In the example below we'll set up
 the size of the image windows we want to create and a count of pairs. Then we'll access random windows on the image and feed them 

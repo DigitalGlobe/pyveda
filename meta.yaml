@@ -1,0 +1,39 @@
+{% set data = load_setup_py_data() %}
+
+package:
+  name: pyveda
+  version: {{ data.get('version') }}
+
+build:
+  build: 0
+  script: pip install .
+  noarch: python
+
+source:
+  git_url: ./
+
+requirements:
+  run:
+    - setuptools
+    - python
+    - gbdx-auth>=0.2.6
+    - h5py
+    - tables
+    - requests
+    - requests_toolbelt
+    - ujson
+    - shapely
+    - numpy
+    - rasterio>=1.0.9
+  build:
+    - setuptools
+    - python
+    - gbdx-auth>=0.2.6
+    - h5py
+    - tables
+    - requests
+    - requests_toolbelt
+    - ujson
+    - shapely
+    - numpy
+    - rasterio>=1.0.9

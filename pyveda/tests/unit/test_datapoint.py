@@ -43,7 +43,7 @@ class DataPointTest(unittest.TestCase):
         self.assertEqual(dp.dtype, vc.dtype) # should inherit
         self.assertEqual(dp.dataset_id, 'e91fb673-4a31-4221-a8ef-01706b6d9b63')
         self.assertEqual(dp.imshape, vc.imshape)
-        self.assertEqual(dp.tile_coords, ["962", "179"])
+        self.assertEqual(dp.tile_coords, [962, 179])
         # geo interface
         self.assertEqual(dp.bounds, [
             -97.74107094008983,

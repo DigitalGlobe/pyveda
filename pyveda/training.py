@@ -16,7 +16,6 @@ from shapely.geometry import shape as shp, mapping, box
 from functools import partial
 
 from pyveda.db import VedaBase
-from .rda import MLImage
 from pyveda.datapoint import DataPoint
 from pyveda.utils import NamedTemporaryHDF5Generator
 from pyveda.fetch.compat import build_vedabase
@@ -204,18 +203,19 @@ class VedaCollection(BaseSet):
       Args:
           name (str): A name for the TrainingSet.
           mltype (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
-          tilesize (tuple): The shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
-          partition (str):Internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
-          imshape (tuple): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
+          tile_size (list): The shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
+          partition (list):Internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
+          imshape (list): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
           dtype (str): Data type of image data.
           percent_cached (int): Percent of data currently cached between 0 and 100.
           sensors(lst): The different satellites/sensors used for image sources in this VedaCollection.
-          _count (int): Number of image label pairs.
+          count (int): Number of image label pairs.
           dataset_id (str): Unique identifier for dataset.
           image_refs (lst): RDA template used to create data for Veda Collection.
           classes (lst): Unique types of objects in data.
           bounds (lst): Spatial extent of the data.
-          user_id (str): Unique identifier for user who created dataset.
+          userId (str): Unique identifier for user who created dataset.
+          description (str): An optional description of the training dataset. Useful for attaching external info and links to a collection.
           public (bool): Indicates if data is publically available for others to access.
           host (str): Overrides setting the API endpoint to be specific to the VedaCollection.
           links (dict): API endpoint URLs for the VedaCollection.
@@ -224,13 +224,13 @@ class VedaCollection(BaseSet):
     def __init__(self, name, mltype="classification", tilesize=[256,256], partition=[100,0,0],
                 imshape=None, dtype=None, percent_cached=0, sensors=[], count=0,
                 dataset_id=None, image_refs=None,classes=[], bounds=None,
-                user_id=None, public=False, host=HOST, links=None, **kwargs):
+                userId=None, public=False, host=HOST, links=None, description="", **kwargs):
 
         assert mltype in valid_mltypes, "mltype {} not supported. Must be one of {}".format(mltype, valid_mltypes)
         super(VedaCollection, self).__init__()
         #default to 0 bands until the first load
         if imshape:
-            self.imshape = tuple(map(int, imshape))
+            self.imshape = imshape
         else:
             self.imshape = [0] + list(tilesize)
         self.partition = partition
@@ -252,13 +252,23 @@ class VedaCollection(BaseSet):
             "image_refs": image_refs,
             "classes": classes,
             "bounds": bounds,
-            "user_id": user_id
+            "userId": userId,
+            "description": description
         }
 
         for k,v in self.meta.items():
             setattr(self, k, v)
 
-    def bulk_load(self, s3path, **kwargs):
+    def bulk_load(self, s3path, label_field = None, dtype='uint8', **kwargs):
+        '''Bulk Loads a tarball into the VedaCollection
+        ARGS
+
+        `s3path` (str): the full S3 path to a `.tar.gz` containing image/labels of training data
+        `label_field` (str): Field in the geojson `Properties` to use for the label instead of `label`.
+        `dtype` (str): The dtype in the metadata for the collection.
+        '''
+        if self.dtype is None:
+            self.dtype = np.dtype(dtype)
         self._bulk_load(s3path, **kwargs)
 
 
@@ -356,6 +366,18 @@ class VedaCollection(BaseSet):
             return {'status':'BUILDING'}
 
     def ids(self, size=None, page_size=100, get_urls=True, links=False):
+        """ Creates a generator of Datapoint IDs or URLs for every datapoint in the VedaCollection
+            This is useful for gaining access to the ID or the URL for datapoints. 
+    
+            Args:
+            `size` (int): the total number of points to fetch, defaults to None
+            `page_size` (int): the size of the pages to use in the API.
+            `get_urls` (bool): generate urls tuples ((`dp_url`, `dp_image_url`)) instead of IDs.  
+
+            Returns:
+              generator of IDs
+
+        """
         if size is None:
             size = self.count
         def get(pages):
