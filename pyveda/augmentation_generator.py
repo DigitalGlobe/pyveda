@@ -76,9 +76,10 @@ def random_rotation_f(x, rg, row_index=1, col_index=2, channel_index=0,
     return x
 
 
-class DataGenerator():
+class BatchGenerator():
     '''
-    cache:
+    cache: VedaBase training object
+    mltype: Str. Type of ml type: classification, segmentation, or object_detection
     batch_size: Int.
     shape: Tuple. (number of bands - after data has been preprocessed bands, height, width)
     dataset = Veda VedaBase object
@@ -89,21 +90,19 @@ class DataGenerator():
     vertical_flip: Boolean. Randomly flip inputs vertically.
     '''
 
-    #how should VedaBase be initalized?
-
-
-    def __init__(self, cache, batch_size, shape, dataset, shuffle=True,
+    def __init__(self, cache, mltype = 'classification', shuffle=True, batch_size = 32,
                  rescale_toa=False, bands_subset=None,
                  random_rotation=False, horizontal_flip=False,
                  vertical_flip=False):
 
-        self.dataset = dataset
-        self.cache = getattr(cache, self.dataset.train)
+        #self.cache = cache.train
+        self.cache = cache
+        self.mltype = mltype
+        self.shape = cache.images[0].shape
         self.batch_size = batch_size
         self.list_ids = [i for i in range(0, len(self.cache))]
         self.shuffle = shuffle
         self.on_epoch_end()
-        #self.group = group
         self.rescale_toa = rescale_toa
         self.bands_subset = bands_subset #is this necessary now?
         self.random_rotation = random_rotation
@@ -130,7 +129,7 @@ class DataGenerator():
         '''Generates data containing batch_size samples
         optionally pre-processes the data'''
 
-        X = np.empty((self.batch_size, *self.shape[::-1]))
+        X = np.empty((self.batch_size, *self.shape[::-1])) #issue with shape?
         y = np.empty((self.batch_size), dtype=int)
 
         augmentation_lst = self.process(self.random_rotation,
@@ -145,7 +144,7 @@ class DataGenerator():
             if self.rescale_toa is True and self.bands_subset is None:
                 x = rescale_toa(self.cache[_id])
             if self.bands_subset is None and not self.rescale_toa:
-                x = self.cache.image[_id].T
+                x = self.cache.images[_id].T
 
             # user selects no augmentation functions
             if len(augmentation_lst) == 0:
@@ -164,8 +163,17 @@ class DataGenerator():
                         x = func(x)
                 X[i, ] = x
             #y[i] = self.cache.classification[_id]
-            y[i] = 1 #change when VB.label is working again 
+            if mltype == 'classification':
+                y[i] = 1 #change when VB.label is working again y[i] = self.cache.labels[_id]
+                    #[1]?
+            if mltype == 'object_detection':
+                pass
+            if mltype == 'segmentation':
+                pass
+            else:
+                raise NotImplementedError
         return X, y
+        #yield X, y
 
     def __len__(self):
         '''Denotes the number of batches per epoch'''
@@ -177,3 +185,15 @@ class DataGenerator():
         list_ids_temp = [self.list_ids[k] for k in indexes]
         X, y = self.data_generation(list_ids_temp)
         return X, y
+        #yield X, y
+
+    def __iter__(self):
+        """Create a generator that iterates over the Sequence."""
+        for item in (self[i] for i in range(len(self))):
+            yield item
+
+    def __next__(self):
+        try:
+            self.data_generation(list_ids_temp)
+        except IndexError:
+            raise StopIteration
