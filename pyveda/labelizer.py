@@ -113,9 +113,9 @@ class Labelizer():
         except StopIteration:
             print("All flagged tiles have been cleaned.")
 
-    def _display_polygons(self, dp):
+    def _display_obj_detection(self, dp):
         """
-        Adds DataPoint object label geometries to the image tile plot.
+        Adds DataPoint object detection label geometries to the image tile plot.
         Params:
         dp: A DataPoint object for the VedaCollection.
         """
@@ -123,6 +123,7 @@ class Labelizer():
         label_shp = [l[1] for l in label]
         label_type = [l[0] for l in label]
         ax = plt.subplot()
+        plt.title('Is this tile correct?')
         for i,shp in enumerate(label_shp):
             if len(shp) is not 0:
                 face_color = np.random.rand(3,)
@@ -131,7 +132,16 @@ class Labelizer():
                             (pxb[3]-pxb[1]),edgecolor=face_color,
                             fill=False, lw=2, label=label_type[i]))
             # ax.set_label(label_type[i])
-            ax.legend() ##TODO: figure out optimal legend/label formatting.
+            #ax.legend() ##TODO: figure out optimal legend/label formatting.
+    def _display_classification(self, dp):
+        label = list(dp.label.items())
+        label_class = [l[1] for l in label]
+        label_type = [l[0] for l in label]
+        positive_classes = []
+        for i, binary_class in enumerate(label_class):
+            if binary_class != 0:
+                positive_classes.append(label_type[i])
+        plt.title('Does this tile contain: %s ?' % ', '.join(positive_classes))
 
     def _display_image(self, dp):
         """
@@ -143,7 +153,10 @@ class Labelizer():
         ax = plt.subplot()
         ax.axis("off")
         img = dp.image.compute()
-        img /= img.max()
+        try:
+            img /= img.max()
+        except TypeError:
+            img = img
         ax.imshow(np.moveaxis(img, 0, -1))
 
     def get_next(self):
@@ -167,8 +180,11 @@ class Labelizer():
             b.on_click(self._handle_flag_buttons)
         if self.dp is not None:
             self._display_image(self.dp)
-            self._display_polygons(self.dp)
-            plt.title('Do you want to remove this tile?')
+            if self.dp.mltype == 'object_detection':
+                self._display_obj_detection(self.dp)
+            if self.dp.mltype == 'classification':
+                self._display_classification(self.dp)
+            print('Do you want to remove this tile?')
             display(HBox(buttons))
 
     def clean(self):
@@ -187,9 +203,12 @@ class Labelizer():
             print("%0.f tiles out of %0.f tiles have been cleaned" %
                  (self.index, self.count))
             self._display_image(self.dp)
-            self._display_polygons(self.dp)
-            plt.title('Is this tile correct?')
+            if self.dp.mltype == 'object_detection':
+                self._display_obj_detection(self.dp)
             display(HBox(buttons))
+            if self.dp.mltype == 'classification':
+                self._display_classification(self.dp)
+
         else:
             try:
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
