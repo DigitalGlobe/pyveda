@@ -122,17 +122,21 @@ class Labelizer():
         label = list(dp.label.items())
         label_shp = [l[1] for l in label]
         label_type = [l[0] for l in label]
+        legend_elements = []
         ax = plt.subplot()
         plt.title('Is this tile correct?')
         for i,shp in enumerate(label_shp):
             if len(shp) is not 0:
-                face_color = np.random.rand(3,)
+                edge_color = np.random.rand(3,)
+                handle = patches.Patch(edgecolor=edge_color, fill=False, label = label_type[i])
+                legend_elements.append(handle)
+                ax.legend(handles=legend_elements)
                 for pxb in shp:
                     ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
-                            (pxb[3]-pxb[1]),edgecolor=face_color,
+                            (pxb[3]-pxb[1]),edgecolor=edge_color,
                             fill=False, lw=2))
-                ax.set_label(label_type[i])
-                ax.legend()
+
+
 
     def _display_classification(self, dp):
         """
@@ -158,11 +162,15 @@ class Labelizer():
         label = list(dp.label.items())
         label_shp = [l[1] for l in label]
         label_type = [l[0] for l in label]
+        legend_elements = []
         ax = plt.subplot()
         plt.title('Is this tile correct?')
         for i, shp in enumerate(label_shp):
             if len(shp) is not 0:
                 face_color = np.random.rand(3,)
+                handle = patches.Patch(color=face_color, label = label_type[i])
+                legend_elements.append(handle)
+                ax.legend(handles=legend_elements)
             for coord in shp:
                 if coord['type']=='Polygon':
                     geom = Polygon(coord['coordinates'][0])
