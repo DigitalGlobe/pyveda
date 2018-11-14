@@ -19,8 +19,8 @@ except:
     has_plt = False
 
 from shapely.geometry.geo import shape
+from shapely.geometry import *
 from gbdxtools import Interface
-from shapely.geometry.geo import shape
 import numpy as np
 import requests
 
@@ -136,7 +136,7 @@ class Labelizer():
 
     def _display_classification(self, dp):
         """
-        Adds classification labels to the image plot.
+        Adds DataPoint classification labels to the image plot.
         Params:
         dp: A DataPoint object for the VedaCollection.
         """
@@ -148,6 +148,27 @@ class Labelizer():
             if binary_class != 0:
                 positive_classes.append(label_type[i])
         plt.title('Does this tile contain: %s?' % ', '.join(positive_classes))
+
+    def _display_segmentation(self, dp):
+        """
+        Adds DataPoint classification labels to the image plot.
+        Params:
+        dp: A DataPoint object for the VedaCollection.
+        """
+        label = list(dp.label.items())
+        label_shp = [l[1] for l in label]
+        label_type = [l[0] for l in label]
+        ax = plt.subplot()
+        plt.title('Is this tile correct?')
+        for i, shp in enumerate(label_shp):
+            if len(shp) is not 0:
+                face_color = np.random.rand(3,)
+            for coord in shp:
+                if coord['type']=='Polygon':
+                    geom = Polygon(coord['coordinates'][0])
+                    x,y = geom.exterior.xy
+                    ax.fill(x,y, color=face_color, alpha=0.4)
+                    ax.plot(x,y, lw=3, color=face_color)
 
     def _display_image(self, dp):
         """
@@ -190,6 +211,8 @@ class Labelizer():
                 self._display_obj_detection(self.dp)
             if self.dp.mltype == 'classification':
                 self._display_classification(self.dp)
+            if self.dp.mltype == 'segmentation':
+                self._display_segmentation(self.dp)
             print('Do you want to remove this tile?')
             display(HBox(buttons))
 
@@ -208,13 +231,14 @@ class Labelizer():
         if self.dp is not None and self.index != self.count:
             print("%0.f tiles out of %0.f tiles have been cleaned" %
                  (self.index, self.count))
+            display(HBox(buttons))
             self._display_image(self.dp)
             if self.dp.mltype == 'object_detection':
                 self._display_obj_detection(self.dp)
-            display(HBox(buttons))
             if self.dp.mltype == 'classification':
                 self._display_classification(self.dp)
-
+            if self.dp.mltype == 'segmentation':
+                self._display_segmentation(self.dp)
         else:
             try:
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
