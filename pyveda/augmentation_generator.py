@@ -168,11 +168,13 @@ class BatchGenerator(): #keras.utils.Sequence
             if self.mltype == 'classification':
                 y[i, ] = self.cache.labels[_id]
             if self.mltype == 'object_detection':
-                pass
+                # will need to adjust based on augmentation (flipping/rotation)
+                y[i, ] = self.cache.labels[_id]
             if self.mltype == 'segmentation':
-                pass
+                 # will need to adjust based on augmentation (flipping/rotation)
+                 y[i, ] = self.cache.labels[_id]
             else:
-                pass
+                raise ValueError("Not supported ml classifciation type")
         return X, y
         #yield X, y
 
