@@ -130,10 +130,16 @@ class Labelizer():
                 for pxb in shp:
                     ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
                             (pxb[3]-pxb[1]),edgecolor=face_color,
-                            fill=False, lw=2, label=label_type[i]))
-            # ax.set_label(label_type[i])
-            #ax.legend() ##TODO: figure out optimal legend/label formatting.
+                            fill=False, lw=2))
+                ax.set_label(label_type[i])
+                ax.legend()
+
     def _display_classification(self, dp):
+        """
+        Adds classification labels to the image plot.
+        Params:
+        dp: A DataPoint object for the VedaCollection.
+        """
         label = list(dp.label.items())
         label_class = [l[1] for l in label]
         label_type = [l[0] for l in label]
@@ -141,7 +147,7 @@ class Labelizer():
         for i, binary_class in enumerate(label_class):
             if binary_class != 0:
                 positive_classes.append(label_type[i])
-        plt.title('Does this tile contain: %s ?' % ', '.join(positive_classes))
+        plt.title('Does this tile contain: %s?' % ', '.join(positive_classes))
 
     def _display_image(self, dp):
         """
