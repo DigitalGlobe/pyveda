@@ -3,8 +3,8 @@ import mmap
 import json
 import requests
 from requests_toolbelt.multipart.encoder import MultipartEncoder
-from gbdxtools import Interface
-gbdx = Interface()
+from pyveda.auth import Auth
+gbdx = Auth()
 
 HOST = os.environ.get('SANDMAN_API')
 if not HOST:

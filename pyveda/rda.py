@@ -1,7 +1,10 @@
-from gbdxtools.images.rda_image import RDAImage
-from gbdxtools.rda.interface import RDA
-
-rda = RDA()
+try:
+    from gbdxtools.images.rda_image import RDAImage
+    from gbdxtools.rda.interface import RDA
+    rda = RDA()
+    has_gbdxtools = True
+except:
+    has_gbdxtools = False
 
 class MLImage(RDAImage):
     ''' Standard image to use for RDA imagery
@@ -10,6 +13,7 @@ class MLImage(RDAImage):
         - RGB bands adjusted with Histogram DRA '''
     
     def __new__(cls, cat_id, pansharpen=False, **kwargs): 
+        assert has_gbdxtools, 'To use MLImage gbdxtools must be installed'
         if pansharpen:
             strip = rda.DigitalGlobeStrip(catId=cat_id, CRS=kwargs.get("proj","EPSG:4326"), GSD=kwargs.get("gsd",""), 
                                       correctionType="ACOMP", 

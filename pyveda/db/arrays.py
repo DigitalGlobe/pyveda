@@ -70,7 +70,7 @@ class ImageArray(WrappedDataArray):
         if bstring is None:
             return on_fail()
         try:
-            fd = NamedTemporaryFile(prefix='gbdxtools', suffix='.tif', delete=False)
+            fd = NamedTemporaryFile(prefix='veda', suffix='.tif', delete=False)
             fd.file.write(bstring)
             fd.file.flush()
             fd.close()
