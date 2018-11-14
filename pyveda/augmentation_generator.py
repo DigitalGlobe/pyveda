@@ -78,7 +78,7 @@ def random_rotation_f(x, rg, row_index=1, col_index=2, channel_index=0,
     return x
 
 
-class BatchGenerator(object): #keras.utils.Sequence
+class BatchGenerator(): #keras.utils.Sequence
     '''
     cache: VedaBase training object
     mltype: Str. Type of ml type: classification, segmentation, or object_detection
@@ -141,11 +141,11 @@ class BatchGenerator(object): #keras.utils.Sequence
 
         for i, _id in enumerate(list_ids_temp):
             if self.rescale_toa and self.bands_subset is not None:
-                x = rescale_toa(bands_subset_f(self.cache[_id], self.bands_subset))
+                x = rescale_toa(bands_subset_f(self.cache.images[_id], self.bands_subset))
             if self.bands_subset is not None and not self.rescale_toa:
-                x = bands_subset_f(self.cache[_id], self.bands_subset).T
+                x = bands_subset_f(self.cache.images[_id], self.bands_subset).T
             if self.rescale_toa is True and self.bands_subset is None:
-                x = rescale_toa(self.cache[_id])
+                x = rescale_toa(self.cache.images[_id])
             if self.bands_subset is None and not self.rescale_toa:
                 x = self.cache.images[_id].T
 
@@ -165,10 +165,8 @@ class BatchGenerator(object): #keras.utils.Sequence
                     else:
                         x = func(x)
                 X[i, ] = x
-            #y[i] = self.cache.classification[_id]
             if self.mltype == 'classification':
-                y[i] = 1 #change when VB.label is working again y[i] = self.cache.labels[_id]
-                    #[1]?
+                y[i, ] = self.cache.labels[_id]
             if self.mltype == 'object_detection':
                 pass
             if self.mltype == 'segmentation':
