@@ -4,6 +4,12 @@ This is the python API for [veda](https://github.com/DigitalGlobe/veda), Digital
 
 ## Currently under heavy development so expcet a few changes...
 
+## Installation 
+
+```
+pip install pyveda
+```
+
 ## Documentation 
 
 Latest Docs [https://pyveda.readthedocs.io/en/latest/](https://pyveda.readthedocs.io/en/latest/)
