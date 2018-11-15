@@ -16,7 +16,7 @@ requirements:
   run:
     - setuptools
     - python
-    - gbdx-auth>=0.2.6
+    - gbdx-auth >=0.2.6
     - h5py
     - tables
     - requests
@@ -29,7 +29,7 @@ requirements:
   build:
     - setuptools
     - python
-    - gbdx-auth>=0.2.6
+    - gbdx-auth >=0.2.6
     - h5py
     - tables
     - requests
