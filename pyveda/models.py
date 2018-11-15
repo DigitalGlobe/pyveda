@@ -20,7 +20,7 @@ else:
 def search(params={}):
     r = conn.post('{}/models/search'.format(HOST), json=params)
     try:
-        
+
         results = r.json()
         return [Model.from_doc(s) for s in results]
     except Exception as err:
@@ -36,7 +36,7 @@ class Model(object):
         self.shape = tuple(shape)
         self.dtype = dtype
         self.files = {
-            "model": model_path, 
+            "model": model_path,
         }
         self.meta = {
             "name": name,
@@ -98,10 +98,10 @@ class Model(object):
         assert self.library is not None, "Model library not defined. Please set the `.library` property before deploying."
         assert self.meta["location"] is not None, "Model not finished saving yet, model.location is None..."
         if self.deployed is None or self.deployed["id"] is None:
-            return conn.post(self.links["deploy"]["href"], json={"id": self.id}).json()        
+            return conn.post(self.links["deploy"]["href"], json={"id": self.id}).json()
         else:
             print('Model already deployed.')
-            
+
     def update(self, new_data, save=True):
         self.meta.update(new_data)
         if save:
@@ -122,7 +122,7 @@ class Model(object):
     def download(self, path=None):
         assert self.id is not None, 'You can only download a saved Model. Call the save method first.'
         path = path if path is not None else './{}'.format(self.id)
-        try: 
+        try:
             os.makedirs(path)
         except Exception as err:
             pass
@@ -130,7 +130,7 @@ class Model(object):
         with open('{}/model.tar.gz'.format(path), 'wb') as fh:
             fh.write(r.content)
         return path
-      
+
 
     def __repr__(self):
         return json.dumps(self.meta)

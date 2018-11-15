@@ -19,6 +19,7 @@ from pyveda.db import VedaBase
 from pyveda.datapoint import DataPoint
 from pyveda.utils import NamedTemporaryHDF5Generator
 from pyveda.fetch.compat import build_vedabase
+from .labelizer import Labelizer
 
 gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
@@ -347,6 +348,7 @@ class VedaCollection(BaseSet):
         r.raise_for_status()
         doc = r.json()
         doc['properties']['host'] = host
+        doc['properties']['id'] = _id
         return cls.from_doc(doc)
 
     @property
@@ -363,7 +365,7 @@ class VedaCollection(BaseSet):
         else:
             return {'status':'BUILDING'}
 
-    def ids(self, size=None, page_size=100, get_urls=True):
+    def ids(self, size=None, page_size=100, get_urls=True, links=False):
         """ Creates a generator of Datapoint IDs or URLs for every datapoint in the VedaCollection
             This is useful for gaining access to the ID or the URL for datapoints. 
     
@@ -392,13 +394,14 @@ class VedaCollection(BaseSet):
                     if not get_urls:
                         yield i
                     else:
-                        yield self._urls_from_id(i)
+                        yield self._urls_from_id(i, includeLinks=links)
 
-    def _urls_from_id(self, _id):
+    def _urls_from_id(self, _id, includeLinks=False):
         qs = urlencode({})
+        params = {'includeLinks': includeLinks}
         if self.classes and len(self.classes):
-            params = {"classes": ','.join(self.classes)}
-            qs = urlencode(params)
+            params.update({"classes": ','.join(self.classes)})
+        qs = urlencode(params)
         label_url = "{}/datapoints/{}?{}".format(self._host, _id, qs)
         image_url = "{}/datapoints/{}/image.tif".format(self._host, _id)
         return [label_url, image_url]
@@ -443,6 +446,11 @@ class VedaCollection(BaseSet):
         """ Create a released version of this VedaCollection. Publishes the entire set to s3."""
         assert self.id is not None, 'You can only refresh a VedaCollection that has been loaed. Call the load method first.'
         return self._refresh()
+
+    def clean(self, count=None):
+        if count is None:
+            count = self.count
+        Labelizer(self.ids(links=True), count, self.imshape, self.dtype, self.mltype).clean()
 
     def __getitem__(self, slc):
         """ Enable slicing of the VedaCollection by index/slice """
