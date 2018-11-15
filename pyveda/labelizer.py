@@ -19,8 +19,8 @@ except:
     has_plt = False
 
 from shapely.geometry.geo import shape
+from shapely.geometry import *
 from gbdxtools import Interface
-from shapely.geometry.geo import shape
 import numpy as np
 import requests
 
@@ -113,24 +113,72 @@ class Labelizer():
         except StopIteration:
             print("All flagged tiles have been cleaned.")
 
-    def _display_polygons(self, dp):
+    def _display_obj_detection(self, dp):
         """
-        Adds DataPoint object label geometries to the image tile plot.
+        Adds DataPoint object detection label geometries to the image tile plot.
         Params:
         dp: A DataPoint object for the VedaCollection.
         """
         label = list(dp.label.items())
         label_shp = [l[1] for l in label]
         label_type = [l[0] for l in label]
+        legend_elements = []
         ax = plt.subplot()
+        plt.title('Is this tile correct?', fontsize=14)
         for i,shp in enumerate(label_shp):
             if len(shp) is not 0:
-                face_color = np.random.rand(3,)
+                edge_color = np.random.rand(3,)
+                handle = patches.Patch(edgecolor=edge_color, fill=False, label = label_type[i])
+                legend_elements.append(handle)
+                ax.legend(handles=legend_elements, loc='lower center',
+                         bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
                 for pxb in shp:
                     ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
-                            (pxb[3]-pxb[1]),edgecolor=face_color,
-                            fill=False, lw=2, label=label_type[i]))
-                #ax.legend() ##TODO: figure out optimal legend/label formatting.
+                            (pxb[3]-pxb[1]),edgecolor=edge_color,
+                            fill=False, lw=2))
+
+
+
+    def _display_classification(self, dp):
+        """
+        Adds DataPoint classification labels to the image plot.
+        Params:
+        dp: A DataPoint object for the VedaCollection.
+        """
+        label = list(dp.label.items())
+        label_class = [l[1] for l in label]
+        label_type = [l[0] for l in label]
+        positive_classes = []
+        for i, binary_class in enumerate(label_class):
+            if binary_class != 0:
+                positive_classes.append(label_type[i])
+        plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
+
+    def _display_segmentation(self, dp):
+        """
+        Adds DataPoint classification labels to the image plot.
+        Params:
+        dp: A DataPoint object for the VedaCollection.
+        """
+        label = list(dp.label.items())
+        label_shp = [l[1] for l in label]
+        label_type = [l[0] for l in label]
+        legend_elements = []
+        ax = plt.subplot()
+        plt.title('Is this tile correct?', fontsize=14)
+        for i, shp in enumerate(label_shp):
+            if len(shp) is not 0:
+                face_color = np.random.rand(3,)
+                handle = patches.Patch(color=face_color, label = label_type[i])
+                legend_elements.append(handle)
+                ax.legend(handles=legend_elements, loc='lower center',
+                         bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
+            for coord in shp:
+                if coord['type']=='Polygon':
+                    geom = Polygon(coord['coordinates'][0])
+                    x,y = geom.exterior.xy
+                    ax.fill(x,y, color=face_color, alpha=0.4)
+                    ax.plot(x,y, lw=3, color=face_color)
 
     def _display_image(self, dp):
         """
@@ -141,8 +189,12 @@ class Labelizer():
         plt.figure(figsize = (7, 7))
         ax = plt.subplot()
         ax.axis("off")
-        img = np.rollaxis(dp.image.compute(),0,3)
-        ax.imshow(img)
+        img = dp.image.compute()
+        try:
+            img /= img.max()
+        except TypeError:
+            img = img
+        ax.imshow(np.moveaxis(img, 0, -1))
 
     def get_next(self):
         """
@@ -165,8 +217,13 @@ class Labelizer():
             b.on_click(self._handle_flag_buttons)
         if self.dp is not None:
             self._display_image(self.dp)
-            self._display_polygons(self.dp)
-            plt.title('Do you want to remove this tile?')
+            if self.dp.mltype == 'object_detection':
+                self._display_obj_detection(self.dp)
+            if self.dp.mltype == 'classification':
+                self._display_classification(self.dp)
+            if self.dp.mltype == 'segmentation':
+                self._display_segmentation(self.dp)
+            print('Do you want to remove this tile?')
             display(HBox(buttons))
 
     def clean(self):
@@ -184,12 +241,19 @@ class Labelizer():
         if self.dp is not None and self.index != self.count:
             print("%0.f tiles out of %0.f tiles have been cleaned" %
                  (self.index, self.count))
-            self._display_image(self.dp)
-            self._display_polygons(self.dp)
-            plt.title('Is this tile correct?')
             display(HBox(buttons))
+            self._display_image(self.dp)
+            if self.dp.mltype == 'object_detection':
+                self._display_obj_detection(self.dp)
+            if self.dp.mltype == 'classification':
+                self._display_classification(self.dp)
+            if self.dp.mltype == 'segmentation':
+                self._display_segmentation(self.dp)
         else:
-            print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
-            self.flagged_tiles = iter(self.flagged_tiles)
-            self.dp = next(self.flagged_tiles)
-            self.clean_flags()
+            try:
+                print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
+                self.flagged_tiles = iter(self.flagged_tiles)
+                self.dp = next(self.flagged_tiles)
+                self.clean_flags()
+            except StopIteration:
+                print("All tiles have been cleaned.")
