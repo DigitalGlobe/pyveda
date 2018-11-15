@@ -133,7 +133,13 @@ class BatchGenerator(): #keras.utils.Sequence
         optionally pre-processes the data'''
 
         X = np.empty((self.batch_size, *self.shape[::-1])) #issue with shape?
-        y = np.empty((self.batch_size), dtype=int)
+        if self.mltype == 'classification':
+            y = np.empty((self.batch_size), dtype=int)
+        if self.mltype == 'segmentation':
+            y = np.empty((self.batch_size, *self.shape[1:]))
+        if self.mltype == 'object_detection':
+            nclasses = len(self.cache.labels[0])
+            y = np.empty((self.batch_size, *(nclasses, 4)))
 
         augmentation_lst = self.process(self.random_rotation,
                                         self.horizontal_flip,
@@ -174,7 +180,7 @@ class BatchGenerator(): #keras.utils.Sequence
                  # will need to adjust based on augmentation (flipping/rotation)
                  y[i, ] = self.cache.labels[_id]
             else:
-                raise ValueError("Not supported ml classifciation type")
+                pass
         return X, y
         #yield X, y
 
