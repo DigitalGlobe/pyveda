@@ -7,6 +7,8 @@ from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.db.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, ImageArray
 
+from pyveda.augmentation_generator import BatchGenerator
+
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
 MLTYPE_MAP = {"classification": ClassificationArray,
@@ -32,6 +34,9 @@ class WrappedDataNode(object):
     @property
     def labels(self):
         return self._trainer._label_array_factory(self._node.hit_table, self._node.labels,  self._trainer)
+
+    def batch_generator(self, batch_size, **kwargs):
+        return BatchGenerator(self, batch_size = batch_size, mltype=self._trainer.mltype, **kwargs)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):

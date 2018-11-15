@@ -24,7 +24,8 @@ requirements:
     - ujson
     - shapely
     - numpy
-    - rasterio>=1.0.9
+    - pycurl
+    - affine
   build:
     - setuptools
     - python
@@ -36,4 +37,5 @@ requirements:
     - ujson
     - shapely
     - numpy
-    - rasterio>=1.0.9
+    - pycurl
+    - affine

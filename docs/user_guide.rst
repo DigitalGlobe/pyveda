@@ -23,12 +23,12 @@ Overall Concepts
 ---------------------------
 
 Veda is designed to store training data and models related to Machine Learning from satellite imagery. 
-The general concept is to first either use Veda to either find/search for existing training datasets or 
-be used to save new training datasets. These training sets consist of image/label pairs for that are stored
+The general concept is to use Veda to either find/search for existing training datasets or 
+be used to create new training datasets. These training sets consist of image/label pairs for that are stored
 inside veda and made available via its API. Additionally Veda supports the same pattern for save/fetching trained models.  
 
-The goal is provide a ML system for making access to data and models as easy as possible. Additionally its goals are 
+The goal is to provide a ML system for making access to training data and models as easy as possible. Additionally its goals are 
 to provide ways for users to enhance models and training data through model iteration (verification & validation of model results).
 
-Veda does NOT support training your models. It provides storage and access only.  
+Veda does NOT support training your models. It provides storage, discovery and access.  
 
