@@ -8,7 +8,7 @@ This is the python API for [veda](https://github.com/DigitalGlobe/veda), Digital
 
 Latest Docs [https://pyveda.readthedocs.io/en/latest/](https://pyveda.readthedocs.io/en/latest/)
 
-API Docs [https://veda-api.geobigdata.io/docs][https://veda-api.geobigdata.io/docs]
+API Docs [https://veda-api.geobigdata.io/docs](https://veda-api.geobigdata.io/docs)
 
 ## Contributors 
 
