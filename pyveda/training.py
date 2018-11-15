@@ -447,8 +447,10 @@ class VedaCollection(BaseSet):
         assert self.id is not None, 'You can only refresh a VedaCollection that has been loaed. Call the load method first.'
         return self._refresh()
 
-    def clean(self):
-        Labelizer(self.ids(links=True), self.count, self.imshape, self.dtype, self.mltype).clean()
+    def clean(self, count=None):
+        if count is None:
+            count = self.count
+        Labelizer(self.ids(links=True), count, self.imshape, self.dtype, self.mltype).clean()
 
     def __getitem__(self, slc):
         """ Enable slicing of the VedaCollection by index/slice """
