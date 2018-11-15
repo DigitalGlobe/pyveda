@@ -18,9 +18,9 @@ requirements:
     - python
     - gbdx-auth >=0.2.6
     - h5py
-    - tables
+    - pytables
     - requests
-    - requests_toolbelt
+    - requests-toolbelt
     - ujson
     - shapely
     - numpy
@@ -31,9 +31,9 @@ requirements:
     - python
     - gbdx-auth >=0.2.6
     - h5py
-    - tables
+    - pytables
     - requests
-    - requests_toolbelt
+    - requests-toolbelt
     - ujson
     - shapely
     - numpy
