@@ -10,6 +10,19 @@ import numpy as np
 import warnings
 
 from shapely.geometry import box
+from affine import Affine
+
+def from_bounds(west, south, east, north, width, height):
+    """Return an Affine transformation given bounds, width and height.
+    Return an Affine transformation for a georeferenced raster given
+    its bounds `west`, `south`, `east`, `north` and its `width` and
+    `height` in number of pixels.
+
+    Taken from Rasterio source:
+        https://github.com/mapbox/rasterio/blob/master/rasterio/transform.py#L107
+    """
+    return Affine.translation(west, north) * Affine.scale(
+        (east - west) / width, (south - north) / height)
 
 def mklogfilename(prefix, suffix="json", path=None):
     timestamp = datetime.datetime.now().strftime("%y%m%d_%H%M%S")

@@ -1,8 +1,9 @@
 import numpy as np
-from rasterio.transform import from_bounds
 from rasterio.features import rasterize
 from shapely.ops import transform
 from shapely.geometry import shape, box
+from pyveda.utils import from_bounds
+
 
 
 class BaseLabel(object):

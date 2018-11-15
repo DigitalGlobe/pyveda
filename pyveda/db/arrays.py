@@ -4,7 +4,7 @@ import numpy as np
 from skimage.io import imread
 import tables
 import ujson as json
-from pyveda.utils import mktempfilename, _atom_from_dtype
+from pyveda.utils import mktempfilename, _atom_from_dtype, from_bounds
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.labels import ClassificationLabel, SegmentationLabel, ObjDetectionLabel
 from tempfile import NamedTemporaryFile
