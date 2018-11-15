@@ -1,9 +1,9 @@
 import numpy as np
-from rasterio.features import rasterize
 from shapely.ops import transform
 from shapely.geometry import shape, box
 from pyveda.utils import from_bounds
-
+import numpy as np
+from skimage.draw import polygon
 
 
 class BaseLabel(object):
@@ -50,20 +50,24 @@ class SegmentationLabel(BaseLabel):
         out_shape = imshape
         if len(imshape) == 3:
             out_shape = imshape[-2:]
-        xfm = BaseLabel._get_transform(item['data']['bounds'], *out_shape)
         out_array = np.zeros(out_shape)
         value = 1
         for k, features in item['data']['label'].items():
             try:
-                out_array += SegmentationLabel._create_mask(features, value, out_shape, xfm)
+                out_array += SegmentationLabel._create_mask(features, value, out_shape)
                 value += 1
             except Exception as e: # I think this is ValueError from rasterio but need check
                 pass
         return out_array
 
     @staticmethod
-    def _create_mask(shapes, value, _shape, tfm):
-        return rasterize(((shape(g), value) for g in shapes), out_shape=_shape, transform=tfm)
+    def _create_mask(shapes, value, _shape):
+        mask = np.zeros(_shape, dtype=np.uint8)
+        for f in shapes:
+            coords = f['coordinates'][0]
+            r, c = zip(*[(x,y) for x,y in coords])
+            rr, cc = polygon(np.array(r), np.array(c))
+            mask[rr, cc] = value
 
 
 class ObjDetectionLabel(BaseLabel):
