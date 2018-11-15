@@ -134,12 +134,14 @@ class BatchGenerator(): #keras.utils.Sequence
 
         X = np.empty((self.batch_size, *self.shape[::-1])) #issue with shape?
         if self.mltype == 'classification':
-            y = np.empty((self.batch_size), dtype=int)
+            y = np.empty((self.batch_size), dtype=int) # needs classes 
         if self.mltype == 'segmentation':
-            y = np.empty((self.batch_size, *self.shape[1:]))
+            y = np.empty((self.batch_size, *self.shape[1:])) # good
         if self.mltype == 'object_detection':
-            nclasses = len(self.cache.labels[0])
-            y = np.empty((self.batch_size, *(nclasses, 4)))
+            #nclasses = len(self.cache.labels[0])
+            #y = np.empty((self.batch_size, *(nclasses, 4)))
+            y = []
+
 
         augmentation_lst = self.process(self.random_rotation,
                                         self.horizontal_flip,
@@ -174,15 +176,13 @@ class BatchGenerator(): #keras.utils.Sequence
             if self.mltype == 'classification':
                 y[i, ] = self.cache.labels[_id]
             if self.mltype == 'object_detection':
-                # will need to adjust based on augmentation (flipping/rotation)
-                y[i, ] = self.cache.labels[_id]
+                y.append(self.cache.labels[_id])
             if self.mltype == 'segmentation':
                  # will need to adjust based on augmentation (flipping/rotation)
                  y[i, ] = self.cache.labels[_id]
             else:
                 pass
-        return X, y
-        #yield X, y
+        return X, np.array(y)
 
     def __len__(self):
         '''Denotes the number of batches per epoch'''
