@@ -20,13 +20,13 @@ except:
 
 from shapely.geometry.geo import shape
 from shapely.geometry import *
-from gbdxtools import Interface
 import numpy as np
 import requests
 
+from pyveda.auth import Auth
 from pyveda import DataPoint
 
-gbdx=Interface()
+gbdx = Auth()
 headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
 conn = requests.Session()
 conn.headers.update(headers)
