@@ -11,6 +11,8 @@ if sys.version_info[0:2] >= (3,4):
 
 setup(name='pyveda',
       version='0.0.1',
+      author='DigitalGlobe',
+      author_email='',
       description='Python API for interfacing with veda',
       url='https://github.com/DigitalGlobe/pyveda',
       license='MIT',

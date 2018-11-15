@@ -1,0 +1,10 @@
+gbdx-auth>=0.2.6
+h5py
+tables
+requests
+requests_toolbelt
+ujson
+shapely
+numpy
+scikit-image
+affine
