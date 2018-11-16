@@ -19,7 +19,7 @@ API Docs [https://veda-api.geobigdata.io/docs](https://veda-api.geobigdata.io/do
 ## Contributors 
 
 Chris Helm
-Jamie Polachowitz
+Jamie Polackwich
 Marc Pfister
 Jed Verity
 Chloe Hampton
