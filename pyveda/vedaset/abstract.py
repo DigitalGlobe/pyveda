@@ -19,7 +19,7 @@ class BaseVedaSequence(ABC):
         raise NotImplementedError
 
 
-class BaseVetaGroup(ABC):
+class BaseVedaGroup(ABC):
     """Pair-wise access patterns defined on a group of BaseVedaSequences"""
 
     def __len__(self):
