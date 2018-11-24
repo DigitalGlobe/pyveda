@@ -7,9 +7,10 @@ import ujson as json
 from pyveda.utils import mktempfilename, _atom_from_dtype, from_bounds
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.labels import ClassificationLabel, SegmentationLabel, ObjDetectionLabel
+from pyveda.vedaset.abstract import BaseVedaSequence
 from tempfile import NamedTemporaryFile
 
-class WrappedDataArray(object):
+class WrappedDataArray(BaseVedaSequence):
     def __init__(self, array, trainer, output_transform=lambda x: x):
         self._arr = array
         self._trainer = trainer

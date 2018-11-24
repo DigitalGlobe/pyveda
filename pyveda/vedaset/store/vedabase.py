@@ -6,7 +6,7 @@ import tables
 from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.db.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, ImageArray
-
+from pyveda.vedaset.abstract import BaseVedaGroup, BaseVedaSet
 from pyveda.augmentation_generator import BatchGenerator
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
@@ -22,7 +22,7 @@ DATA_GROUPS = {"TRAIN": "Data designated for model training",
 ignore_NaturalNameWarning = partial(ignore_warnings, _warning=tables.NaturalNameWarning)
 
 
-class WrappedDataNode(object):
+class WrappedDataNode(BaseVedaGroup):
     def __init__(self, node, trainer):
         self._node = node
         self._trainer = trainer
@@ -56,7 +56,7 @@ class WrappedDataNode(object):
         return len(self._node.images)
 
 
-class VedaBase(object):
+class VedaBase(BaseVedaSet):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
@@ -127,7 +127,7 @@ class VedaBase(object):
         return self._fileh.root._v_attrs.mltype
 
     @property
-    def klasses(self):
+    def classes(self):
         return self._fileh.root._v_attrs.klasses
 
     @property
