@@ -7,7 +7,9 @@ import shutil
 import h5py
 import tables
 import numpy as np
+import threading
 import warnings
+
 
 from shapely.geometry import box
 from affine import Affine
@@ -164,3 +166,17 @@ def in_ipython_runtime_env():
             return False  # Other type (?)
     except NameError:
         return False      # Non-interactive runtime
+
+
+class StoppableThread(threading.Thread):
+    def __init__(self):
+        super(StoppableThread, self).__init__()
+        self._stopper = threading.Event()
+
+    def stop(self):
+        self._stopper.set()
+
+    def stopped(self):
+        return self._stopper.is_set()
+
+

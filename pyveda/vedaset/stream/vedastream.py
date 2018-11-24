@@ -6,17 +6,6 @@ import threading
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.vedaset import BaseVedaSet, BaseVedaGroup, BaseVedaSequence
 
-class StoppableThread(threading.Thread):
-    def __init__(self):
-        super(StoppableThread, self).__init__()
-        self._stopper = threading.Event()
-
-    def stop(self):
-        self._stopper.set()
-
-    def stopped(self):
-        return self._stopper.is_set()
-
 
 class StreamingVedaSequence(BaseVedaSequence):
     def __init__(self, buf):
