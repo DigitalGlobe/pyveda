@@ -42,12 +42,12 @@ class BaseVedaGroup(ABC):
         raise NotImplementedError
 
     @property
-    @abstractbasemethod
+    @abstractmethod
     def images(self):
         raise NotImplementedError
 
     @property
-    @abstractbasemethod
+    @abstractmethod
     def labels(self):
         raise NotImplementedError
 

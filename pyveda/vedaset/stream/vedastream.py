@@ -4,7 +4,7 @@ import queue
 import threading
 
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
-from pyveda.vedaset import BaseVedaSet, BaseVedaGroup, BaseVedaSequence
+from pyveda.vedaset.abstract import BaseVedaSet, BaseVedaGroup, BaseVedaSequence
 
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):

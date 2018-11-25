@@ -185,7 +185,7 @@ class BaseVedaSetFetcher(BatchFetchTracer):
 
 
 class VedaBaseFetcher(BaseVedaSetFetcher):
-    def __init__(self, reqs, total_count=0, max_memarrs=200, **kwargs):,
+    def __init__(self, reqs, total_count=0, max_memarrs=200, **kwargs):
         self.reqs = reqs
         self.max_memarrs = max_memarrays
         self._pbar = None
