@@ -75,10 +75,10 @@ class VedaCollectionTest_vcr(unittest.TestCase):
     #@my_vcr.use_cassette('tests/unit/cassettes/test_vc_search.yaml', filter_headers=['authorization'])
     def test_vc_search(self):
         results = search()
-        vc = VedaCollection.from_doc(results[0])
+        vc = results[0]
         self.assertTrue(isinstance(vc, VedaCollection))
         self.assertGreater(vc.count, 0)
-        self.assertEqual(type(shape(vc)), 'Polygon')
+        self.assertEqual(type(shape(vc)), Polygon)
 
     #@my_vcr.use_cassette('tests/unit/cassettes/test_vedacollection_id.yaml', filter_headers=['authorization'])
     def test_vedacollection_id(self):
