@@ -22,7 +22,7 @@ class VedaCollectionTest(unittest.TestCase):
             self.json = json.load(source)
 
     def test_vedacollection(self):
-        vc = VedaCollection(**self.json['properties'])
+        vc = VedaCollection.from_doc(self.json)
         self.assertTrue(isinstance(vc, VedaCollection))
         self.assertEqual(vc.mltype, 'classification')
         self.assertEqual(vc.percent_cached, 100)
@@ -35,11 +35,6 @@ class VedaCollectionTest(unittest.TestCase):
     def test_vedacollection_from_id(self):
         vc = VedaCollection.from_id('82553d2f-9c9c-46f0-ad9f-1a27a8673637')
         self.assertTrue(isinstance(vc, VedaCollection))
-
-    # def test_vedacollection_points(self):
-    #     vc = VedaCollection.from_id('e91fb673-4a31-4221-a8ef-01706b6d9b63')
-    #     assertEqual(len(vc[0:250]), 250)
-    #     assertEqual(len(vc[0:500]), 250) #should there me an error or warning message instead?
 
 
 # a valid vedacollection ID
@@ -79,6 +74,7 @@ class VedaCollectionTest_vcr(unittest.TestCase):
         self.assertTrue(isinstance(vc, VedaCollection))
         self.assertGreater(vc.count, 0)
         self.assertEqual(type(shape(vc)), Polygon)
+        self.assertEqual(vc.__geo_interface__, box(*vc.bounds).__geo_interface__)
 
     #@my_vcr.use_cassette('tests/unit/cassettes/test_vedacollection_id.yaml', filter_headers=['authorization'])
     def test_vedacollection_id(self):
@@ -117,3 +113,28 @@ class VCFetchTest(unittest.TestCase):
     def test_fetch_ids(self):
         ids = self.vc.fetch_ids(page_size=50)
         self.assertEqual(len(ids[0]), 50)
+
+    #@my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_ids.yaml', filter_headers=['authorization'])
+    def test_ids(self):
+        ids = self.vc.ids(size=50, get_urls=False)
+        nid = next(ids)
+        print(nid)
+        self.assertTrue(isinstance(nid, str)) 
+        self.assertEqual(len(list(ids)), 49)
+
+        
+    #@my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_ids_urls.yaml', filter_headers=['authorization'])
+    def test_ids_urls(self):
+        ids = self.vc.ids(size=50, get_urls=True)
+        nid = next(ids)
+        self.assertTrue(isinstance(nid, list))
+        self.assertEqual(len(nid), 2)
+        self.assertEqual(nid[0][:5], 'https')
+
+    #@my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_getatr.yaml', filter_headers=['authorization'])
+    def test_getattr(self):
+        dp = self.vc[0]
+        #self.assertTrue(isinstance(dp, DataPoint))
+        dps = self.vc[0:2]
+        self.assertTrue(isinstance(dps[0], DataPoint))
+        self.assertEqual(len(dps), 2)
