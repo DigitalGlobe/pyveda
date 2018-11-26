@@ -121,7 +121,7 @@ class ObjDetectionHandler(BaseLabelHandler):
 
     @staticmethod
     def _handle_pixel_payload(item, klasses=[], out_shape=None, **kwargs):
-        payload = ObjDetectionLabel._parse_response(item)
+        payload = ObjDetectionHandler._parse_response(item)
         return [payload[klass] for klass in klasses]
 
     @staticmethod
@@ -129,7 +129,7 @@ class ObjDetectionHandler(BaseLabelHandler):
         out_shape = imshape
         if len(imshape) == 3:
             out_shape = imshape[-2:]
-        xfm = BaseLabel._get_transform(item['data']['bounds'], *out_shape)
+        xfm = BaseLabelHandler._get_transform(item['data']['bounds'], *out_shape)
         labels = []
         for k, features in item['data']['label'].items():
             class_labels = []
