@@ -54,6 +54,8 @@ class _Auth(object):
                                            config_file=kwargs.get('config_file'))
                     # re-init the session
                     self.gbdx_connection = gbdx_auth.get_session(kwargs.get('config_file'))
+                    # re-add the hook to refresh in the future 
+                    self.gbdx_connection.hooks['response'].append(expire_token)
                     # make original request, triggers new token request first
                     return self.gbdx_connection.request(method=r.request.method, url=r.request.url)
 
