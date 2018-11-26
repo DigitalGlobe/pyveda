@@ -40,12 +40,12 @@ logger.addHandler(fh)
 gbdx = Auth()
 
 class ThreadedAsyncioRunner(object):
-    def __init__(self, method, loop=None):
+    def __init__(self, run_method, call_method, loop=None):
         if not loop:
             loop = asyncio.new_event_loop()
         self._loop = loop
-        self._method = method
-        self._thread = threading.Thread(target=self._loop.run_forever)
+        self._method = call_method
+        self._thread = threading.Thread(target=functools.partial(run_method, loop=loop))
         self._thread.start()
 
     def __enter__(self):
