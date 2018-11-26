@@ -5,7 +5,7 @@ import numpy as np
 import tables
 from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
-from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, ImageArray
+from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, NDImageArray
 from pyveda.vedaset.abstract import BaseVedaGroup, BaseVedaSet
 from pyveda.augmentation_generator import BatchGenerator
 
