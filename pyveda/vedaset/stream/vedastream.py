@@ -72,8 +72,8 @@ class StreamingVedaGroup(BaseVedaGroup):
 
     def __next__(self):
         while self._n_consumed < self.allocated:
-           try:
-                nreqs = next(self._vst._gen)
+            try:
+                nreqs = next(self._vset._gen)
             except StopIteration:
                 pass
             else:
@@ -103,12 +103,12 @@ class StreamingVedaGroup(BaseVedaGroup):
 
     @property
     def images(self):
-        imgs, _ = zip(*self._vset._buf)
+        _, imgs = zip(*self._vset._buf)
         return StreamingVedaSequence(imgs)
 
     @property
     def labels(self):
-        _, lbls = zip(*self._vset._buf)
+        lbls, _ = zip(*self._vset._buf)
         return StreamingVedaSequence(lbls)
 
 
@@ -143,7 +143,7 @@ class VedaStream(BaseVedaSet):
         self._img_handler_class = NDImageHandler
         self._lbl_handler_class = self._lbl_handler_map[self._mltype]
 
-        if auto_start:
+        if auto_startup:
             self._start_consumer()
 
     def __len__(self):
@@ -192,7 +192,7 @@ class VedaStream(BaseVedaSet):
 
     def _on_exhausted(self):
         if self._auto_shutdown:
-            self._stop_consumer
+            self._stop_consumer()
 
     def _initialize_buffer(self):
         reqs = []
@@ -200,6 +200,7 @@ class VedaStream(BaseVedaSet):
             try:
                 reqs.append(next(self._gen))
             except StopIteration:
+                break
 
         f = asyncio.run_coroutine_threadsafe(self._fetcher.produce_reqs(reqs=reqs), loop=self._loop)
         f.result()
@@ -233,6 +234,7 @@ class VedaStream(BaseVedaSet):
         time.sleep(0.5)
         self._consumer_fut = asyncio.run_coroutine_threadsafe(self._fetcher.start_fetch(self._loop),
                                                               loop=self._loop)
+        self._initialize_buffer()
 
     def _stop_consumer(self):
         f = asyncio.run_coroutine_threadsafe(self._fetcher.kill_workers(), loop=self._loop)
