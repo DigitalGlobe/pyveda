@@ -89,9 +89,9 @@ class VedaBase(BaseVedaSet):
         self._configure_instance()
 
     def _configure_instance(self, *args, **kwargs):
-        self._image_klass = ImageArray
+        self._image_klass = NDImageArray
         self._label_klass = MLTYPE_MAP[self.mltype]
-        self._classifications = dict([(klass, tables.UInt8Col(pos=idx + 1)) for idx, klass in enumerate(self.klasses)])
+        self._classifications = dict([(klass, tables.UInt8Col(pos=idx + 1)) for idx, klass in enumerate(self.classes)])
 
     def _build_filetree(self, dg=DATA_GROUPS):
         # Build group nodes
