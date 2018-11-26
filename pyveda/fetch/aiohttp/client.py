@@ -182,11 +182,6 @@ class BaseVedaSetFetcher(BatchFetchTracer):
         done, pending = await asyncio.wait(self._writers)
         return True
 
-    async def drive_fetch(self, session, loop):
-        self._configure(session, loop)
-        producer = await self.produce_reqs()
-        res = await self.kill_workers()
-
     def run_loop(self, loop=None):
         if not loop:
             loop = asyncio.get_event_loop()
@@ -195,6 +190,9 @@ class BaseVedaSetFetcher(BatchFetchTracer):
         loop.run_forever()
 
     async def write_stack(self):
+        raise NotImplementedError
+
+    async def drive_fetch(self, session, loop):
         raise NotImplementedError
 
     async def produce_reqs(self):
@@ -238,6 +236,11 @@ class VedaBaseFetcher(BaseVedaSetFetcher):
                 break
         return True
 
+    async def drive_fetch(self, session, loop):
+        self._configure(session, loop)
+        producer = await self.produce_reqs()
+        res = await self.kill_workers()
+
     async def produce_reqs(self):
         for req in self.reqs:
             await self._qreq.put(req)
@@ -263,6 +266,11 @@ class VedaStreamFetcher(BaseVedaSetFetcher):
             except CancelledError:
                 break
         return True
+
+    async def drive_fetch(self, session, loop):
+        self._configure(session, loop)
+        await self._source_exhausted.wait()
+        res = await self.kill_workers()
 
     async def produce_reqs(self, reqs=None):
         for req in reqs:
