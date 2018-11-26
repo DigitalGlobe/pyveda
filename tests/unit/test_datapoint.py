@@ -40,17 +40,17 @@ class DataPointTest(unittest.TestCase):
         dp = vc.fetch(dp_id)
         self.assertTrue(isinstance(dp, DataPoint))
         # public properties
-        self.assertEqual(dp.id, vc_id)
+        self.assertEqual(vc.id, vc_id)
         self.assertEqual(dp.mltype, vc.mltype)
         self.assertEqual(dp.dtype, vc.dtype) # should inherit
-        self.assertEqual(dp.dataset_id, dp_id)
+        self.assertEqual(dp.dataset_id, vc_id)
         self.assertEqual(dp.imshape, vc.imshape)
-        self.assertEqual(dp.tile_coords, [962, 179])
+        self.assertEqual(dp.tile_coords, [964, 181])
         # geo interface
         self.assertEqual(dp.bounds, [
-            -97.74107094008983,
-            30.270496899310096,
-            -97.74029824874955,
-            30.271269590650377
+            -97.73952555740927,
+            30.26895151662954,
+            -97.73875286606899,
+            30.26972420796982
         ])
         self.assertTrue(isinstance(shape(vc), Polygon))
