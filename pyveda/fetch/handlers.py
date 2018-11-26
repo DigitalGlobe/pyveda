@@ -117,7 +117,7 @@ class ObjDetectionHandler(BaseLabelHandler):
 
     @staticmethod
     def _payload_handler(*args, **kwargs):
-        return ObjDetetionHandler._handle_pixel_payload(*args, **kwargs)
+        return ObjDetectionHandler._handle_pixel_payload(*args, **kwargs)
 
     @staticmethod
     def _handle_pixel_payload(item, klasses=[], out_shape=None, **kwargs):
