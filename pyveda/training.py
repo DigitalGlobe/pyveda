@@ -15,7 +15,7 @@ from pyveda.auth import Auth
 from shapely.geometry import shape as shp, mapping, box
 from functools import partial
 
-from pyveda.db import VedaBase
+from pyveda.vedaset import VedaBase
 from pyveda.datapoint import DataPoint
 from pyveda.utils import NamedTemporaryHDF5Generator
 from pyveda.fetch.compat import build_vedabase
@@ -23,10 +23,7 @@ from .labelizer import Labelizer
 
 gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
-
-headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
-conn = requests.Session()
-conn.headers.update(headers)
+conn = gbdx.gbdx_connection
 
 valid_mltypes = ['classification', 'object_detection', 'segmentation']
 valid_matches = ['INSIDE', 'INTERSECT', 'ALL']
@@ -367,12 +364,12 @@ class VedaCollection(BaseSet):
 
     def ids(self, size=None, page_size=100, get_urls=True, links=False):
         """ Creates a generator of Datapoint IDs or URLs for every datapoint in the VedaCollection
-            This is useful for gaining access to the ID or the URL for datapoints. 
-    
+            This is useful for gaining access to the ID or the URL for datapoints.
+
             Args:
             `size` (int): the total number of points to fetch, defaults to None
             `page_size` (int): the size of the pages to use in the API.
-            `get_urls` (bool): generate urls tuples ((`dp_url`, `dp_image_url`)) instead of IDs.  
+            `get_urls` (bool): generate urls tuples ((`dp_url`, `dp_image_url`)) instead of IDs.
 
             Returns:
               generator of IDs

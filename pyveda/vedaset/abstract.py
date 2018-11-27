@@ -1,0 +1,84 @@
+from abc import ABC, abstractmethod
+
+class BaseVedaSequence(ABC):
+    """Low level data access api to homogeneous sequences of data in PyVeda"""
+
+    @abstractmethod
+    def __len__(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def __iter__(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def __getitem__(self, idx):
+        raise NotImplementedError
+
+    def __setitem__(self, idx, val):
+        raise NotImplementedError
+
+
+class BaseVedaGroup(ABC):
+    """Pair-wise access patterns defined on a group of BaseVedaSequences"""
+
+    @property
+    @abstractmethod
+    def images(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def labels(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def __len__(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def __iter__(self, spec):
+        raise NotImplementedError
+
+    @abstractmethod
+    def __getitem__(self, idx):
+        raise NotImplementedError
+
+    def __setitem__(self, idx, val):
+        raise NotImplementedError
+
+
+class BaseVedaSet(ABC):
+    """Core representation of partitioned Machine-Learning datasets in PyVeda"""
+
+    @property
+    @abstractmethod
+    def __len__(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def mltype(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def classes(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def train(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def test(self):
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def validate(self):
+        raise NotImplementedError
+
+

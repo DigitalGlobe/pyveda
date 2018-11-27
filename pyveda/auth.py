@@ -1,7 +1,10 @@
 import os
+import requests
 from requests.adapters import HTTPAdapter
 from gbdx_auth import gbdx_auth
 import logging
+
+HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
 
 auth = None
 
@@ -14,7 +17,7 @@ def Auth(**kwargs):
 
 class _Auth(object):
     gbdx_connection = None
-    root_url = 'https://geobigdata.io'
+    root_url = HOST
 
     def __init__(self, **kwargs):
         self.logger = logging.getLogger('pyveda')
@@ -37,6 +40,12 @@ class _Auth(object):
             # This will throw an exception if your .ini file is not set properly
             self.gbdx_connection = gbdx_auth.get_session(kwargs.get('config_file'))
 
+        # for local dev, cant use oauth2
+        if HOST == 'http://host.docker.internal:3002':
+            headers = {"Authorization": "Bearer {}".format(self.gbdx_connection.access_token)}
+            self.gbdx_connection = requests.Session()
+            self.gbdx_connection.headers.update(headers) 
+
         def expire_token(r, *args, **kw):
             """
             Requests a new token if 401, retries request, mainly for auth v2 migration
@@ -54,8 +63,14 @@ class _Auth(object):
                                            config_file=kwargs.get('config_file'))
                     # re-init the session
                     self.gbdx_connection = gbdx_auth.get_session(kwargs.get('config_file'))
+
                     # make original request, triggers new token request first
-                    return self.gbdx_connection.request(method=r.request.method, url=r.request.url)
+                    res = self.gbdx_connection.request(method=r.request.method, url=r.request.url)
+
+                    # re-add the hook to refresh in the future 
+                    self.gbdx_connection.hooks['response'].append(expire_token)
+                    return res  
+                  
 
                 except Exception as e:
                     r.request.hooks = None

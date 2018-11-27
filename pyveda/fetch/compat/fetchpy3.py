@@ -28,13 +28,13 @@ def build_vedabase(database, source, partition, total, token, label_threads=1, i
                           write_fn=partial(vedabase_batch_write, database=database, partition=partition),
                           img_batch_transform=database._image_klass._batch_transform,
                           lbl_batch_transform=database._label_klass._batch_transform,
-                          img_payload_handler=database._image_klass.bytes_to_array,
-                          lbl_payload_handler=partial(database._label_klass.from_pixels,
-                                                      klasses=database.klasses,
+                          img_payload_handler=database._image_klass._payload_handler,
+                          lbl_payload_handler=partial(database._label_klass._payload_handler,
+                                                      klasses=database.classes,
                                                       out_shape=database.image_shape),
                           num_lbl_payload_threads=label_threads, num_img_payload_threads=image_threads)
 
-    with ThreadedAsyncioRunner(abf.run) as tar:
+    with ThreadedAsyncioRunner(abf.run_loop, abf.start_fetch) as tar:
         tar(loop=tar._loop)
 
 

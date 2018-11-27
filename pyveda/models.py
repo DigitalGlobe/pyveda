@@ -4,18 +4,10 @@ import json
 import requests
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 from pyveda.auth import Auth
+
 gbdx = Auth()
-
-HOST = os.environ.get('SANDMAN_API')
-if not HOST:
-    HOST = "https://veda-api.geobigdata.io"
-
-if 'https:' in HOST:
-    conn = gbdx.gbdx_connection
-else:
-    headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
-    conn = requests.Session()
-    conn.headers.update(headers)
+HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
+conn = gbdx.gbdx_connection
 
 def search(params={}):
     r = conn.post('{}/models/search'.format(HOST), json=params)
