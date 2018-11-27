@@ -146,6 +146,20 @@ class VedaStream(BaseVedaSet):
         if auto_startup:
             self._start_consumer()
 
+    @classmethod
+    def from_vc(cls, vc, count=None, bufsize=50, cachetype=collections.deque,
+                auto_startup=False, auto_shutdown=False, fetcher=None, loop=None):
+        if not count:
+            count = vc.count
+        if count > vc.count:
+            raise ValueError('Input count must be less than or equal to total size of input VedaCollection instance')
+        return cls(mltype=vc.mltype, classes=vc.classes, count=count,
+                          gen=vc.ids(), partition=vc.partition, bufsize=bufsize,
+                          image_shape=vc.imshape, cachetype=cachetype,
+                          auto_startup=auto_startup, auto_shutdown=auto_shutdown,
+                          fetcher=fetcher, loop=loop)
+
+
     def __len__(self):
         return self._bufsize # Whatever for now
 
@@ -242,5 +256,3 @@ class VedaStream(BaseVedaSet):
         self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join()
         self._loop.close()
-
-
