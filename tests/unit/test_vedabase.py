@@ -4,13 +4,23 @@ import os, sys
 os.environ["SANDMAN_API"] = "https://veda-api-development.geobigdata.io"
 
 from pyveda import VedaCollection
-from pyveda.db import VedaBase
+from pyveda.vedaset import VedaBase
 import json
 from shapely.geometry import shape, box
 from shapely.geometry.polygon import Polygon
+from auth_mock import gbdx
+import vcr
 import unittest
 
+def force(r1, r2):
+    return True
+
+my_vcr = vcr.VCR()
+my_vcr.register_matcher('force', force)
+my_vcr.match_on = ['force']
+
 class VedaBaseTest(unittest.TestCase):
+    @my_vcr.use_cassette('tests/unit/cassettes/test_vedabase_setup.yaml', filter_headers=['authorization'])
     def setUp(self):
         vc_id = '82553d2f-9c9c-46f0-ad9f-1a27a8673637'
         dp_id = 'c5942231-dd6d-4ab8-9fce-04d28aa560d8'
