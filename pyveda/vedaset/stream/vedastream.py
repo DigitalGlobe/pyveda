@@ -152,10 +152,10 @@ class VedaStream(BaseVedaSet):
         if not count:
             count = vc.count
         if count > vc.count:
-            raise TypeError('count must be less than or equal to vc.count')
+            raise ValueError('Input count must be less than or equal to total size of input VedaCollection instance')
         return cls(mltype=vc.mltype, classes=vc.classes, count=count,
                           gen=vc.ids(), partition=vc.partition, bufsize=bufsize,
-                          image_shape=vc.imshape, cachetype= cachetype,
+                          image_shape=vc.imshape, cachetype=cachetype,
                           auto_startup=auto_startup, auto_shutdown=auto_shutdown,
                           fetcher=fetcher, loop=loop)
 
