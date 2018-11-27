@@ -146,6 +146,13 @@ class VedaStream(BaseVedaSet):
         if auto_startup:
             self._start_consumer()
 
+    @classmethod
+    def from_vc(cls, vc):
+        return VedaStream(mltype = vc.mltype, classes = vc.classes, count = vc.count,
+                          gen = vc.ids, partition= vc.partition, bufsize = 50,
+                          image_shape = vc.imshape)
+
+
     def __len__(self):
         return self._bufsize # Whatever for now
 
@@ -242,5 +249,3 @@ class VedaStream(BaseVedaSet):
         self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join()
         self._loop.close()
-
-
