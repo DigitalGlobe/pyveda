@@ -118,7 +118,7 @@ class ClassificationArray(LabelArray, ClassificationHandler):
     def create_array(cls, trainer, group, dtype):
         trainer._fileh.create_earray(group, "labels",
                                      atom = tables.UInt8Atom(),
-                                     shape = (0, len(trainer.klasses)))
+                                     shape = (0, len(trainer.classes)))
 
 
 class SegmentationArray(LabelArray, SegmentationHandler):
