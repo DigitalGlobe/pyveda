@@ -149,7 +149,7 @@ class VedaStream(BaseVedaSet):
     @classmethod
     def from_vc(cls, vc, count=None, bufsize=50, cachetype=collections.deque,
                 auto_startup=False, auto_shutdown=False, fetcher=None, loop=None):
-        if count == None:
+        if not count:
             count = vc.count
         if count > vc.count:
             raise TypeError('count must be less than or equal to vc.count')
