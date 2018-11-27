@@ -23,10 +23,7 @@ from .labelizer import Labelizer
 
 gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
-
-headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
-conn = requests.Session()
-conn.headers.update(headers)
+conn = gbdx.gbdx_connection
 
 valid_mltypes = ['classification', 'object_detection', 'segmentation']
 valid_matches = ['INSIDE', 'INTERSECT', 'ALL']

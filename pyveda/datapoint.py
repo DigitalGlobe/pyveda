@@ -7,9 +7,7 @@ import requests
 
 from pyveda.auth import Auth
 gbdx = Auth()
-headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
-conn = requests.Session()
-conn.headers.update(headers)
+conn = gbdx.gbdx_connection
 
 class DataPoint(object):
     """ Methods for accessing training data pairs """

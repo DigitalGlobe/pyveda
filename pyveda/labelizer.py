@@ -27,9 +27,7 @@ from pyveda.auth import Auth
 from pyveda import DataPoint
 
 gbdx = Auth()
-headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
-conn = requests.Session()
-conn.headers.update(headers)
+conn = gbdx.gbdx_connection
 
 
 class Labelizer():
