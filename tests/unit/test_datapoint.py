@@ -1,9 +1,7 @@
 '''
 Tests for DataPoint that don't rely on the server
 '''
-# path hack for veda installs
 import os, sys
-sys.path.append("..")
 os.environ["SANDMAN_API"] = "https://veda-api-development.geobigdata.io"
 
 from pyveda import DataPoint, VedaCollection
@@ -24,6 +22,8 @@ class DataPointTest(unittest.TestCase):
     def test_datapoint(self):
         dp = DataPoint(self.json)
         print(dp)
+        print(*dp.bounds)
+        print(dp.__geo_interface__)
         self.assertTrue(isinstance(dp, DataPoint))
         self.assertEqual(dp.id, 'ae91f7df-ae37-4d31-9506-d9176f50403c')
         self.assertEqual(dp.mltype, 'classification')
@@ -34,21 +34,23 @@ class DataPointTest(unittest.TestCase):
 
     def test_datapoint_fetch(self):
         #vc = VedaCollection('fake')
-        vc = VedaCollection.from_id('e91fb673-4a31-4221-a8ef-01706b6d9b63')
-        dp = vc.fetch('ae91f7df-ae37-4d31-9506-d9176f50403c')
+        vc_id = '82553d2f-9c9c-46f0-ad9f-1a27a8673637'
+        dp_id = 'c5942231-dd6d-4ab8-9fce-04d28aa560d8'
+        vc = VedaCollection.from_id(vc_id)
+        dp = vc.fetch(dp_id)
         self.assertTrue(isinstance(dp, DataPoint))
         # public properties
-        self.assertEqual(dp.id, 'ae91f7df-ae37-4d31-9506-d9176f50403c')
+        self.assertEqual(vc.id, vc_id)
         self.assertEqual(dp.mltype, vc.mltype)
         self.assertEqual(dp.dtype, vc.dtype) # should inherit
-        self.assertEqual(dp.dataset_id, 'e91fb673-4a31-4221-a8ef-01706b6d9b63')
+        self.assertEqual(dp.dataset_id, vc_id)
         self.assertEqual(dp.imshape, vc.imshape)
-        self.assertEqual(dp.tile_coords, [962, 179])
+        self.assertEqual(dp.tile_coords, [964, 181])
         # geo interface
         self.assertEqual(dp.bounds, [
-            -97.74107094008983,
-            30.270496899310096,
-            -97.74029824874955,
-            30.271269590650377
+            -97.73952555740927,
+            30.26895151662954,
+            -97.73875286606899,
+            30.26972420796982
         ])
         self.assertTrue(isinstance(shape(vc), Polygon))

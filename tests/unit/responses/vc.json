@@ -43,15 +43,15 @@
         "dtype": "int8",
         "userId": "auth0|5ac52c560043574440853f22",
         "imshape": [
-            "3",
-            "256",
-            "256"
+            3,
+            256,
+            256
         ],
         "releases": {},
         "partition": [
-            "100",
-            "0",
-            "0"
+            100,
+            0,
+            0
         ],
         "sensors": [
             "DraImage"
