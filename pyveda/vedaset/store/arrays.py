@@ -1,15 +1,15 @@
 import os
 from collections import OrderedDict, defaultdict
 import numpy as np
-from skimage.io import imread
 import tables
 import ujson as json
-from pyveda.utils import mktempfilename, _atom_from_dtype, from_bounds
+from pyveda.utils import mktempfilename, _atom_from_dtype
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
-from pyveda.labels import ClassificationLabel, SegmentationLabel, ObjDetectionLabel
+from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
+from pyveda.vedaset.abstract import BaseVedaSequence
 from tempfile import NamedTemporaryFile
 
-class WrappedDataArray(object):
+class WrappedDataArray(BaseVedaSequence):
     def __init__(self, array, trainer, output_transform=lambda x: x):
         self._arr = array
         self._trainer = trainer
@@ -58,33 +58,8 @@ class WrappedDataArray(object):
         raise NotImplementedError
 
 
-class ImageArray(WrappedDataArray):
+class NDImageArray(WrappedDataArray, NDImageHandler):
     _default_dtype = np.float32
-
-    @staticmethod
-    def on_fail(shape=(3, 256, 256), dtype=np.uint8):
-        return np.zeros(shape, dtype=dtype)
-
-    @staticmethod
-    def bytes_to_array(bstring):
-        if bstring is None:
-            return on_fail()
-        try:
-            fd = NamedTemporaryFile(prefix='veda', suffix='.tif', delete=False)
-            fd.file.write(bstring)
-            fd.file.flush()
-            fd.close()
-            arr = imread(fd.name)
-            if len(arr.shape) == 3:
-                arr = np.rollaxis(arr, 2, 0)
-            else:
-                arr = np.expand_dims(arr, axis=0)
-        except Exception as e:
-            arr = ImageArray.on_fail()
-        finally:
-            fd.close()
-            os.remove(fd.name)
-        return arr
 
     def _input_fn(self, item):
         dims = item.shape
@@ -122,9 +97,6 @@ class LabelArray(WrappedDataArray):
         else:
             raise ValueError("say something")
 
-    def _get_transform(self, bounds, height, width):
-        return from_bounds(*bounds, width, height)
-
     def append(self, label):
         super(LabelArray, self).append(label)
         #self._add_records(label)
@@ -133,7 +105,7 @@ class LabelArray(WrappedDataArray):
         return self.append(labels)
         #self._add_records(labels)
 
-class ClassificationArray(LabelArray, ClassificationLabel):
+class ClassificationArray(LabelArray, ClassificationHandler):
     _default_dtype = np.uint8
 
     def _input_fn(self, item):
@@ -149,7 +121,7 @@ class ClassificationArray(LabelArray, ClassificationLabel):
                                      shape = (0, len(trainer.klasses)))
 
 
-class SegmentationArray(LabelArray, SegmentationLabel):
+class SegmentationArray(LabelArray, SegmentationHandler):
     _default_dtype = np.float32
 
     @classmethod
@@ -161,7 +133,7 @@ class SegmentationArray(LabelArray, SegmentationLabel):
                                      shape = tuple([s if idx > 0 else 0 for idx, s in enumerate(trainer.image_shape)]))
 
 
-class ObjDetectionArray(LabelArray, ObjDetectionLabel):
+class ObjDetectionArray(LabelArray, ObjDetectionHandler):
     _default_dtype = np.float32
 
     @staticmethod
