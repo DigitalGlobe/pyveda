@@ -61,7 +61,7 @@ class ClassificationHandler(BaseLabelHandler):
 
     @staticmethod
     def _payload_handler(item, klasses=[], **kwargs):
-        payload = ClassificationLabel._parse_response(item)
+        payload = ClassificationHandler._parse_response(item)
         return [payload[klass] for klass in klasses]
 
 
@@ -74,7 +74,7 @@ class SegmentationHandler(BaseLabelHandler):
 
     @staticmethod
     def _handle_pixel_payload(item, klasses=[], out_shape=None, **kwargs):
-        payload = SegmentationLabel._parse_response(item)
+        payload = SegmentationHandler._parse_response(item)
         if len(out_shape) == 3:
             out_shape = out_shape[-2:]
         out_array = np.zeros(out_shape)
@@ -96,7 +96,7 @@ class SegmentationHandler(BaseLabelHandler):
         value = 1
         for k, features in item['data']['label'].items():
             try:
-                out_array += SegmentationLabel._create_mask(features, value, out_shape)
+                out_array += SegmentationHandler._create_mask(features, value, out_shape)
                 value += 1
             except Exception as e: # I think this is ValueError from rasterio but need check
                 pass
