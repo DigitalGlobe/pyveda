@@ -66,7 +66,7 @@ class VedaCollectionTest_vcr(unittest.TestCase):
         self.assertEqual(vc.mltype, 'classification')
         self.assertEqual(vc.bounds, None)
         self.assertEqual(vc.count, 0)
-        
+
     #@my_vcr.use_cassette('tests/unit/cassettes/test_vc_search.yaml', filter_headers=['authorization'])
     def test_vc_search(self):
         results = search()
@@ -119,10 +119,10 @@ class VCFetchTest(unittest.TestCase):
         ids = self.vc.ids(size=50, get_urls=False)
         nid = next(ids)
         print(nid)
-        self.assertTrue(isinstance(nid, str)) 
+        self.assertTrue(isinstance(nid, str))
         self.assertEqual(len(list(ids)), 49)
 
-        
+
     #@my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_ids_urls.yaml', filter_headers=['authorization'])
     def test_ids_urls(self):
         ids = self.vc.ids(size=50, get_urls=True)
@@ -132,7 +132,7 @@ class VCFetchTest(unittest.TestCase):
         self.assertEqual(nid[0][:5], 'https')
 
     #@my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_getatr.yaml', filter_headers=['authorization'])
-    def test_getattr(self):
+    def test_getitem(self):
         dp = self.vc[0]
         #self.assertTrue(isinstance(dp, DataPoint))
         dps = self.vc[0:2]
