@@ -22,7 +22,7 @@ DATA_GROUPS = {"TRAIN": "Data designated for model training",
 ignore_NaturalNameWarning = partial(ignore_warnings, _warning=tables.NaturalNameWarning)
 
 
-class WrappedDataNode(BaseVedaGroup):
+class WrappedDataNode(object):
     def __init__(self, node, trainer):
         self._node = node
         self._trainer = trainer
@@ -176,6 +176,12 @@ class VedaBase(BaseVedaSet):
 
     def __len__(self):
         return sum([len(self.train), len(self.test), len(self.validate)])
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self):
+        self.close()
 
     def __repr__(self):
         return self._fileh.__str__()
