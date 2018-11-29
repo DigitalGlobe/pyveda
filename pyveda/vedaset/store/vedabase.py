@@ -5,8 +5,8 @@ import numpy as np
 import tables
 from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
-from pyveda.db.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, ImageArray
-
+from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, NDImageArray
+from pyveda.vedaset.abstract import BaseVedaGroup, BaseVedaSet
 from pyveda.augmentation_generator import BatchGenerator
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
@@ -56,7 +56,7 @@ class WrappedDataNode(object):
         return len(self._node.images)
 
 
-class VedaBase(object):
+class VedaBase(BaseVedaSet):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
@@ -89,9 +89,9 @@ class VedaBase(object):
         self._configure_instance()
 
     def _configure_instance(self, *args, **kwargs):
-        self._image_klass = ImageArray
+        self._image_klass = NDImageArray
         self._label_klass = MLTYPE_MAP[self.mltype]
-        self._classifications = dict([(klass, tables.UInt8Col(pos=idx + 1)) for idx, klass in enumerate(self.klasses)])
+        self._classifications = dict([(klass, tables.UInt8Col(pos=idx + 1)) for idx, klass in enumerate(self.classes)])
 
     def _build_filetree(self, dg=DATA_GROUPS):
         # Build group nodes
@@ -127,7 +127,7 @@ class VedaBase(object):
         return self._fileh.root._v_attrs.mltype
 
     @property
-    def klasses(self):
+    def classes(self):
         return self._fileh.root._v_attrs.klasses
 
     @property
@@ -176,6 +176,12 @@ class VedaBase(object):
 
     def __len__(self):
         return sum([len(self.train), len(self.test), len(self.validate)])
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self):
+        self.close()
 
     def __repr__(self):
         return self._fileh.__str__()

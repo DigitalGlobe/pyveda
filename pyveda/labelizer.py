@@ -20,16 +20,14 @@ except:
 
 from shapely.geometry.geo import shape
 from shapely.geometry import *
-from gbdxtools import Interface
 import numpy as np
 import requests
 
-from pyveda import DataPoint
+from pyveda.auth import Auth
+from pyveda.datapoint import DataPoint
 
-gbdx=Interface()
-headers = {"Authorization": "Bearer {}".format(gbdx.gbdx_connection.access_token)}
-conn = requests.Session()
-conn.headers.update(headers)
+gbdx = Auth()
+conn = gbdx.gbdx_connection
 
 
 class Labelizer():
