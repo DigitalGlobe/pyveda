@@ -25,9 +25,8 @@ gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
 conn = gbdx.gbdx_connection
 
-valid_mltypes = ['classification', 'object_detection', 'segmentation']
-valid_matches = ['INSIDE', 'INTERSECT', 'ALL']
-
+VALID_MLTYPES = ['classification', 'object_detection', 'segmentation']
+VALID_MATCHTYPES = ['INSIDE', 'INTERSECT', 'ALL']
 
 def search(params={}, host=HOST):
     r = conn.post('{}/{}'.format(host, "search"), json=params)
@@ -42,58 +41,77 @@ def search(params={}, host=HOST):
 
 class BaseSet(object):
     """ Base class for handling all API interactions on sets."""
-    def __init__(self, id=None, host=HOST):
+    def __init__(self, id, host=HOST, conn=conn):
         self.id = id
         self._host = host
-        self._data_url = "{}/data".format(self._host)
-        self._bulk_data_url = "{}/data/bulk".format(self._host)
-        self._cache_url = "{}/data/{}/cache"
-        self._datapoint_url = "{}/datapoints".format(self._host)
-        self._chunk_size = int(os.environ.get('VEDA_CHUNK_SIZE', 5000))
         self.conn = conn
 
-    def _querystring(self, limit, **kwargs):
-        """ Builds a qury string from kwargs for fetching points """
-        qs = {
-          "limit": limit,
-          "includeLinks": True
-        }
-        qs.update(**kwargs)
-        return urlencode(qs)
+    @property
+    def _host(self):
+        return self._host_
 
-    def fetch_index(self, idx):
-        """ Fetch a single data point at a given index in the dataset """
-        params = {"limit": 1, "offset": idx, "includeLinks": True}
-        if self.classes and len(self.classes):
-            params["classes"] = ','.join(self.classes)
-        qs = urlencode(params)
-        p = self.conn.get("{}/data/{}/datapoints?{}".format(self._host, self.id, qs)).json()[0]
-        return DataPoint(p, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
+    @_host.setter
+    def _host(self, host):
+        self._host_ = host
 
-    def fetch(self, _id, **kwargs):
-        """ Fetch a point for a given ID """
-        params = {"includeLinks": True}
-        if self.classes and len(self.classes):
-            params.update({"classes": ','.join(self.classes)})
-            qs = urlencode(params)
-        r = self.conn.get("{}/datapoints/{}?{}".format(self._host, _id, qs))
-        r.raise_for_status()
-        return DataPoint(r.json(), shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
+    @property
+    def _base_url(self):
+        return "https://{}".format(self._host)
 
-    def fetch_points(self, limit, offset=0, **kwargs):
-        """ Fetch a list of datapoints """
-        params = {"offset": offset, "includeLinks": True}
-        if self.classes and len(self.classes):
-            params["classes"] = ','.join(self.classes)
-        qs = self._querystring(limit, **params)
-        points = [DataPoint(p, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
-                      for p in self.conn.get('{}/data/{}/datapoints?{}'.format(self._host, self.id, qs)).json()]
-        return points
+    @property
+    def _data_url(self):
+        return "{}/data".format(self._base_url)
 
-    def fetch_ids(self, page_size=100, page_id=None):
-        """ Fetch a point for a given ID """
-        data = self.conn.get("{}/data/{}/ids?pageSize={}&pageId={}".format(self._host, self.id, page_size, page_id)).json()
+    @property
+    def _datapoint_url(self):
+        return "{}/{}/datapoints".format(self._data_url, self.id)
+
+    @property
+    def _bulk_data_url(self):
+        return "{}/bulk".format(self._data_url)
+
+    def _to_dp(self, payload, shape=None, dtype=None, mltype=None, **kwargs):
+        if not shape:
+            shape = self.imshape
+        if not dtype:
+            dtype = self.dtype
+        if not mltype:
+            mltype = self.mltype
+        return DataPoint(payload, shape=shape, dtype=dtype, mltype=mltype, **kwargs)
+
+    def _querystring(self, params={}, enc_classes=False, **kwargs):
+        """ Builds a query string from kwargs for fetching points """
+        params.update(**kwargs)
+        if enc_classes and self.classes:
+            params["classes"] = ",".join(self.classes)
+        return urlencode(params)
+
+    def fetch_dp_ids(self, page_size=100, page_id=None):
+        """ Fetch a batch of datapoint ids """
+        resp = self.conn.get("{}/ids?pageSize={}&pageId={}".format(self._data_url, page_size, page_id))
+        resp.raise_for_status()
+        data = resp.json()
         return data['ids'], data['nextPageId']
+
+    def fetch_dps_from_slice(self, idx, num_points=1, include_links=True, **kwargs):
+        """ Fetch a single data point at a given index in the dataset """
+        qs = self._querystring(enc_classes=True, offset=idx, limit=num_points, includeLinks=include_links)
+        resp = self.conn.get("{}?{}").format(self._datapoint_url, qs)
+        resp.raise_for_status()
+        dps = [self._to_dp(p, **kwargs) for p in resp.json()]
+
+    def fetch_dp_from_id(self, dp_id, include_links=True, **kwargs):
+        """ Fetch a point for a given ID """
+        qs = self._querystring(enc_classes=True, includeLinks=include_links)
+        resp = self.conn.get("{}/datapoints/{}?{}".format(self._base_url, dp_id, qs))
+        resp.raise_for_status()
+        return self._to_dp(resp.json(), **kwargs)
+
+    def fetch_dp_from_idx(self, idx, **kwargs):
+        return self.fetch_dps_from_slice(idx, **kwargs).pop()
+
+    def fetch_dps_from_ids(self, dp_ids=[], **kwargs):
+        return [self.fetch_dp_from_id(dp_id) for dp_id in dp_ids]
 
     def _bulk_load(self, s3path, **kwargs):
         meta = self.meta
@@ -223,8 +241,8 @@ class VedaCollection(BaseSet):
                 dataset_id=None, image_refs=None,classes=[], bounds=None,
                 userId=None, public=False, host=HOST, links=None, description="", **kwargs):
 
-        assert mltype in valid_mltypes, "mltype {} not supported. Must be one of {}".format(mltype, valid_mltypes)
-        super(VedaCollection, self).__init__()
+        assert mltype in VALID_MLTYPES, "mltype {} not supported. Must be one of {}".format(mltype, VALID_MLTYPES)
+        super(VedaCollection, self).__init__(dataset_id, host=host, **kwargs)
         #default to 0 bands until the first load
         if imshape:
             self.imshape = imshape
@@ -237,9 +255,7 @@ class VedaCollection(BaseSet):
         self.percent_cached = percent_cached
         self.sensors = sensors
         self._count = count
-        self.id = dataset_id
         self.links = links
-        self._host = host
 
         self.meta = {
             "name": name,
@@ -296,7 +312,7 @@ class VedaCollection(BaseSet):
         `cache_type`: The type of caching to use on the server. Valid types are `stream` and `fetch`.'''
 
 
-        assert match.upper() in valid_matches, "match {} not supported. Must be one of {}".format(match, valid_matches)
+        assert match.upper() in VALID_MATCHTYPES, "match {} not supported. Must be one of {}".format(match, VALID_MATCHTYPES)
         # set up the geojson file for upload
         if type(geojson) == str:
             if not os.path.exists(geojson):
