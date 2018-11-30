@@ -47,13 +47,11 @@ class DataPoint(object):
 
     @property
     def bounds(self):
-        if 'bounds' in self.data:
-            return self.data['bounds']
+        return self.data.get("bounds")
 
     @property
     def tile_coords(self):
-        if 'tile_coords' in self.data:
-            return self.data['tile_coords']
+        return self.data.get("tile_coords")
 
     @property
     def y(self):
