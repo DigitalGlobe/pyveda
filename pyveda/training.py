@@ -41,7 +41,7 @@ def search(params={}, host=HOST):
 
 class BaseSet(object):
     """ Base class for handling all API interactions on sets."""
-    def __init__(self, id, host=HOST, conn=conn):
+    def __init__(self, id, host=HOST, conn=conn, **kwargs):
         self.id = id
         self._host = host
         self.conn = conn
@@ -121,15 +121,15 @@ class BaseSet(object):
             "dtype": self.dtype.name
         })
         options = {
-            'default_label': kwargs.get('default_label', None),
-            'label_field':  kwargs.get('label_field', None),
+            'default_label': kwargs.get('default_label'),
+            'label_field':  kwargs.get('label_field'),
             's3path': s3path
         }
         body = {
             'metadata': meta,
             'options': options
         }
-        if self.id is not None:
+        if self.id:
             doc = self.conn.post(self.links["self"]["href"], json=body).json()
         else:
             doc = self.conn.post(self._bulk_data_url, json=body).json()
@@ -150,8 +150,8 @@ class BaseSet(object):
         })
         options = {
             'match':  kwargs.get('match', 'INTERSECTS'),
-            'default_label': kwargs.get('default_label', None),
-            'label_field':  kwargs.get('label_field', None),
+            'default_label': kwargs.get('default_label'),
+            'label_field':  kwargs.get('label_field'),
             'cache_type':  kwargs.get('cache_type', 'stream'),
             'graph': image.rda_id,
             'node': rda_node,
@@ -167,7 +167,7 @@ class BaseSet(object):
                 'file': (os.path.basename(geojson), mfile, 'application/text'),
                 'options': (None, json.dumps(options), 'application/json')
             }
-            if self.id is not None:
+            if self.id:
                 doc = self.conn.post(self.links["self"]["href"], files=body).json()
             else:
                 doc = self.conn.post(self._data_url, files=body).json()
@@ -250,7 +250,7 @@ class VedaCollection(BaseSet):
             self.imshape = [0] + list(tilesize)
         self.partition = partition
         self.dtype = dtype
-        if self.dtype is not None:
+        if self.dtype:
             self.dtype = np.dtype(self.dtype)
         self.percent_cached = percent_cached
         self.sensors = sensors
@@ -272,7 +272,7 @@ class VedaCollection(BaseSet):
         for k,v in self.meta.items():
             setattr(self, k, v)
 
-    def bulk_load(self, s3path, label_field = None, dtype='uint8', **kwargs):
+    def bulk_load(self, s3path, label_field=None, dtype='uint8', **kwargs):
         '''Bulk Loads a tarball into the VedaCollection
         ARGS
 
@@ -285,7 +285,7 @@ class VedaCollection(BaseSet):
         self._bulk_load(s3path, **kwargs)
 
 
-    def load(self, geojson, image, match="INTERSECT", default_label=None, label_field = None, cache_type="stream", **kwargs):
+    def load(self, geojson, image, match="INTERSECT", default_label=None, label_field=None, cache_type="stream", **kwargs):
         '''Loads a geojson file or object into the VedaCollection
         ARGS
 
@@ -312,7 +312,7 @@ class VedaCollection(BaseSet):
         `cache_type`: The type of caching to use on the server. Valid types are `stream` and `fetch`.'''
 
 
-        assert match.upper() in VALID_MATCHTYPES, "match {} not supported. Must be one of {}".format(match, VALID_MATCHTYPES)
+        assert match.upper() in VALID_MATCHTYPES, "Match {} not supported. Must be one of {}".format(match, VALID_MATCHTYPES)
         # set up the geojson file for upload
         if type(geojson) == str:
             if not os.path.exists(geojson):
@@ -371,12 +371,11 @@ class VedaCollection(BaseSet):
     @property
     def status(self):
         # update percent_cached?
-        if self.percent_cached == None:
+        if not self.percent_cached:
             return {'status':'EMPTY'}
         elif self.percent_cached == 100:
             return {'status':'COMPLETE'}
-        else:
-            return {'status':'BUILDING'}
+        return {'status':'BUILDING'}
 
     def ids(self, size=None, page_size=100, get_urls=True, links=False):
         """ Creates a generator of Datapoint IDs or URLs for every datapoint in the VedaCollection
