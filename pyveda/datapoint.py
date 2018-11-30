@@ -28,16 +28,14 @@ class DataPoint(object):
     def mltype(self):
         try:
             return self.data['mltype']
-        except:
+        except KeyError:
             return self.data.get('mlType')
-
 
     @property
     def dtype(self):
         if 'dtype' in self.data:
             return np.dtype(self.data['dtype'])
-        else:
-            return np.dtype(self._dtype)
+        return np.dtype(self._dtype)
 
     @property
     def label(self):
@@ -51,15 +49,11 @@ class DataPoint(object):
     def bounds(self):
         if 'bounds' in self.data:
             return self.data['bounds']
-        else:
-            return None
 
     @property
     def tile_coords(self):
         if 'tile_coords' in self.data:
             return self.data['tile_coords']
-        else:
-            return None
 
     @property
     def y(self):
@@ -90,14 +84,10 @@ class DataPoint(object):
 
     def _map_labels(self):
         """ Convert labels to data """
-        _type = self.mltype
-        if _type is not None:
-            if _type == 'classification':
+        if self.mltype:
+            if self.mltype == 'classification':
                 return [int(self.label[key]) for key in list(self.label.keys())]
-            else:
-                return self.label
-        else:
-            return None
+            return self.label
 
     def __repr__(self):
         data = self.data.copy()
