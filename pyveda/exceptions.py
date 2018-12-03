@@ -4,4 +4,5 @@ class LabelNotSupported(NotImplementedError):
 class FrameworkNotSupported(NotImplementedError):
     pass
 
-
+class RemoteCollectionNotFound(Exception):
+    pass
