@@ -28,16 +28,6 @@ conn = gbdx.gbdx_connection
 VALID_MLTYPES = ['classification', 'object_detection', 'segmentation']
 VALID_MATCHTYPES = ['INSIDE', 'INTERSECT', 'ALL']
 
-def search(params={}, host=HOST):
-    r = conn.post('{}/{}'.format(host, "search"), json=params)
-    r.raise_for_status()
-    try:
-        results = r.json()
-        return [VedaCollection.from_doc(s) for s in results]
-    except Exception as err:
-        print(err)
-        return []
-
 
 class BaseSet(object):
     """ Base class for handling all API interactions on sets."""
@@ -477,3 +467,4 @@ class VedaCollection(BaseSet):
     @property
     def __geo_interface__(self):
         return box(*self.bounds).__geo_interface__
+
