@@ -32,7 +32,6 @@ class DataPoint(object):
             return self.data.get('mlType')
 
     @property
-    def dtype(self):
         if 'dtype' in self.data:
             return np.dtype(self.data['dtype'])
         return np.dtype(self._dtype)
@@ -74,7 +73,7 @@ class DataPoint(object):
         """ Updates data for the datapoint in the database """
         self.data.update(new_data)
         if save:
-            self.save(new_data)
+           self.save(new_data)
 
     def remove(self):
         """ Removes the datapoint from the set"""

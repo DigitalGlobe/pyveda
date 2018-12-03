@@ -77,6 +77,7 @@ class ABCVariableArray(ABCVariableIterator):
     def __getitem__(self, item):
         raise NotImplementedError
 
+
 class ABCSampleArray(ABCSampleIterator):
 
     _typ = "ABCSampleArray"
