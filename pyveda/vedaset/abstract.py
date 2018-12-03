@@ -1,26 +1,58 @@
 from abc import ABC, abstractmethod
 
-class BaseVedaSequence(ABC):
-    """Low level data access api to homogeneous sequences of data in PyVeda"""
+class ABCDataVariable(ABC):
 
-    @abstractmethod
-    def __len__(self):
+    _type = "ABCDataVariale"
+    pass
+
+
+class ABCDataSample(ABC):
+
+    _typ = "ABCDataSample"
+    pass
+
+
+class ABCMetaCollection(ABC):
+
+    _typ = "ABCMetaCollection"
+
+    @property
+    def mltype(self):
         raise NotImplementedError
+
+    @property
+    def classes(self):
+        raise NotImplementedError
+
+    @property
+    def image_shape(self):
+        raise NotImplementedError
+
+
+class ABCVariableIterator(ABC):
+    """Low level data access api to homogeneous sequences of data in PyVeda"""
+    _typ = "ABCVariableIterator"
 
     @abstractmethod
     def __iter__(self):
         raise NotImplementedError
 
     @abstractmethod
-    def __getitem__(self, idx):
-        raise NotImplementedError
-
-    def __setitem__(self, idx, val):
+    def __next__(self):
         raise NotImplementedError
 
 
-class BaseVedaGroup(ABC):
+class ABCSampleIterator(ABC):
     """Pair-wise access patterns defined on a group of BaseVedaSequences"""
+    _typ = "ABCSampleIterator"
+
+    @abstractmethod
+    def __iter__(self, spec):
+        raise NotImplementedError
+
+    @abstractmethod
+    def __next__(self):
+        raise NotImplementedError
 
     @property
     @abstractmethod
@@ -32,39 +64,35 @@ class BaseVedaGroup(ABC):
     def labels(self):
         raise NotImplementedError
 
+
+class ABCVariableArray(ABCVariableIterator):
+
+    _typ = "ABCVariableArray"
+
     @abstractmethod
     def __len__(self):
         raise NotImplementedError
 
     @abstractmethod
-    def __iter__(self, spec):
+    def __getitem__(self, item):
+        raise NotImplementedError
+
+class ABCSampleArray(ABCSampleIterator):
+
+    _typ = "ABCSampleArray"
+
+    @abstractmethod
+    def __len__(self):
         raise NotImplementedError
 
     @abstractmethod
-    def __getitem__(self, idx):
-        raise NotImplementedError
-
-    def __setitem__(self, idx, val):
+    def __getitem__(self):
         raise NotImplementedError
 
 
-class BaseVedaSet(ABC):
+class ABCDataSet(ABCMetaCollection):
     """Core representation of partitioned Machine-Learning datasets in PyVeda"""
-
-    @property
-    @abstractmethod
-    def __len__(self):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def mltype(self):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def classes(self):
-        raise NotImplementedError
+    _typ = "ABCDataSet"
 
     @property
     @abstractmethod
@@ -81,4 +109,26 @@ class BaseVedaSet(ABC):
     def validate(self):
         raise NotImplementedError
 
+
+class ABCDataStore(ABCDataSet):
+
+    _typ = "ABCDataStore"
+
+    @abstractmethod
+    def __len__(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def __getitem__(self):
+        raise NotImplementedError
+
+
+class BaseVedaCollection(ABCMetaCollection):
+
+    _typ = "BaseVedaCollection"
+
+    @property
+    @abstractmethod
+    def id(self):
+        raise NotImplementedError
 
