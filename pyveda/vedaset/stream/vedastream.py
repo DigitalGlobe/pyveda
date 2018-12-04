@@ -7,7 +7,7 @@ from functools import partial
 
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
-from pyveda.vedaset.abstract import BaseVedaSet, BaseVedaGroup, BaseVedaSequence
+from pyveda.vedaset.abstract import ABCDataSet, ABCSampleIterator, ABCVariableArray
 
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):
@@ -38,7 +38,7 @@ class VSGenWrapper(object):
         return val
 
 
-class StreamingVedaSequence(BaseVedaSequence):
+class StreamingVariableArray(ABCVariableArray):
     def __init__(self, buf):
         self.buf = buf
 
@@ -52,7 +52,7 @@ class StreamingVedaSequence(BaseVedaSequence):
         return self.buf[idx]
 
 
-class StreamingVedaGroup(BaseVedaGroup):
+class StreamingSampleArray(ABCSampleIterator):
     def __init__(self, allocated, vset):
         self.allocated = allocated
         self._n_consumed = 0
@@ -104,15 +104,15 @@ class StreamingVedaGroup(BaseVedaGroup):
     @property
     def images(self):
         _, imgs = zip(*self._vset._buf)
-        return StreamingVedaSequence(imgs)
+        return StreamingVaribleArray(imgs)
 
     @property
     def labels(self):
         lbls, _ = zip(*self._vset._buf)
-        return StreamingVedaSequence(lbls)
+        return StreamingVariableArray(lbls)
 
 
-class VedaStream(BaseVedaSet):
+class VedaStream(ABCDataSet):
     _lbl_handler_map = {"classification": ClassificationHandler,
                        "segmentation": SegmentationHandler,
                        "object_detection": ObjDetectionHandler}
@@ -174,19 +174,19 @@ class VedaStream(BaseVedaSet):
     @property
     def train(self):
         if not self._train:
-            self._train = StreamingVedaGroup(round(self.count*self.partition[0]*0.01), self)
+            self._train = StreamingSampleArray(round(self.count*self.partition[0]*0.01), self)
         return self._train
 
     @property
     def test(self):
         if not self._test:
-            self._test = StreamingVedaGroup(round(self.count*self.partition[1]*0.01), self)
+            self._test = StreamingSampleArray(round(self.count*self.partition[1]*0.01), self)
         return self._test
 
     @property
     def validate(self):
         if not self._validate:
-            self._validate = StreamingVedaGroup(round(self.count*self.partition[2]*0.01), self)
+            self._validate = StreamingSampleArray(round(self.count*self.partition[2]*0.01), self)
         return self._validate
 
     @property

@@ -25,7 +25,7 @@ class ABCMetaCollection(ABC):
         raise NotImplementedError
 
     @property
-    def image_shape(self):
+    def imshape(self):
         raise NotImplementedError
 
 

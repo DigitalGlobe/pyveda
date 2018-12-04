@@ -6,10 +6,10 @@ import ujson as json
 from pyveda.utils import mktempfilename, _atom_from_dtype
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
-from pyveda.vedaset.abstract import BaseVedaSequence
+from pyveda.vedaset.abstract import ABCVariableArray
 from tempfile import NamedTemporaryFile
 
-class WrappedDataArray(BaseVedaSequence):
+class WrappedDataArray(ABCVariableArray):
     def __init__(self, array, trainer, output_transform=lambda x: x):
         self._arr = array
         self._trainer = trainer

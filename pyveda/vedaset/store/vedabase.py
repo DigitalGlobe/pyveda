@@ -6,8 +6,8 @@ import tables
 from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, NDImageArray
-from pyveda.vedaset.abstract import BaseVedaGroup, BaseVedaSet
-from pyveda.augmentation_generator import BatchGenerator
+from pyveda.vedaset.abstract import ABCDataStore, ABCSampleArray
+from pyveda.frameworks.augmentation_generator import BatchGenerator
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
@@ -56,7 +56,7 @@ class WrappedDataNode(object):
         return len(self._node.images)
 
 
-class VedaBase(BaseVedaSet):
+class VedaBase(ABCDataStore):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
