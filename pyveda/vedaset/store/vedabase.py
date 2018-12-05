@@ -120,7 +120,23 @@ class VedaBase(BaseVedaSet):
                                      "Label Hit Record", filters)
 
     def _build_label_tables(self, rebuild=True):
-        pass
+        lst_train = []
+        for x in list(range(len(vb.train))):
+            lst_train.append(tuple(len(i) for i in vb.train.labels[x]))
+        self.train.labels._table.append(lst_train)
+
+        lst_test = []
+        for x in list(range(len(vb.train))):
+            lst_test.append(tuple(len(i) for i in vb.test.labels[x]))
+        self.test.labels._table.append(lst_test)
+
+
+        lst_validate = []
+        for x in list(range(len(vb.validate)))
+            lst_validate.append(tuple(len(i) for i in vb.test.labels[x]))
+        self.validate.labels._table.append()
+
+        return self.train.labels._table, self.test.labels._table, self.validate.labels._table
 
     @property
     def mltype(self):
