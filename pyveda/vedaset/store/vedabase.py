@@ -121,20 +121,20 @@ class VedaBase(BaseVedaSet):
 
     def _build_label_tables(self, rebuild=True):
         lst_train = []
-        for x in list(range(len(vb.train))):
-            lst_train.append(tuple(len(i) for i in vb.train.labels[x]))
+        for x in list(range(len(self.train))):
+            lst_train.append(tuple(len(i) for i in self.train.labels[x]))
         self.train.labels._table.append(lst_train)
 
         lst_test = []
-        for x in list(range(len(vb.train))):
-            lst_test.append(tuple(len(i) for i in vb.test.labels[x]))
+        for x in list(range(len(self.test))):
+            lst_test.append(tuple(len(i) for i in self.test.labels[x]))
         self.test.labels._table.append(lst_test)
 
 
         lst_validate = []
-        for x in list(range(len(vb.validate)))
-            lst_validate.append(tuple(len(i) for i in vb.test.labels[x]))
-        self.validate.labels._table.append()
+        for x in list(range(len(self.validate))):
+            lst_validate.append(tuple(len(i) for i in self.test.labels[x]))
+        self.validate.labels._table.append(lst_validate)
 
         return self.train.labels._table, self.test.labels._table, self.validate.labels._table
 
