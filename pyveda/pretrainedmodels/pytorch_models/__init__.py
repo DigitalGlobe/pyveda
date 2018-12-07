@@ -1,5 +1,5 @@
 try:
-    import pytorch
+    import torch
 except ImportError:
     raise ImportError('pytorch not installed. Please install pytorch to import models')
 
