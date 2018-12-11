@@ -9,3 +9,4 @@ numpy
 scikit-image
 pycurl
 affine
+dask

@@ -31,7 +31,6 @@ class DataPoint(object):
         except:
             return self.data.get('mlType')
 
-
     @property
     def dtype(self):
         if 'dtype' in self.data:
@@ -71,8 +70,19 @@ class DataPoint(object):
     def image(self):
         """ Returns a delayed dask call for fetching the image for a data point """
         token = gbdx.gbdx_connection.access_token
-        load = load_image(self.links["image"]["href"], token, self.imshape, dtype=self.dtype)
-        return da.from_delayed(load, shape=self.imshape, dtype=self.dtype)
+        delay = load_image(self.links["image"]["href"], token, self.imshape, dtype=self.dtype)
+        return self._delayed_image(delay)
+
+    @property
+    def thumbnail(self):
+        """ Returns a delayed dask call for fetching a thumbnail for a data point """
+        token = gbdx.gbdx_connection.access_token
+        delay = load_image(self.links["thumbnail"]["href"], token, self.imshape, dtype=self.dtype)
+        return self._delayed_image(delay)
+
+    def _delayed_image(self, delay):
+        return da.from_delayed(delay, shape=self.imshape, dtype=self.dtype)
+
 
     def save(self, data):
         """ Saves/updates the datapoint in the database """
