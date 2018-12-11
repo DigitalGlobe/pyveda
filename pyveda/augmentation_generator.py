@@ -134,7 +134,7 @@ class BatchGenerator(): #keras.utils.Sequence
 
         X = np.empty((self.batch_size, *self.shape[::-1])) #issue with shape?
         if self.mltype == 'classification':
-            y = np.empty((self.batch_size), dtype=int) # needs classes 
+            y = np.empty((self.batch_size), dtype=int) # needs classes
         if self.mltype == 'segmentation':
             y = np.empty((self.batch_size, *self.shape[1:])) # good
         if self.mltype == 'object_detection':
