@@ -150,7 +150,14 @@ class BaseSet(object):
                 'options': (None, json.dumps(options), 'application/json')
             }
             if self.id is not None:
-                doc = self.conn.post(self.links["self"]["href"], files=body).json()
+                # check status before posting
+                self = self.refresh()
+                status = self.status['status']
+                if status != 'EMPTY':
+                    doc = self.conn.post(self.links["self"]["href"], files=body).json()
+                else:
+                    print('Cannot load until previous calls to load beginning caching.', self.status)
+                    return None
             else:
                 doc = self.conn.post(self._data_url, files=body).json()
                 self.id = doc["properties"]["id"]
@@ -180,7 +187,7 @@ class BaseSet(object):
     def _refresh(self):
         r = self.conn.get(self.links["self"]["href"])
         r.raise_for_status()
-        return VedaCollection.from_doc(**r.json())
+        return VedaCollection.from_doc(r.json())
 
     def _set_links(self, links):
         self.links = links
