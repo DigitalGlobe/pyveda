@@ -17,9 +17,6 @@ import numpy as np
 from pyveda.auth import Auth
 from shapely.geometry import shape as shp, mapping, box
 
-from pyveda.vedaset.store.vedabase import VedaBase
-from pyveda.datapoint import DataPoint
-from pyveda.veda.api.props import prop_Wrap
 from pyveda.fetch.compat import build_vedabase
 from pyveda.vv.labelizer import Labelizer
 from pyveda.veda.props import prop_wrap, VEDAPROPS
@@ -31,7 +28,6 @@ gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
 conn = gbdx.gbdx_connection
 
-_bec = BaseEndpointConstructor
 
 def search(params={}, host=HOST):
     r = conn.post('{}/{}'.format(host, "search"), json=params)
@@ -148,6 +144,9 @@ class BaseEndpointConstructor(object):
         return self._dataset_base_furl.format(host_url=self._host,
                                                dataset_id=self._dataset_id)
 
+
+
+_bec = BaseEndpointConstructor
 
 class DataSampleClient(BaseEndpointConstructor):
     """ Veda API wrapper for remote DataSample-relevant methods """
@@ -279,7 +278,7 @@ class _VedaCollectionProxy(DataCollectionClient):
     def id(self, _id):
         self._meta["dataset_id"] = _id
 
-    @prooperty
+    @property
     def meta(self):
         return self._meta
 

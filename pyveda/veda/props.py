@@ -2,9 +2,9 @@ import numpy as np
 
 
 def prop_wrap(cls, exclude=[]):
-    for k, v in cls._metaprops.items():
+    for k, prop in cls._metaprops.items():
         if k not in exclude:
-            setattr(cls, k, MappedPropSync(v, k))
+            setattr(cls, k, prop(k))
     return cls
 
 
@@ -20,7 +20,6 @@ class GenericMappedProp(object):
 
     def __set__(self, obj, val):
         obj._meta[self.name] = val
-
 
 
 class ListMappedProp(GenericMappedProp):
