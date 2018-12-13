@@ -8,6 +8,7 @@ from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, NDImageArray
 from pyveda.vedaset.abstract import ABCDataStore, ABCSampleArray
 from pyveda.frameworks.augmentation_generator import BatchGenerator
+from pyveda.veda.api import VedaCollectionProxy
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
@@ -56,7 +57,8 @@ class WrappedDataNode(object):
         return len(self._node.images)
 
 
-class VedaBase(ABCDataStore):
+
+class DataBase(ABCDataStore):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
@@ -188,3 +190,8 @@ class VedaBase(ABCDataStore):
 
     def __del__(self):
         self.close()
+
+
+
+class VedaBase(DataBase, VedaCollectionProxy):
+    pass

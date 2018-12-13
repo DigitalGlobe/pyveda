@@ -112,7 +112,7 @@ class StreamingSampleArray(ABCSampleIterator):
         return StreamingVariableArray(lbls)
 
 
-class VedaStream(ABCDataSet):
+class DataStream(ABCDataSet):
     _lbl_handler_map = {"classification": ClassificationHandler,
                        "segmentation": SegmentationHandler,
                        "object_detection": ObjDetectionHandler}
@@ -256,3 +256,7 @@ class VedaStream(ABCDataSet):
         self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join()
         self._loop.close()
+
+
+class VedaStream(DataStream, VedaCollectionProxy):
+    pass
