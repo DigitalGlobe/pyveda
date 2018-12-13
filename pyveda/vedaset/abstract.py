@@ -17,15 +17,8 @@ class ABCMetaCollection(ABC):
     _typ = "ABCMetaCollection"
 
     @property
-    def mltype(self):
-        raise NotImplementedError
-
-    @property
-    def classes(self):
-        raise NotImplementedError
-
-    @property
-    def imshape(self):
+    @abstractmethod
+    def id(self):
         raise NotImplementedError
 
 
@@ -124,12 +117,4 @@ class ABCDataStore(ABCDataSet):
         raise NotImplementedError
 
 
-class BaseVedaCollection(ABCMetaCollection):
-
-    _typ = "BaseVedaCollection"
-
-    @property
-    @abstractmethod
-    def id(self):
-        raise NotImplementedError
 
