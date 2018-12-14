@@ -5,6 +5,7 @@ import threading
 import time
 from functools import partial
 
+from pyveda.veda.api import VedaCollectionProxy
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
 from pyveda.vedaset.abstract import ABCDataSet, ABCSampleIterator, ABCVariableArray

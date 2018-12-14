@@ -9,6 +9,29 @@ gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
 conn = gbdx.gbdx_connection
 
+
+def search(params={}, host=HOST):
+    r = conn.post('{}/{}'.format(host, "search"), json=params)
+    r.raise_for_status()
+    try:
+        results = r.json()
+        return [VedaCollectionProxy.from_doc(s) for s in results]
+    except Exception as err:
+        print(err)
+        return []
+
+def dataset_exists(dataset_id=None, name=None, conn=conn, host=HOST):
+    if dataset_id:
+        r = conn.get(_bec._dataset_base_furl.format(host_url=host,
+                                                    dataset_id=dataset_id))
+        return True if r.status_code == 200 else False
+    if name:
+        r = conn.post("{}/search".format(host), json={})
+        r.raise_for_status()
+        return any([True for p in r.json() if p['properties']['name'] == name])
+    raise ValueError("Must provide dataset_id or name arguments")
+
+
 def load(dataset_id=None, dataset_name=None, filename=None, count=None, partition=[70,20,10], **kwargs):
     """
     Main interface to access to remote, local and synced datasets
@@ -41,10 +64,11 @@ def store(dataset_id=None, dataset_name=None, count=None, partition=[70,20,10], 
 def load_existing(vid, *args, **kwargs):
     return VedaStream.from_id(vid, *args, **kwargs)
 
-def load_streamer(*args, **kwargs):
-    pass
-
 def load_store(filename):
     return VedaBase.from_path(filename)
+
+def load_new(*args, **kwargs):
+    # bulk load new datasets here
+    pass
 
 

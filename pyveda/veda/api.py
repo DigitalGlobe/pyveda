@@ -29,27 +29,6 @@ HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
 conn = gbdx.gbdx_connection
 
 
-def search(params={}, host=HOST):
-    r = conn.post('{}/{}'.format(host, "search"), json=params)
-    r.raise_for_status()
-    try:
-        results = r.json()
-        return [VedaCollectionProxy.from_doc(s) for s in results]
-    except Exception as err:
-        print(err)
-        return []
-
-def dataset_exists(dataset_id=None, name=None, conn=conn, host=HOST):
-    if dataset_id:
-        r = conn.get(_bec._dataset_base_furl.format(host_url=host,
-                                                    dataset_id=dataset_id))
-        return True if r.status_code == 200 else False
-    if name:
-        r = conn.post("{}/search".format(host), json={})
-        r.raise_for_status()
-        return any([True for p in r.json() if p['properties']['name'] == name])
-    raise ValueError("Must provide dataset_id or name arguments")
-
 
 
 class VedaCollectionBuilder:
