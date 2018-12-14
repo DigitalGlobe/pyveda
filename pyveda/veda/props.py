@@ -1,8 +1,8 @@
 import numpy as np
 
 
-def prop_wrap(cls, exclude=[]):
-    for k, prop in cls._metaprops.items():
+def prop_wrap(cls, prop_map, exclude=[]):
+    for k, prop in prop_map.items():
         if k not in exclude:
             setattr(cls, k, prop(k))
     return cls
@@ -50,6 +50,10 @@ class StrMappedProp(GenericMappedProp):
     pass
 
 
+class IntMappedProp(GenericMappedProp):
+    pass
+
+
 class BoolMappedProp(GenericMappedProp):
     pass
 
@@ -67,4 +71,6 @@ VEDAPROPS = {"name": StrMappedProp,
              "bounds": ListMappedProp,
              "userId": StrMappedProp,
              "public": BoolMappedProp,
+             "count": IntMappedProp,
+             "percent_cached": IntMappedProp
              }
