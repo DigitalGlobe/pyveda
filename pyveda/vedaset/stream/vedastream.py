@@ -260,4 +260,7 @@ class DataStream(ABCDataSet):
 
 
 class VedaStream(DataStream, VedaCollectionProxy):
-    pass
+    def __init__(self, obj, **kwargs):
+        if not isinstance(obj, ABCMetaCollection):
+            raise ValueError("VedaStream must be initiated with a VedaCollection object")
+

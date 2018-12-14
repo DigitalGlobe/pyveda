@@ -250,7 +250,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         return [self.fetch_sample_from_id(dp_id) for dp_id in dp_ids]
 
     def refresh(self):
-        r = self.conn.get(self._base_url))
+        r = self.conn.get(self._base_url)
         r.raise_for_status()
         meta = {k: v for k, v in r.json()['properties'].items() if k in self._metaprops}
         self._meta.update(meta)

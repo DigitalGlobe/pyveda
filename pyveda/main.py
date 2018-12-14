@@ -12,7 +12,6 @@ conn = gbdx.gbdx_connection
 __all__ = ["search",
            "load",
            "store",
-           "load_new",
            "load_store",
            "load_existing",
            "dataset_exists",
@@ -117,7 +116,7 @@ def build_collection_from_tarball(s3path, meta, default_label=None,
         'metadata': meta,
         'options': options
     }
-        doc = conn.post(url, json=body).json()
+    doc = conn.post(url, json=body).json()
     return doc
 
 
