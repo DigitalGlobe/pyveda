@@ -239,11 +239,13 @@ class _VedaCollectionProxy(DataCollectionClient):
     """ Base class for handling all API interactions on sets."""
 
     def __init__(self, name=None, dataset_id=None, host=HOST, conn=conn, **kwargs):
-        self._meta = {k: v for k, v in kwargs if k in self._metaprops}
+        self._meta = {k: v for k, v in kwargs.items() if k in self._metaprops}
         self.name = name
         self.id = dataset_id
+
         super(_VedaCollectionProxy, self).__init__(host, dataset_id)
-        self._dp_client(DataPointClient())
+#        self._dp_client(DataPointClient())
+
 
     @property
     def id(self):
