@@ -4,8 +4,9 @@ import json
 import math
 import time
 import sys
-import mmap
 import inspect
+import types
+from functools import partial
 try:
     from urllib.parse import urlencode
 except:
@@ -30,67 +31,8 @@ conn = gbdx.gbdx_connection
 
 
 
-
-class VedaCollectionBuilder:
-
-    def _load(self, geojson, image, meta=None, **kwargs):
-        """
-            Loads a geojson file into the VC
-        """
-        if not meta:
-            try:
-                meta = self.meta.copy()
-                _id = self.id
-            except:
-                raise AttributeError("Provide metaprop dict and Collection id")
-        rda_node = image.rda.graph()['nodes'][0]['id']
-        options = {
-            'match':  kwargs.get('match', 'INTERSECTS'),
-            'default_label': kwargs.get('default_label'),
-            'label_field':  kwargs.get('label_field'),
-            'cache_type':  kwargs.get('cache_type', 'stream'),
-            'graph': image.rda_id,
-            'node': rda_node,
-            'workers': kwargs.get('workers', 1)
-        }
-        if 'mask' in kwargs:
-            options['mask'] = shp(kwargs.get('mask')).wkt
-
-        with open(geojson, 'r') as fh:
-            mfile = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
-            body = {
-                'metadata': (None, json.dumps(meta), 'application/json'),
-                'file': (os.path.basename(geojson), mfile, 'application/text'),
-                'options': (None, json.dumps(options), 'application/json')
-            }
-            doc = self.conn.post(self._load_url, files=body).json()
-        return doc
-
-    def _bulk_load(self, s3path, **kwargs):
-        meta = self.meta
-        meta.update({
-            "imshape": list(self.imshape),
-            "sensors": self.sensors,
-            "dtype": self.dtype.name
-        })
-        options = {
-            'default_label': kwargs.get('default_label'),
-            'label_field':  kwargs.get('label_field'),
-            's3path': s3path
-        }
-        body = {
-            'metadata': meta,
-            'options': options
-        }
-        if self.id:
-            doc = self.conn.post(self.links["self"]["href"], json=body).json()
-        else:
-            doc = self.conn.post(self._bulk_data_url, json=body).json()
-            self.id = doc["properties"]["id"]
-            self._set_links(doc["properties"]["links"])
-        return doc
-
-
+class VedaUploadError(Exception):
+    pass
 
 class BaseEndpointConstructor(object):
     """ Builds Veda API endpoints for Collection and Point access methods """
@@ -106,34 +48,53 @@ class BaseEndpointConstructor(object):
     _datapoint_update_furl = None
     _datapoint_remove_furl = None
 
-    def __init__(self, host, dataset_id=None):
-        self._host = host
-        self._dataset_id = dataset_id
+    def __init__(self, host):
+        self._host_ = host
 
     @property
-    def _load_url(self):
+    def _host(self):
+        return self._host_
+
+    @_host.setter
+    def _host(self, host):
+        self._host_ = host
+
+    @property
+    def _load_geo_url(self):
         return self._veda_load_furl.format(host_url=self._host)
 
     @property
-    def _bulk_load_url(self):
+    def _load_tarball_url(self):
         return self._veda_bulk_load_furl.format(host_url=self._host)
+
+
+
+class BaseClient(BaseEndpointConstructor):
 
     @property
     def _base_url(self):
         return self._dataset_base_furl.format(host_url=self._host,
                                                dataset_id=self._dataset_id)
 
+    def _querystring(self, params={}, enc_classes=True, **kwargs):
+        """ Builds a query string from kwargs for fetching points """
+        params.update(**kwargs)
+        if enc_classes and self.classes:
+            params["classes"] = ",".join(self.classes)
+        return urlencode(params)
+
 
 
 _bec = BaseEndpointConstructor
 
-class DataSampleClient(BaseEndpointConstructor):
+class DataSampleClient(BaseClient):
     """ Veda API wrapper for remote DataSample-relevant methods """
     _accessors = ["create", "append", "update", "remove"]
 
-    def __init__(self, host=None, dataset_id=None):
-        self._host = host
-        self._dataset_id = None
+    def __init__(self, host=None, dataset_id=None, datasample_id=None):
+        self._dataset_id = dataset_id
+        self._datasample_id = datasample_id
+        super(DataSampleClient, self).__init__(host=host)
 
     @property
     def _create_url(self, dpid):
@@ -164,21 +125,13 @@ class DataSampleClient(BaseEndpointConstructor):
         raise NotImplementedError
 
 
-class DataCollectionClient(BaseEndpointConstructor):
+class DataCollectionClient(BaseClient):
     """ Veda API wrapper for remote DataCollection-relevant methods """
 
     def __init__(self, host, conn=None):
         super(DataCollectionClient, self).__init__(host)
         if not conn:
             self._conn = conn
-
-    @property
-    def _host(self):
-        return self._host_
-
-    @_host.setter
-    def _host(self, host):
-        self._host_ = host
 
     @property
     def _create_url(self):
@@ -228,32 +181,29 @@ class DataCollectionClient(BaseEndpointConstructor):
         r.raise_for_status()
 
     @classmethod
-    def from_links(cls, links, conn=None):
+    def _from_links(cls, links, conn=None):
         parts = urlparse(links["self"]["href"])
         host = "{}://{}".format(parts.scheme, parts.netloc)
         dataset_id = parts.path.split("/")[-1] # Use re.match
         return cls(host, dataset_id, conn=conn)
 
 
-class _VedaCollectionProxy(DataCollectionClient):
+
+_VedaCollectionProxy = prop_wrap(DataCollectionClient, VEDAPROPS)
+
+class VedaCollectionProxy(_VedaCollectionProxy):
     """ Base class for handling all API interactions on sets."""
+    _metaprops = VEDAPROPS
+    _data_sample_client = DataSampleClient
 
-    def __init__(self, name=None, dataset_id=None, host=HOST, conn=conn, **kwargs):
+    def __init__(self, dataset_id, host=HOST, conn=conn, **kwargs):
         self._meta = {k: v for k, v in kwargs.items() if k in self._metaprops}
-        self.name = name
         self.id = dataset_id
-
-        super(_VedaCollectionProxy, self).__init__(host, dataset_id)
-#        self._dp_client(DataPointClient())
-
+        super(VedaCollectionProxy, self).__init__(host)
 
     @property
     def id(self):
-        try:
-            _id = self._meta["dataset_id"]
-        except KeyError:
-            raise AttributeError("API access requires setting an existing dataset ID")
-        return _id
+        return self._meta["dataset_id"]
 
     @id.setter
     def id(self, _id):
@@ -272,45 +222,92 @@ class _VedaCollectionProxy(DataCollectionClient):
             mltype = self.mltype
         return DataPoint(payload, shape=shape, dtype=dtype, mltype=mltype, **kwargs)
 
-    def _querystring(self, params={}, enc_classes=True, **kwargs):
-        """ Builds a query string from kwargs for fetching points """
-        params.update(**kwargs)
-        if enc_classes and self.classes:
-            params["classes"] = ",".join(self.classes)
-        return urlencode(params)
-
-    def fetch_dp_ids(self, page_size=100, page_id=None):
+    def _page_sameple_ids(self, page_size=100, page_id=None):
         """ Fetch a batch of datapoint ids """
         resp = self.conn.get("{}/ids?pageSize={}&pageId={}".format(self._data_url, page_size, page_id))
         resp.raise_for_status()
         data = resp.json()
         return data['ids'], data['nextPageId']
 
-    def fetch_dps_from_slice(self, idx, num_points=1, include_links=True, **kwargs):
+    def fetch_samples_from_slice(self, idx, num_points=1, include_links=True, **kwargs):
         """ Fetch a single data point at a given index in the dataset """
         qs = self._querystring(offset=idx, limit=num_points, includeLinks=include_links)
         resp = self.conn.get(self._datapoint_search_furl.format(self._datapoint_url, qs))
         resp.raise_for_status()
         dps = [self._to_dp(p, **kwargs) for p in resp.json()]
 
-    def fetch_dp_from_id(self, dp_id, include_links=True, **kwargs):
+    def fetch_sample_from_id(self, dp_id, include_links=True, **kwargs):
         """ Fetch a point for a given ID """
         qs = self._querystring(includeLinks=include_links)
         resp = self.conn.get(self._datapoint_search_furl.format(self._base_url, dp_id, qs))
         resp.raise_for_status()
         return self._to_dp(resp.json(), **kwargs)
 
-    def fetch_dp_from_idx(self, idx, **kwargs):
+    def fetch_sample_from_id(self, idx, **kwargs):
         return self.fetch_dps_from_slice(idx, **kwargs).pop()
 
-    def fetch_dps_from_ids(self, dp_ids=[], **kwargs):
-        return [self.fetch_dp_from_id(dp_id) for dp_id in dp_ids]
+    def fetch_samples_from_ids(self, dp_ids=[], **kwargs):
+        return [self.fetch_sample_from_id(dp_id) for dp_id in dp_ids]
 
-#    This function needs to only reset self._meta to do inplace=refresh
-#    def refresh(self):
-#        r = self.conn.get(self._base_url))
-#        r.raise_for_status()
-#        return VedaCollection.from_doc(**r.json())
+    def refresh(self):
+        r = self.conn.get(self._base_url))
+        r.raise_for_status()
+        meta = {k: v for k, v in r.json()['properties'].items() if k in self._metaprops}
+        self._meta.update(meta)
+
+    def gen_sample_ids(self, count=None, page_size=100):
+        """ Creates a generator of Datapoint IDs or URLs for every datapoint in the VedaCollection
+            This is useful for gaining access to the ID or the URL for datapoints.
+            Args:
+            `size` (int): the total number of points to fetch, defaults to None
+            `page_size` (int): the size of the pages to use in the API.
+            `get_urls` (bool): generate urls tuples ((`dp_url`, `dp_image_url`)) instead of IDs.
+            Returns:
+              generator of IDs
+        """
+        if count is None:
+            count = self.count
+        if count > self.count:
+            raise ValueError("Things not big enough for that")
+
+        def get(pages):
+            next_page = None
+            for p in range(0, pages):
+                ids, next_page = self._page_sample_ids(page_size, page_id=next_page)
+                yield ids, next_page
+
+        _count = 0
+        for ids, next_page in get(math.ceil(size/page_size)):
+            for i in ids:
+                _count += 1
+                if _count <= count:
+                    if not get_urls:
+                        yield i
+                    else:
+                        yield self._sample_urls_from_id(i)
+
+    def _sample_urls_from_id(self, _id):
+        qs = self._querystring(includeLinks=False)
+        label_url = "{}/datapoints/{}?{}".format(self._host, _id, qs)
+        image_url = "{}/datapoints/{}/image.tif".format(self._host, _id)
+        return {_id, [label_url, image_url]}
+
+    def append_from_geo(self, geojson, image, **kwargs):
+        if image.dtype is not self.dtype:
+            raise ValueError("Image dtype must be {} to match collection".format(self.dtype))
+        image = np.squeeze(image)
+        if image.shape != self.imshape:
+            raise ValueError("Image shape must be {} to match collection".format(self.imshape))
+        self.refresh()
+        if self.status == "BUILDING":
+            raise VedaUploadError("Cannot load while server-side caching active")
+        self.sensors.append(image.__class__.__name__)
+        doc = build_collection_from_geo(geojson, image, self.meta, url=self._base_url,
+                                        conn=self.conn, **kwargs)
+
+    def append_from_tarball(self, s3path, **kwargs):
+        build_collection_from_tarball(s3path, self.meta, conn=self.conn,
+                                      url=self._base_url, **kwargs)
 
     @classmethod
     def from_doc(cls, doc):
@@ -331,7 +328,5 @@ class _VedaCollectionProxy(DataCollectionClient):
         doc['properties']['id'] = _id
         return cls.from_doc(doc)
 
-    _metaprops = VEDAPROPS
 
 
-VedaCollectionProxy = prop_wrap(_VedaCollectionProxy)
