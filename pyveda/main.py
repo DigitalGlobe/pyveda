@@ -1,13 +1,20 @@
 import os
 from pyveda.exceptions import RemoteCollectionNotFound
 from pyveda.auth import Auth
-from pyveda.vedaset import VedaBase
-from pyveda.datapoint import DataPoint
-from pyveda.veda.api import search, dataset_exists, VedaCollectionProxy
+from pyveda.vedaset import VedaBase, VedaStream
+from pyveda.veda.api import VedaCollectionProxy
 
 gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
 conn = gbdx.gbdx_connection
+
+__all__ = ["search",
+           "load",
+           "store",
+           "load_new",
+           "load_store",
+           "load_existing",
+           "dataset_exists"]
 
 
 def search(params={}, host=HOST):
