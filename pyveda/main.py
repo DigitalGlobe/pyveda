@@ -1,4 +1,5 @@
 import os
+import mmap
 from pyveda.exceptions import RemoteCollectionNotFound
 from pyveda.auth import Auth
 from pyveda.vedaset import VedaBase, VedaStream
@@ -14,7 +15,9 @@ __all__ = ["search",
            "load_new",
            "load_store",
            "load_existing",
-           "dataset_exists"]
+           "dataset_exists",
+           "build_collection_from_geo",
+           "build_collection_from_tarball"]
 
 def _map_contains_submap(mmap, submap, hard_match=True):
     """
@@ -32,12 +35,14 @@ def _map_contains_submap(mmap, submap, hard_match=True):
         return True
     return all([mmap[key] == submap[key] for key in shared])
 
+
 def search(params={}, host=HOST, filters={}, **kwargs):
     r = conn.post('{}/{}'.format(host, "search"), json=params)
     r.raise_for_status()
     results = r.json()
     return [VedaCollectionProxy.from_doc(s) for s in results
             if _map_contains_submap(s["properties"], filters, **kwargs)]
+
 
 def dataset_exists(dataset_id=None, dataset_name=None, conn=conn, host=HOST,
                    return_coll=True):
@@ -91,14 +96,67 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
     vb.flush()
     return vb
 
+
 def load_existing(vid, *args, **kwargs):
     return VedaStream.from_id(vid, *args, **kwargs)
+
 
 def load_store(filename):
     return VedaBase.from_path(filename)
 
-def load_new(*args, **kwargs):
-    # bulk load new datasets here
-    pass
+
+def build_collection_from_tarball(s3path, meta, default_label=None,
+                                  label_field=None, conn=conn,
+                                  url="{}/data/bulk".format(HOST)):
+    options = {
+        'default_label': default_label,
+        'label_field':  label_field,
+        's3path': s3path
+    }
+    body = {
+        'metadata': meta,
+        'options': options
+    }
+        doc = conn.post(url, json=body).json()
+    return doc
+
+
+def build_collection_from_geo(geojson, image, meta, match="INTERSECTS",
+                              default_label=None, label_field=None,
+                              workers=1, cache_type="stream",
+                              url="{}/data".format(HOST), conn=conn, **kwargs):
+    """
+        Loads a geojson file into the VC
+    """
+    if isinstance(geojson, str) and not os.path.exists(geojson):
+        raise ValueError('{} does not exist'.format(geojson))
+    elif isinstance(geojson, dict):
+        with NamedTemporaryFile(mode="w+t", prefix="veda", suffix="json", delete=False) as temp:
+            temp.file.write(json.dumps(geojson))
+        geojson = temp.name
+
+    rda_node = image.rda.graph()['nodes'][0]['id']
+    options = {
+        'match':  match,
+        'default_label': default_label,
+        'label_field':  label_field,
+        'cache_type':  cache_type,
+        'workers': workers,
+        'graph': image.rda_id,
+        'node': rda_node,
+    }
+    if 'mask' in kwargs:
+        options['mask'] = shp(kwargs.get('mask')).wkt
+
+    with open(geojson, 'r') as fh:
+        mfile = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
+        body = {
+            'metadata': (None, json.dumps(meta), 'application/json'),
+            'file': (os.path.basename(geojson), mfile, 'application/text'),
+            'options': (None, json.dumps(options), 'application/json')
+        }
+        doc = conn.post(url, files=body).json()
+    return doc
+
 
 
