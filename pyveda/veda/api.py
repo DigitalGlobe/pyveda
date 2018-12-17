@@ -210,6 +210,16 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def meta(self):
         return self._meta
 
+    @property
+    def status(self):
+        self.refresh()
+        if self.percent_cached == None:
+            return {'status':'EMPTY'}
+        elif self.percent_cached == 100:
+            return {'status':'COMPLETE'}
+        else:
+            return {'status':'BUILDING'}
+
     def _to_dp(self, payload, shape=None, dtype=None, mltype=None, **kwargs):
         if not shape:
             shape = self.imshape
@@ -293,14 +303,14 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         if image.dtype is not self.dtype:
             raise ValueError("Image dtype must be {} to match collection".format(self.dtype))
         image = np.squeeze(image)
-        if image.shape != self.imshape:
-            raise ValueError("Image shape must be {} to match collection".format(self.imshape))
-        self.refresh()
+        #if image.shape != self.imshape:
+        #    raise ValueError("Image shape must be {} to match collection".format(self.imshape))
+        #self.refresh()
         if self.status == "BUILDING":
             raise VedaUploadError("Cannot load while server-side caching active")
         self.sensors.append(image.__class__.__name__)
         params = dict(self.meta, **kwargs, url=self._base_url, conn=self.conn)
-        doc = from_geo(geojson, image, sensors=self.sensors, **params)
+        doc = from_geo(geojson, image, **params)
 
     def append_from_tarball(self, s3path, **kwargs):
         from_tarball(s3path, self.meta, conn=self.conn,
@@ -317,8 +327,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     @classmethod
     def from_id(cls, _id, host=HOST):
         """ Helper method that fetches an id into a VedaCollection """
-        host = self._host or HOST
-        r = self.conn.get("{}/data/{}".format(host, _id))
+        r = conn.get("{}/data/{}".format(host, _id))
         r.raise_for_status()
         doc = r.json()
         doc['properties']['host'] = host

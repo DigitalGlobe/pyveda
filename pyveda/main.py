@@ -13,8 +13,8 @@ __all__ = ["search",
            "load",
            "store",
            "dataset_exists",
-           "create_collection_from_geo",
-           "create_collection_from_tarball"]
+           "create_from_geojson",
+           "create_from_tarball"]
 
 def _map_contains_submap(mmap, submap, hard_match=True):
     """
