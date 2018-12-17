@@ -45,7 +45,7 @@ def from_tarball(s3path, meta, default_label=None,
     return doc
 
 
-def from_geo(geojson, image, name, tilesize=[256,256], match="INTERSECTS",
+def from_geo(geojson, image, name, tilesize=[256,256], match="INTERSECT",
                               default_label=None, label_field=None,
                               workers=1, cache_type="stream",
                               dtype=None, description='',
@@ -71,7 +71,7 @@ def from_geo(geojson, image, name, tilesize=[256,256], match="INTERSECTS",
           public (bool): Indicates if data is publically available for others to access.
           match: Generates a tile based on the topological relationship of the feature. Can be:
               - `INSIDE`: the feature must be contained inside the tile bounds to generate a tile.
-              - `INTERSECTS`: the feature only needs to intersect the tile. The feature will be cropped to the tile boundary (default).
+              - `INTERSECT`: the feature only needs to intersect the tile. The feature will be cropped to the tile boundary (default).
               - `ALL`: Generate all possible tiles that cover the bounding box of the input features, whether or not they contain or intersect features.
           default_label: default label value to apply to all features when  `label` in the geojson `Properties` is missing.
           label_field: Field in the geojson `Properties` to use for the label instead of `label`.
