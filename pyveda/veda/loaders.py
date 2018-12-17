@@ -25,7 +25,7 @@ def args_to_meta(name, description, dtype, imshape,
       'partition': partition,
       'sensors': sensors,
       'classes': [],
-      'bounds': []
+      'bounds': None 
     }
 
 
