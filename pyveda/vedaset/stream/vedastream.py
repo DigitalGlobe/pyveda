@@ -161,19 +161,19 @@ class BufferedDataStream(BaseDataSet):
     @property
     def train(self):
         if not self._train:
-            self._train = StreamingSampleArray(round(self.count*self.partition[0]*0.01), self)
+            self._train = BufferedSampleArray(round(self.count*self.partition[0]*0.01), self)
         return self._train
 
     @property
     def test(self):
         if not self._test:
-            self._test = StreamingSampleArray(round(self.count*self.partition[1]*0.01), self)
+            self._test = BufferedSampleArray(round(self.count*self.partition[1]*0.01), self)
         return self._test
 
     @property
     def validate(self):
         if not self._validate:
-            self._validate = StreamingSampleArray(round(self.count*self.partition[2]*0.01), self)
+            self._validate = BufferedSampleArray(round(self.count*self.partition[2]*0.01), self)
         return self._validate
 
     @property
