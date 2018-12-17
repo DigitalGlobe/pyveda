@@ -50,10 +50,10 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
                               workers=1, cache_type="stream",
                               dtype=None, description='',
                               mltype="classification", public=False,
-                              partition=[100,0,0], mask=None,
+                              partition=[100,0,0], mask=None, sensors=[],
                               url="{}/data".format(HOST), conn=conn, **kwargs):
     """
-        Loads a geojson file into the VC
+        Loads a geojson file into the collection
 
         Args:
           geojson: geojson feature collection, in the following formats:
@@ -69,6 +69,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
           dtype (str): Data type of image data.
           description (str): An optional description of the training dataset. Useful for attaching external info and links to a collection.
           public (bool): Indicates if data is publically available for others to access.
+          sensors(lst): The different satellites/sensors used for image sources in this VedaCollection.
           match: Generates a tile based on the topological relationship of the feature. Can be:
               - `INSIDE`: the feature must be contained inside the tile bounds to generate a tile.
               - `INTERSECT`: the feature only needs to intersect the tile. The feature will be cropped to the tile boundary (default).
@@ -92,7 +93,6 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
     if dtype.name != image.dtype.name:
        raise ValueError('Image dtype ({}) and given dtype ({}) must match.'.format(image.dtype, dtype))
 
-    sensors = [image.__class__.__name__]
     imshape = [image.shape[0]] + list(tilesize)
     meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors)
 

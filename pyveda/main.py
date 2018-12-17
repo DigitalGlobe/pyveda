@@ -101,7 +101,7 @@ def _load_existing(vc, *args, **kwargs):
 def _load_store(filename, **kwargs):
     return VedaBase.from_path(filename, **kwargs)
 
-def create_collection_from_geo(geojson, image, name, tilesize=[256,256], match="INTERSECT",
+def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSECT",
                               default_label=None, label_field=None,
                               workers=1, cache_type="stream",
                               dtype=None, description='',
@@ -134,15 +134,17 @@ def create_collection_from_geo(geojson, image, name, tilesize=[256,256], match="
           mask: A geojson geometry to use as a mask with caching tiles. When defined only tile within the mask will be cached.
     """
     assert isinstance(name, str), ValueError('Name must be defined as a string')
+
+    sensors = [image.__class__.__name__]
     doc = from_geo(geojson, image, name=name, tilesize=tilesize, match=match,
                    default_label=default_label, label_field=label_field,
                    workers=workers, cache_type=cache_type,
                    dtype=dtype, description=description,
-                   mltype=mltype, public=public,
+                   mltype=mltype, public=public, sensors=sensors,
                    partition=partition, mask=mask,
                    url=url, conn=conn, **kwargs)
     return VedaCollectionProxy.from_doc(doc)
 
-create_collection_from_tarball = from_tarball
+create_from_tarball = from_tarball
 
 

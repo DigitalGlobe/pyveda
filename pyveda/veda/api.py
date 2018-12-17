@@ -289,7 +289,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         image_url = "{}/datapoints/{}/image.tif".format(self._host, _id)
         return {_id, [label_url, image_url]}
 
-    def append_from_geo(self, geojson, image, **kwargs):
+    def append_from_geojson(self, geojson, image, **kwargs):
         if image.dtype is not self.dtype:
             raise ValueError("Image dtype must be {} to match collection".format(self.dtype))
         image = np.squeeze(image)
@@ -299,8 +299,8 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         if self.status == "BUILDING":
             raise VedaUploadError("Cannot load while server-side caching active")
         self.sensors.append(image.__class__.__name__)
-        doc = from_geo(geojson, image, self.meta, url=self._base_url,
-                                        conn=self.conn, **kwargs)
+        params = dict(self.meta, **kwargs, url=self._base_url, conn=self.conn)
+        doc = from_geo(geojson, image, sensors=self.sensors, **params)
 
     def append_from_tarball(self, s3path, **kwargs):
         from_tarball(s3path, self.meta, conn=self.conn,
