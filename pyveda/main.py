@@ -148,4 +148,4 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
 create_from_tarball = from_tarball
 
 def create_MLImage(cat_id, pansharpen=False, **kwargs):
-    return(MLImage(cat_id,pansharpen))
+    return MLImage(cat_id,pansharpen)
