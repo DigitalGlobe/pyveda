@@ -3,6 +3,7 @@ from pyveda.exceptions import RemoteCollectionNotFound
 from pyveda.auth import Auth
 from pyveda.vedaset import VedaBase, VedaStream
 from pyveda.veda.loaders import from_geo, from_tarball
+from pyveda.fetch.compat import build_vedabase
 from pyveda.veda.api import _bec, VedaCollectionProxy
 
 gbdx = Auth()
@@ -87,9 +88,16 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
     if not dataset_id or dataset_name:
         raise ValueError("When calling pyveda.store, specify one of: dataset_id, dataset_name")
     coll = dataset_exists(dataset_id=dataset_id, dataset_name=dataset_name)
-    vb = VedaBase._from_vedacollection(coll, count=count, partition=partition, **kwargs)
-    urlgen = vb._generate_sample_urls()
-    build_vedabase(vb, gbdx.gbdx_connection.access_token, **kwargs)
+    vb = VedaBase.from_path(filename, 
+                          mltype=coll.mltype,
+                          klasses=coll.classes,
+                          image_shape=coll.imshape,
+                          image_dtype=coll.dtype,
+                          **kwargs)
+    urlgen = coll.gen_sample_ids()
+    token = gbdx.gbdx_connection.access_token
+    build_vedabase(vb, urlgen, partition, count, token,
+                       label_threads=1, image_threads=10, **kwargs)
     vb.flush()
     return vb
 

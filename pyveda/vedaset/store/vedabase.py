@@ -64,11 +64,11 @@ class H5DataBase(BaseDataSet):
     def __init__(self, fname, mltype=None, klasses=None, image_shape=None,
                  image_dtype=None, title="NoTitle", framework=None,
                  overwrite=False, mode="a"):
-
         self._framework = framework
         self._fw_loader = lambda x: x
 
         if os.path.exists(fname):
+            # TODO need to figure how to deal with existing files.
             if overwrite:
                 os.remove(fname)
             else:
@@ -196,7 +196,7 @@ class H5DataBase(BaseDataSet):
         inst = cls(fname, **kwargs)
         return inst
 
-    @classmethod
-    def from_vc(cls, vc, **kwargs):
-        # Load an empty H5DataBase from a VC
-        pass
+    #@classmethod
+    #def from_vc(cls, vc, **kwargs):
+    #    # Load an empty H5DataBase from a VC
+        

@@ -11,7 +11,6 @@ import numpy as np
 from pyveda.auth import Auth
 from shapely.geometry import shape as shp, mapping, box
 
-from pyveda.fetch.compat import build_vedabase
 from pyveda.veda.props import prop_wrap, VEDAPROPS
 from pyveda.veda.loaders import from_geo, from_tarball
 
@@ -231,7 +230,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
 
     def _page_sample_ids(self, page_size=100, page_id=None):
         """ Fetch a batch of datapoint ids """
-        resp = self.conn.get("{}/ids?pageSize={}&pageId={}".format(self._data_url, page_size, page_id))
+        resp = self.conn.get("{}/{}/ids?pageSize={}&pageId={}".format(self._data_url, self.id, page_size, page_id))
         resp.raise_for_status()
         data = resp.json()
         return data['ids'], data['nextPageId']
@@ -262,7 +261,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         meta = {k: v for k, v in r.json()['properties'].items() if k in self._metaprops}
         self._meta.update(meta)
 
-    def gen_sample_ids(self, count=None, page_size=100):
+    def gen_sample_ids(self, count=None, page_size=100, get_urls=True):
         """ Creates a generator of Datapoint IDs or URLs for every datapoint in the VedaCollection
             This is useful for gaining access to the ID or the URL for datapoints.
             Args:
@@ -297,7 +296,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         qs = self._querystring(includeLinks=False)
         label_url = "{}/datapoints/{}?{}".format(self._host, _id, qs)
         image_url = "{}/datapoints/{}/image.tif".format(self._host, _id)
-        return {_id, [label_url, image_url]}
+        return (_id, [label_url, image_url])
 
     def append_from_geojson(self, geojson, image, **kwargs):
         if image.dtype is not self.dtype:
