@@ -2,29 +2,28 @@ from abc import ABC, abstractmethod
 
 class ABCDataVariable(ABC):
 
-    _type = "ABCDataVariale"
+    _vtyp = "ABCDataVariale"
     pass
 
 
 class ABCDataSample(ABC):
 
-    _typ = "ABCDataSample"
+    _vtyp = "ABCDataSample"
     pass
 
-
-class ABCMetaCollection(ABC):
-
-    _typ = "ABCMetaCollection"
-
-    @property
-    @abstractmethod
-    def id(self):
-        raise NotImplementedError
 
 
 class ABCVariableIterator(ABC):
     """Low level data access api to homogeneous sequences of data in PyVeda"""
-    _typ = "ABCVariableIterator"
+    _vtyp = "ABCVariableIterator"
+
+    @abstractmethod
+    def __len__(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def __getitem__(self, item):
+        raise NotImplementedError
 
     @abstractmethod
     def __iter__(self):
@@ -37,7 +36,15 @@ class ABCVariableIterator(ABC):
 
 class ABCSampleIterator(ABC):
     """Pair-wise access patterns defined on a group of BaseVedaSequences"""
-    _typ = "ABCSampleIterator"
+    _vtyp = "ABCSampleIterator"
+
+    @abstractmethod
+    def __len__(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def __getitem__(self, item):
+        raise NotImplementedError
 
     @abstractmethod
     def __iter__(self, spec):
@@ -58,35 +65,13 @@ class ABCSampleIterator(ABC):
         raise NotImplementedError
 
 
-class ABCVariableArray(ABCVariableIterator):
-
-    _typ = "ABCVariableArray"
-
-    @abstractmethod
-    def __len__(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def __getitem__(self, item):
-        raise NotImplementedError
-
-
-class ABCSampleArray(ABCSampleIterator):
-
-    _typ = "ABCSampleArray"
-
-    @abstractmethod
-    def __len__(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def __getitem__(self):
-        raise NotImplementedError
-
-
-class ABCDataSet(ABCMetaCollection):
+class ABCDataSet(ABC):
     """Core representation of partitioned Machine-Learning datasets in PyVeda"""
-    _typ = "ABCDataSet"
+    _vtyp = "ABCDataSet"
+
+    @abstractmethod
+    def __len__(self):
+        raise NotImplementedError
 
     @property
     @abstractmethod
@@ -104,17 +89,34 @@ class ABCDataSet(ABCMetaCollection):
         raise NotImplementedError
 
 
-class ABCDataStore(ABCDataSet):
+class ABCMetaProps(ABC):
 
-    _typ = "ABCDataStore"
+    _vtyp = "ABCMetaProps"
 
+    @property
     @abstractmethod
-    def __len__(self):
+    def mltype(self):
         raise NotImplementedError
 
+    @property
     @abstractmethod
-    def __getitem__(self):
+    def classes(self):
         raise NotImplementedError
+
+
+class BaseVariableArray(ABCVariableIterator):
+
+    _vtype = "BaseVariableArray"
+
+
+class BaseSampleArray(ABCSampleIterator):
+
+    _vtyp = "BaseSampleArray"
+
+
+class BaseDataSet(ABCDataSet, ABCMetaProps):
+
+    _vtyp = "BaseDataSet"
 
 
 

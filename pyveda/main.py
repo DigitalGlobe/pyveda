@@ -1,9 +1,9 @@
 import os
-import mmap
 from pyveda.exceptions import RemoteCollectionNotFound
 from pyveda.auth import Auth
 from pyveda.vedaset import VedaBase, VedaStream
-from pyveda.veda.api import VedaCollectionProxy
+from pyveda.veda.api import _bec, VedaCollectionProxy
+from pyveda.veda.loaders import from_geo, from_tarball
 
 gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
@@ -12,11 +12,9 @@ conn = gbdx.gbdx_connection
 __all__ = ["search",
            "load",
            "store",
-           "load_store",
-           "load_existing",
            "dataset_exists",
-           "build_collection_from_geo",
-           "build_collection_from_tarball"]
+           "create_collection_from_geo",
+           "create_collection_from_tarball"]
 
 def _map_contains_submap(mmap, submap, hard_match=True):
     """
@@ -50,7 +48,7 @@ def dataset_exists(dataset_id=None, dataset_name=None, conn=conn, host=HOST,
                                                     dataset_id=dataset_id))
         r.raise_for_status()
         if r.status_code == 200:
-            return True if not return_coll else VedaCollectionProxy.from_docs(r.json())
+            return True if not return_coll else VedaCollectionProxy.from_doc(r.json())
     if dataset_name:
         results = search(filters={"name": dataset_name})
         if results:
@@ -75,9 +73,9 @@ def load(dataset_id=None, dataset_name=None, filename=None, count=None,
     elif dataset_name:
         vcp = dataset_exists(dataset_name=dataset_name)
     if vcp:
-        return load_existing(obj=vcp, count=count, partition=partition, **kwargs)
+        return _load_existing(vcp, partition=partition, **kwargs)
     if filename:
-        return load_store(filename)
+        return _load_store(filename, **kwargs)
     raise RemoteCollectionNotFound("No Collection found on Veda for identifier: {}".format(identifier))
 
 
@@ -96,66 +94,15 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
     return vb
 
 
-def load_existing(vid, *args, **kwargs):
-    return VedaStream.from_id(vid, *args, **kwargs)
+def _load_existing(vc, *args, **kwargs):
+    return VedaStream.from_vc(vc, *args, **kwargs)
 
 
-def load_store(filename):
-    return VedaBase.from_path(filename)
+def _load_store(filename, **kwargs):
+    return VedaBase.from_path(filename, **kwargs)
 
 
-def build_collection_from_tarball(s3path, meta, default_label=None,
-                                  label_field=None, conn=conn,
-                                  url="{}/data/bulk".format(HOST)):
-    options = {
-        'default_label': default_label,
-        'label_field':  label_field,
-        's3path': s3path
-    }
-    body = {
-        'metadata': meta,
-        'options': options
-    }
-    doc = conn.post(url, json=body).json()
-    return doc
-
-
-def build_collection_from_geo(geojson, image, meta, match="INTERSECTS",
-                              default_label=None, label_field=None,
-                              workers=1, cache_type="stream",
-                              url="{}/data".format(HOST), conn=conn, **kwargs):
-    """
-        Loads a geojson file into the VC
-    """
-    if isinstance(geojson, str) and not os.path.exists(geojson):
-        raise ValueError('{} does not exist'.format(geojson))
-    elif isinstance(geojson, dict):
-        with NamedTemporaryFile(mode="w+t", prefix="veda", suffix="json", delete=False) as temp:
-            temp.file.write(json.dumps(geojson))
-        geojson = temp.name
-
-    rda_node = image.rda.graph()['nodes'][0]['id']
-    options = {
-        'match':  match,
-        'default_label': default_label,
-        'label_field':  label_field,
-        'cache_type':  cache_type,
-        'workers': workers,
-        'graph': image.rda_id,
-        'node': rda_node,
-    }
-    if 'mask' in kwargs:
-        options['mask'] = shp(kwargs.get('mask')).wkt
-
-    with open(geojson, 'r') as fh:
-        mfile = mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ)
-        body = {
-            'metadata': (None, json.dumps(meta), 'application/json'),
-            'file': (os.path.basename(geojson), mfile, 'application/text'),
-            'options': (None, json.dumps(options), 'application/json')
-        }
-        doc = conn.post(url, files=body).json()
-    return doc
-
+create_collection_from_geo = from_geo
+create_collection_from_tarball = from_tarball
 
 

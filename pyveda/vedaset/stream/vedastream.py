@@ -5,10 +5,9 @@ import threading
 import time
 from functools import partial
 
-from pyveda.veda.api import VedaCollectionProxy
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
-from pyveda.vedaset.abstract import ABCDataSet, ABCSampleIterator, ABCVariableArray
+from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
 
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):
@@ -39,7 +38,7 @@ class VSGenWrapper(object):
         return val
 
 
-class StreamingVariableArray(ABCVariableArray):
+class BufferedVariableArray(BaseVariableArray):
     def __init__(self, buf):
         self.buf = buf
 
@@ -53,7 +52,7 @@ class StreamingVariableArray(ABCVariableArray):
         return self.buf[idx]
 
 
-class StreamingSampleArray(ABCSampleIterator):
+class BufferedSampleArray(BaseSampleArray):
     def __init__(self, allocated, vset):
         self.allocated = allocated
         self._n_consumed = 0
@@ -105,35 +104,35 @@ class StreamingSampleArray(ABCSampleIterator):
     @property
     def images(self):
         _, imgs = zip(*self._vset._buf)
-        return StreamingVaribleArray(imgs)
+        return BufferedVaribleArray(imgs)
 
     @property
     def labels(self):
         lbls, _ = zip(*self._vset._buf)
-        return StreamingVariableArray(lbls)
+        return BufferedVariableArray(lbls)
 
 
-class DataStream(ABCDataSet):
+class BufferedDataStream(BaseDataSet):
     _lbl_handler_map = {"classification": ClassificationHandler,
                        "segmentation": SegmentationHandler,
                        "object_detection": ObjDetectionHandler}
 
-    def __init__(self, mltype, classes, count, gen, partition, bufsize,
-                 image_shape, cachetype=collections.deque, auto_startup=False,
-                 auto_shutdown=False, fetcher=None, loop=None):
+    def __init__(self, mltype, classes, count, gen, image_shape,
+                 partition=[70, 20, 10], bufsize=100, cachetype=collections.deque,
+                 auto_startup=False, auto_shutdown=False, fetcher=None, loop=None):
         self.partition = partition
         self.count = count
         self.image_shape = image_shape
         self._mltype = mltype
         self._classes = classes
         self._gen = VSGenWrapper(self, gen)
-        self._bufsize = bufsize
         self._auto_startup = auto_startup
         self._auto_shutdown = auto_shutdown
         self._exhausted = False
         self._train = None
         self._test = None
         self._validate = None
+        self._bufsize = bufsize if bufsize < self.count else self.count
 
         self._fetcher = fetcher
         self._loop = loop
@@ -147,22 +146,9 @@ class DataStream(ABCDataSet):
         if auto_startup:
             self._start_consumer()
 
-    @classmethod
-    def from_vc(cls, vc, count=None, bufsize=50, cachetype=collections.deque,
-                auto_startup=False, auto_shutdown=False, fetcher=None, loop=None):
-        if not count:
-            count = vc.count
-        if count > vc.count:
-            raise ValueError('Input count must be less than or equal to total size of input VedaCollection instance')
-        return cls(mltype=vc.mltype, classes=vc.classes, count=count,
-                          gen=vc.ids(), partition=vc.partition, bufsize=bufsize,
-                          image_shape=vc.imshape, cachetype=cachetype,
-                          auto_startup=auto_startup, auto_shutdown=auto_shutdown,
-                          fetcher=fetcher, loop=loop)
-
 
     def __len__(self):
-        return self._bufsize # Whatever for now
+        return self.count
 
     @property
     def mltype(self):
@@ -233,15 +219,13 @@ class DataStream(ABCDataSet):
 
     def _configure_worker(self, fetcher=None, loop=None):
         if not self._fetcher:
-            self._fetcher = self._configure_fetcher()
+            self._configure_fetcher()
         if not loop:
             loop = asyncio.new_event_loop()
         self._loop = loop
         self._thread = threading.Thread(target=partial(self._fetcher.run_loop, loop=loop))
 
     def _start_consumer(self):
-        if not self._fetcher:
-            self._configure_fetcher()
         if not self._thread:
             self._configure_worker()
 
@@ -258,9 +242,10 @@ class DataStream(ABCDataSet):
         self._thread.join()
         self._loop.close()
 
+    @classmethod
+    def from_vc(cls, vc, **kwargs):
+        return cls(vc.mltype, vc.classes, vc.count, vc.gen_sample_ids(),
+                   vc.imshape, **kwargs)
 
-class VedaStream(DataStream, VedaCollectionProxy):
-    def __init__(self, obj, **kwargs):
-        if not isinstance(obj, ABCMetaCollection):
-            raise ValueError("VedaStream must be initiated with a VedaCollection object")
+
 

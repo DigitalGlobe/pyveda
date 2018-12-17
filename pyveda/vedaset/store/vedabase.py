@@ -6,9 +6,8 @@ import tables
 from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, NDImageArray
-from pyveda.vedaset.abstract import ABCDataStore, ABCSampleArray
+from pyveda.vedaset.abstract import BaseSampleArray, BaseDataSet
 from pyveda.frameworks.augmentation_generator import BatchGenerator
-from pyveda.veda.api import VedaCollectionProxy
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
@@ -58,12 +57,13 @@ class WrappedDataNode(object):
 
 
 
-class DataBase(ABCDataStore):
+class H5DataBase(BaseDataSet):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
-    def __init__(self, fname, mltype=None, klasses=None, image_shape=None, image_dtype=None, framework=None,
-                 title="VedaBase", label_dtype=None, overwrite=False, mode="a"):
+    def __init__(self, fname, mltype=None, klasses=None, image_shape=None,
+                 image_dtype=None, title="NoTitle", framework=None,
+                 overwrite=False, mode="a"):
 
         self._framework = framework
         self._fw_loader = lambda x: x
@@ -191,7 +191,12 @@ class DataBase(ABCDataStore):
     def __del__(self):
         self.close()
 
+    @classmethod
+    def from_path(cls, fname, **kwargs):
+        inst = cls(fname, **kwargs)
+        return inst
 
-
-class VedaBase(DataBase, VedaCollectionProxy):
-    pass
+    @classmethod
+    def from_vc(cls, vc, **kwargs):
+        # Load an empty H5DataBase from a VC
+        pass

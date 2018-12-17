@@ -1,26 +1,19 @@
 import os
-import shutil
 import json
 import math
-import time
-import sys
-import inspect
-import types
 from functools import partial
 try:
     from urllib.parse import urlencode
 except:
     from urllib import urlencode
-from collections import namedtuple
-from tempfile import NamedTemporaryFile
 import numpy as np
 
 from pyveda.auth import Auth
 from shapely.geometry import shape as shp, mapping, box
 
 from pyveda.fetch.compat import build_vedabase
-from pyveda.vv.labelizer import Labelizer
 from pyveda.veda.props import prop_wrap, VEDAPROPS
+from pyveda.veda.loaders import from_geo, from_tarball
 
 VALID_MLTYPES = ['classification', 'object_detection', 'segmentation']
 VALID_MATCHTYPES = ['INSIDE', 'INTERSECT', 'ALL']
@@ -70,6 +63,10 @@ class BaseEndpointConstructor(object):
 
 
 class BaseClient(BaseEndpointConstructor):
+
+    @property
+    def _data_url(self):
+        return self._veda_load_furl.format(host_url=self._host)
 
     @property
     def _base_url(self):
@@ -128,10 +125,9 @@ class DataSampleClient(BaseClient):
 class DataCollectionClient(BaseClient):
     """ Veda API wrapper for remote DataCollection-relevant methods """
 
-    def __init__(self, host, conn=None):
+    def __init__(self, host, conn):
         super(DataCollectionClient, self).__init__(host)
-        if not conn:
-            self._conn = conn
+        self.conn = conn
 
     @property
     def _create_url(self):
@@ -199,7 +195,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def __init__(self, dataset_id, host=HOST, conn=conn, **kwargs):
         self._meta = {k: v for k, v in kwargs.items() if k in self._metaprops}
         self.id = dataset_id
-        super(VedaCollectionProxy, self).__init__(host)
+        super(VedaCollectionProxy, self).__init__(host, conn)
 
     @property
     def id(self):
@@ -222,7 +218,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             mltype = self.mltype
         return DataPoint(payload, shape=shape, dtype=dtype, mltype=mltype, **kwargs)
 
-    def _page_sameple_ids(self, page_size=100, page_id=None):
+    def _page_sample_ids(self, page_size=100, page_id=None):
         """ Fetch a batch of datapoint ids """
         resp = self.conn.get("{}/ids?pageSize={}&pageId={}".format(self._data_url, page_size, page_id))
         resp.raise_for_status()
@@ -277,7 +273,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
                 yield ids, next_page
 
         _count = 0
-        for ids, next_page in get(math.ceil(size/page_size)):
+        for ids, next_page in get(math.ceil(count/page_size)):
             for i in ids:
                 _count += 1
                 if _count <= count:
@@ -302,11 +298,11 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         if self.status == "BUILDING":
             raise VedaUploadError("Cannot load while server-side caching active")
         self.sensors.append(image.__class__.__name__)
-        doc = build_collection_from_geo(geojson, image, self.meta, url=self._base_url,
+        doc = from_geo(geojson, image, self.meta, url=self._base_url,
                                         conn=self.conn, **kwargs)
 
     def append_from_tarball(self, s3path, **kwargs):
-        build_collection_from_tarball(s3path, self.meta, conn=self.conn,
+        from_tarball(s3path, self.meta, conn=self.conn,
                                       url=self._base_url, **kwargs)
 
     @classmethod
