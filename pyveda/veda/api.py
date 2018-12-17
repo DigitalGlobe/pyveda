@@ -195,6 +195,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def __init__(self, dataset_id, host=HOST, conn=conn, **kwargs):
         self._meta = {k: v for k, v in kwargs.items() if k in self._metaprops}
         self.id = dataset_id
+        self._dataset_id = dataset_id
         super(VedaCollectionProxy, self).__init__(host, conn)
 
     @property
