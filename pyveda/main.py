@@ -2,8 +2,8 @@ import os
 from pyveda.exceptions import RemoteCollectionNotFound
 from pyveda.auth import Auth
 from pyveda.vedaset import VedaBase, VedaStream
-from pyveda.veda.api import _bec, VedaCollectionProxy
 from pyveda.veda.loaders import from_geo, from_tarball
+from pyveda.veda.api import _bec, VedaCollectionProxy
 
 gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
@@ -101,8 +101,48 @@ def _load_existing(vc, *args, **kwargs):
 def _load_store(filename, **kwargs):
     return VedaBase.from_path(filename, **kwargs)
 
+def create_collection_from_geo(geojson, image, name, tilesize=[256,256], match="INTERSECT",
+                              default_label=None, label_field=None,
+                              workers=1, cache_type="stream",
+                              dtype=None, description='',
+                              mltype="classification", public=False,
+                              partition=[100,0,0], mask=None,
+                              url="{}/data".format(HOST), conn=conn, **kwargs):
+    """
+        Loads geojson and an image into a new collection of data
 
-create_collection_from_geo = from_geo
+        Args:
+          geojson: geojson feature collection, in the following formats:
+              - a path to a geojson file
+              - a geojson feature collection in Python dictionary format
+          image: Any gbdxtools image object. Veda includes the MLImage type configured with the most commonly used options
+                 and only requires a Catalog ID.
+          name (str): A name for the TrainingSet.
+          mltype (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
+          tilesize (list): The shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
+          partition (list):Internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
+          imshape (list): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
+          dtype (str): Data type of image data.
+          description (str): An optional description of the training dataset. Useful for attaching external info and links to a collection.
+          public (bool): Indicates if data is publically available for others to access.
+          match: Generates a tile based on the topological relationship of the feature. Can be:
+              - `INSIDE`: the feature must be contained inside the tile bounds to generate a tile.
+              - `INTERSECT`: the feature only needs to intersect the tile. The feature will be cropped to the tile boundary (default).
+              - `ALL`: Generate all possible tiles that cover the bounding box of the input features, whether or not they contain or intersect features.
+          default_label: default label value to apply to all features when  `label` in the geojson `Properties` is missing.
+          label_field: Field in the geojson `Properties` to use for the label instead of `label`.
+          mask: A geojson geometry to use as a mask with caching tiles. When defined only tile within the mask will be cached.
+    """
+    assert isinstance(name, str), ValueError('Name must be defined as a string')
+    doc = from_geo(geojson, image, name=name, tilesize=tilesize, match=match,
+                   default_label=default_label, label_field=label_field,
+                   workers=workers, cache_type=cache_type,
+                   dtype=dtype, description=description,
+                   mltype=mltype, public=public,
+                   partition=partition, mask=mask,
+                   url=url, conn=conn, **kwargs)
+    return VedaCollectionProxy.from_doc(doc)
+
 create_collection_from_tarball = from_tarball
 
 

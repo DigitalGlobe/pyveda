@@ -45,7 +45,7 @@ def from_tarball(s3path, meta, default_label=None,
     return doc
 
 
-def from_geo(geojson, image, name, tilesize=[256,256], match="INTERSECT",
+def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
                               default_label=None, label_field=None,
                               workers=1, cache_type="stream",
                               dtype=None, description='',
@@ -83,8 +83,6 @@ def from_geo(geojson, image, name, tilesize=[256,256], match="INTERSECT",
         with NamedTemporaryFile(mode="w+t", prefix="veda", suffix="json", delete=False) as temp:
             temp.file.write(json.dumps(geojson))
         geojson = temp.name
-
-    assert isinstance(name, str), ValueError('Name must be defined as a string')
 
     if dtype is None:
        dtype = image.dtype
