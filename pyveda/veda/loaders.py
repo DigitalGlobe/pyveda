@@ -50,7 +50,7 @@ def from_geo(geojson, image, name, tilesize=[256,256], match="INTERSECTS",
                               workers=1, cache_type="stream",
                               dtype=None, description='',
                               mltype="classification", public=False,
-                              partition=[100,0,0], mask=None
+                              partition=[100,0,0], mask=None,
                               url="{}/data".format(HOST), conn=conn, **kwargs):
     """
         Loads a geojson file into the VC
