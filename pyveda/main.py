@@ -4,7 +4,7 @@ from pyveda.auth import Auth
 from pyveda.vedaset import VedaBase, VedaStream
 from pyveda.veda.loaders import from_geo, from_tarball
 from pyveda.veda.api import _bec, VedaCollectionProxy
-
+from pyveda.veda.rda import MLImage
 gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
 conn = gbdx.gbdx_connection
@@ -147,4 +147,5 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
 
 create_from_tarball = from_tarball
 
-
+def create_MLImage(cat_id, pansharpen=False, **kwargs):
+    return(MLImage(cat_id,pansharpen))
