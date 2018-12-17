@@ -14,7 +14,8 @@ __all__ = ["search",
            "store",
            "dataset_exists",
            "create_from_geojson",
-           "create_from_tarball"]
+           "create_from_tarball",
+           "create_MLImage"]
 
 def _map_contains_submap(mmap, submap, hard_match=True):
     """
