@@ -54,6 +54,7 @@ class BufferedVariableArray(BaseVariableArray):
 
 class BufferedSampleArray(BaseSampleArray):
     def __init__(self, allocated, vset):
+        print('VSET??', vset)
         self.allocated = allocated
         self._n_consumed = 0
         self._vset = vset
