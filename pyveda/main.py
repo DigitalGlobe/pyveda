@@ -1,4 +1,6 @@
 import os
+from contextlib import contextmanager
+
 from pyveda.exceptions import RemoteCollectionNotFound
 from pyveda.auth import Auth
 from pyveda.vedaset import VedaBase, VedaStream
@@ -11,7 +13,7 @@ HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
 conn = gbdx.gbdx_connection
 
 __all__ = ["search",
-           "load",
+           "open",
            "store",
            "dataset_exists",
            "create_from_geojson",
@@ -58,26 +60,37 @@ def dataset_exists(dataset_id=None, dataset_name=None, conn=conn, host=HOST,
 
     raise ValueError("Must provide dataset_id or name arguments")
 
-
-def load(dataset_id=None, dataset_name=None, filename=None, count=None,
-         partition=[70,20,10], **kwargs):
+def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10], **kwargs):
     """
     Main interface to access to remote, local and synced datasets
+
+    Args:
+      dataset_id (str): A valid dataset id for an existing collection
+      dataset_name (str): A name of an existing collection
+      filename (str): A local filename for a sync'd collection (created via store)
+      partition (list): A list of partition percentages for train, test, validate partitions
+
+    Returns:
+      Either an intance of VedaStream (via dataset_id or dataset_name) or VedaBase (when filename is not None)
     """
 
     if not dataset_id or dataset_name or filename:
         raise ValueError("When calling pyveda.load, specify one of: dataset_id, dataset_name, or filename")
     # Check for dataset on veda
     vcp = False
+    identifier = None
     if dataset_id:
+        identifier = dataset_id
         vcp = dataset_exists(dataset_id=dataset_id)
     elif dataset_name:
+        identifier = dataset_name
         vcp = dataset_exists(dataset_name=dataset_name)
     if vcp:
-        return _load_existing(vcp, partition=partition, **kwargs)
+        return _load_stream(vcp, partition=partition, **kwargs)
     if filename:
+        identifier = filename
         return _load_store(filename, **kwargs)
-    raise RemoteCollectionNotFound("No Collection found on Veda for identifier: {}".format(identifier))
+    raise RemoteCollectionNotFound("Collection not found".format(identifier))
 
 
 def store(filename, dataset_id=None, dataset_name=None, count=None,
@@ -94,7 +107,9 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
                           image_shape=coll.imshape,
                           image_dtype=coll.dtype,
                           **kwargs)
-    urlgen = coll.gen_sample_ids()
+    if count is None:
+        count = coll.count
+    urlgen = coll.gen_sample_ids(count=count)
     token = gbdx.gbdx_connection.access_token
     build_vedabase(vb, urlgen, partition, count, token,
                        label_threads=1, image_threads=10, **kwargs)
@@ -102,7 +117,7 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
     return vb
 
 
-def _load_existing(vc, *args, **kwargs):
+def _load_stream(vc, *args, **kwargs):
     return VedaStream.from_vc(vc, *args, **kwargs)
 
 
