@@ -93,7 +93,7 @@ def load(dataset_id=None, dataset_name=None, filename=None, count=None,
     Main interface to access to remote, local and synced datasets
     """
 
-    if not dataset_id or dataset_name or filename:
+    if not (dataset_id or dataset_name or filename):
         raise ValueError("When calling pyveda.load, specify one of: dataset_id, dataset_name, or filename")
     # Check for dataset on veda
     vcp = False
@@ -122,7 +122,7 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
     Returns:
         vedabase
     """
-    if not dataset_id or dataset_name:
+    if not (dataset_id or dataset_name):
         raise ValueError("When calling pyveda.store, specify one of: dataset_id, dataset_name")
     coll = dataset_exists(dataset_id=dataset_id, dataset_name=dataset_name)
     vb = VedaBase.from_path(filename, 
@@ -132,6 +132,8 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
                           image_dtype=coll.dtype,
                           **kwargs)
     urlgen = coll.gen_sample_ids()
+    if not count:
+        count = coll.count
     token = gbdx.gbdx_connection.access_token
     build_vedabase(vb, urlgen, partition, count, token,
                        label_threads=1, image_threads=10, **kwargs)

@@ -72,6 +72,7 @@ class BaseVedaSetFetcher(BatchFetchTracer):
                  write_executor=concurrent.futures.ThreadPoolExecutor,
                  run_tracer=False, *args, **kwargs):
 
+        
         self.max_concurrent_reqs = min(total_count, max_concurrent_requests)
         self.max_retries = max_retries
         self.timeout = timeout
@@ -202,6 +203,7 @@ class BaseVedaSetFetcher(BatchFetchTracer):
 class VedaBaseFetcher(BaseVedaSetFetcher):
     def __init__(self, reqs, **kwargs):
         self.reqs = reqs
+        print(kwargs)
         super(VedaBaseFetcher, self).__init__(**kwargs)
         self._pbar = None
         if has_tqdm and self._total_count:
