@@ -29,9 +29,9 @@ class ABCVariableIterator(ABC):
     def __iter__(self):
         raise NotImplementedError
 
-    @abstractmethod
-    def __next__(self):
-        raise NotImplementedError
+    #@abstractmethod
+    #def __next__(self):
+    #    raise NotImplementedError
 
 
 class ABCSampleIterator(ABC):

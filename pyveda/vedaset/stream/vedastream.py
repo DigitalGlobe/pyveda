@@ -54,7 +54,6 @@ class BufferedVariableArray(BaseVariableArray):
 
 class BufferedSampleArray(BaseSampleArray):
     def __init__(self, allocated, vset):
-        print('VSET??', vset)
         self.allocated = allocated
         self._n_consumed = 0
         self._vset = vset
@@ -85,6 +84,7 @@ class BufferedSampleArray(BaseSampleArray):
             # the thread running the asyncio loop to fetch more data while the
             # source generator is not yet exhausted
             dps = self._vset._q.get()
+            
             self._n_consumed += 1
             return dps
 
@@ -105,7 +105,7 @@ class BufferedSampleArray(BaseSampleArray):
     @property
     def images(self):
         _, imgs = zip(*self._vset._buf)
-        return BufferedVaribleArray(imgs)
+        return BufferedVariableArray(imgs)
 
     @property
     def labels(self):
@@ -118,11 +118,11 @@ class BufferedDataStream(BaseDataSet):
                        "segmentation": SegmentationHandler,
                        "object_detection": ObjDetectionHandler}
 
-    def __init__(self, mltype, classes, count, gen, image_shape,
+    def __init__(self, mltype, classes, _count, gen, image_shape,
                  partition=[70, 20, 10], bufsize=100, cachetype=collections.deque,
-                 auto_startup=False, auto_shutdown=False, fetcher=None, loop=None):
+                 auto_startup=False, auto_shutdown=False, fetcher=None, loop=None, **kwargs):
         self.partition = partition
-        self.count = count
+        self.count = _count
         self.image_shape = image_shape
         self._mltype = mltype
         self._classes = classes
@@ -227,6 +227,8 @@ class BufferedDataStream(BaseDataSet):
         self._thread = threading.Thread(target=partial(self._fetcher.run_loop, loop=loop))
 
     def _start_consumer(self):
+        if not self._fetcher:
+            self._configure_fetcher()
         if not self._thread:
             self._configure_worker()
 
@@ -245,8 +247,16 @@ class BufferedDataStream(BaseDataSet):
 
     @classmethod
     def from_vc(cls, vc, **kwargs):
-        return cls(vc.mltype, vc.classes, vc.count, vc.gen_sample_ids(),
+        return cls(vc.mltype, vc.classes, vc.count, vc.gen_sample_ids(**kwargs),
                    vc.imshape, **kwargs)
+
+    def __enter__(self):
+        self._start_consumer()
+        return self
+
+    def __exit__(self, *args):
+        self._stop_consumer()
+
 
 
 
