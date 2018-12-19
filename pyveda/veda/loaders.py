@@ -10,7 +10,7 @@ gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
 conn = gbdx.gbdx_connection
 
-def args_to_meta(name, description, dtype, imshape, 
+def args_to_meta(name, description, dtype, imshape,
                  mltype, partition, public, sensors):
     """
       Helper method for just building a dict of meta fields to pass to the API
@@ -25,13 +25,12 @@ def args_to_meta(name, description, dtype, imshape,
       'partition': partition,
       'sensors': sensors,
       'classes': [],
-      'bounds': None 
+      'bounds': None
     }
-
 
 def from_tarball(s3path, name=None, dtype='uint8',
                                     imshape=[3,256,256],
-                                    label_field=None, 
+                                    label_field=None,
                                     conn=conn,
                                     default_label=None,
                                     mltype="classification",
@@ -39,9 +38,14 @@ def from_tarball(s3path, name=None, dtype='uint8',
                                     public=False,
                                     sensors=[],
                                     partition=[100,0,0],
-                                    url="{}/data/bulk".format(HOST)):
-    dtype = np.dtype(dtype) 
+                                    url="{}/data/bulk".format(HOST),
+                                    **kwargs):
+    dtype = np.dtype(dtype)
     meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors)
+    # if 'dataset_id' not in kwargs:
+    #     meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors)
+    # else:
+    #     meta = kwargs
     options = {
         'default_label': default_label,
         'label_field':  label_field,
@@ -128,5 +132,3 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
         }
         doc = conn.post(url, files=body).json()
     return doc
-
-
