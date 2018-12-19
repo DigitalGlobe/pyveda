@@ -15,11 +15,11 @@ from requests.exceptions import HTTPError
 
 class MainFunctionsTest(unittest.TestCase):
     def setUp(self):
-        id = 'a15f07fa-85d4-4af7-a22e-7e0c50c7dfb9'
+        id = 'f9548932-29d5-4668-bf9b-3644b335491b'
         self.vcp = VedaCollectionProxy.from_id(id)
         self.h5 = './test.h5'
-        self.vs = vb.load(self.vcp)
-        
+        #self.vs = vb.load(self.vcp)
+
     def tearDown(self):
             try:
                 os.remove(self.h5)
@@ -34,15 +34,15 @@ class MainFunctionsTest(unittest.TestCase):
             self.assertTrue(isinstance(x, VedaCollectionProxy))
 
     def test_datasetexists(self):
-        self.assertTrue(isinstance(pv.dataset_exists('a15f07fa-85d4-4af7-a22e-7e0c50c7dfb9'), VedaCollectionProxy))
-        self.assertTrue(isinstance(pv.dataset_exists(dataset_name = 'Austin Segmentation'), VedaCollectionProxy))
+        self.assertTrue(isinstance(pv.dataset_exists('f9548932-29d5-4668-bf9b-3644b335491b'), VedaCollectionProxy))
+        #self.assertTrue(isinstance(pv.dataset_exists(dataset_name = 'Austin Segmentation'), VedaCollectionProxy))
         #self.assertRaises(HTTPError, pv.dataset_exists, 'a')
         #self.assertRaises(HTTPError, pv.dataset_exists, None, dataset_name = 'xyz')
 
     def test_load(self):
         self.assertRaises(ValueError, pv.store, self.vcp)
         self.assertRaises(HTTPError, pv.store, dataset_id = id, filename = self.h5)
-        self.assertTrue(isinstance(pv.load('ce6c0c66-f679-4bb5-aa14-eaa1579fe282'), VedaStream))
+        self.assertTrue(isinstance(pv.open('f9548932-29d5-4668-bf9b-3644b335491b'), VedaStream))
 
     def test_store(self):
         self.assertRaises(ValueError, pv.store, self.vcp)
@@ -50,10 +50,10 @@ class MainFunctionsTest(unittest.TestCase):
         #self.assertTrue(isinstance(pv.store(dataset_id = 'a15f07fa-85d4-4af7-a22e-7e0c50c7dfb9', filename = self.h5, count = 10), VedaBase))
 
     def test_loadexisting(self):
-        self.assertTrue(isinstance(pv.load(self.vcp), VedaStream))
+        self.assertTrue(isinstance(pv.open('f9548932-29d5-4668-bf9b-3644b335491b'), VedaStream))
 
     def test_loadstore(self):
-        self.assertTrue(isinstance(pv.store(dataset_id = 'a15f07fa-85d4-4af7-a22e-7e0c50c7dfb9', filename = self.h5, count = 10), VedaBase))
+        self.assertTrue(isinstance(pv.store(dataset_id = 'f9548932-29d5-4668-bf9b-3644b335491b', filename = self.h5, count = 10), VedaBase))
 
     def test_createfromgeojson(self):
         pass
