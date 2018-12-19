@@ -221,9 +221,9 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
 
 def create_from_tarball(s3path, name=None, dtype=None, label_field=None,
                                 default_label=None, mltype="classification",
-                                description='', public=False, partition=[100,0,0],
-                                sensors=[], url="{}/data/bulk".format(HOST),
-                                conn=conn, **kwargs):
+                                description='', imshape=[3,256,256], public=False,
+                                partition=[100,0,0], sensors=[],
+                                url="{}/data/bulk".format(HOST), conn=conn, **kwargs):
     """
     Loads a tarball of image and geojson files from s3 into a new collection of data
     Args:
@@ -242,7 +242,7 @@ def create_from_tarball(s3path, name=None, dtype=None, label_field=None,
     """
     assert isinstance(name, str), ValueError('Name must be defined as a string')
     doc = from_tarball(s3path, name=name,  dtype=dtype, label_field=label_field,
-                       default_label=default_label, mltype=mltype,
+                       default_label=default_label, mltype=mltype, imshape=imshape
                        description=description, public=public, partition=partition,
                        sensors=sensors, url=url, conn=conn, **kwargs)
     return VedaCollectionProxy.from_doc(doc)
