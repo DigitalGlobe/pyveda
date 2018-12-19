@@ -258,6 +258,9 @@ class BufferedDataStream(BaseDataSet):
         pass
         #self._stop_consumer()
 
+    def __getitem__(self, slc):
+        return slc
+
 
 
 
