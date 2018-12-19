@@ -255,7 +255,8 @@ class BufferedDataStream(BaseDataSet):
         return self
 
     def __exit__(self, *args):
-        self._stop_consumer()
+        pass
+        #self._stop_consumer()
 
 
 

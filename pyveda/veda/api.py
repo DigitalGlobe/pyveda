@@ -296,8 +296,8 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         qs = self._querystring(includeLinks=False)
         label_url = "{}/datapoints/{}?{}".format(self._host, _id, qs)
         image_url = "{}/datapoints/{}/image.tif".format(self._host, _id)
-        return (_id, [label_url, image_url])
-        #return [label_url, image_url]
+        #return (_id, [label_url, image_url])
+        return (label_url, image_url)
 
     def append_from_geojson(self, geojson, image, **kwargs):
         if image.dtype is not self.dtype:
