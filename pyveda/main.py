@@ -65,8 +65,7 @@ def from_id(dataset_id= None, conn = conn, host = HOST):
         dataset_id (str): ID of the dataset to check
         conn (Oauth2 connection): server connection to use
         host (str): Host address to use
-        return_coll (bool): Returns the collection when True
-
+        
     Returns:
         VedaCollectionProxy: the dataset
     '''
@@ -86,7 +85,6 @@ def from_name(dataset_name = None, conn = conn, host = HOST):
             dataset_name (str): name of the dataset to check
             conn (Oauth2 connection): server connection to use
             host (str): Host address to use
-            return_coll (bool): Returns the collection when True
 
         Returns:
             VedaCollectionProxy: the dataset
