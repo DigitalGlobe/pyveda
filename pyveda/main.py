@@ -59,13 +59,13 @@ def search(params={}, host=HOST, filters={}, **kwargs):
             if _map_contains_submap(s["properties"], filters, **kwargs)]
 
 def from_id(dataset_id= None, conn = conn, host = HOST):
-    ''' Check if a dataset exists based on the id and optionally returns the dataset
+    ''' Returns the dataset as a VedaCollectionProxy from an ID if it exists.
 
     Args:
         dataset_id (str): ID of the dataset to check
         conn (Oauth2 connection): server connection to use
         host (str): Host address to use
-        
+
     Returns:
         VedaCollectionProxy: the dataset
     '''
@@ -79,7 +79,7 @@ def from_id(dataset_id= None, conn = conn, host = HOST):
         raise Exception('Invalid dataset id, does not exist in the database.')
 
 def from_name(dataset_name = None, conn = conn, host = HOST):
-        ''' Check if a dataset exists based on the name and optionally returns the dataset
+        ''' Returns the dataset as a VedaCollectionProxy from a name if it exists.
 
         Args:
             dataset_name (str): name of the dataset to check
