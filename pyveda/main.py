@@ -15,7 +15,8 @@ conn = gbdx.gbdx_connection
 __all__ = ["search",
            "open",
            "store",
-           "dataset_exists",
+           "from_id",
+           "from_name",
            "create_from_geojson",
            "create_from_tarball"]
 
@@ -58,13 +59,41 @@ def search(params={}, host=HOST, filters={}, **kwargs):
             if _map_contains_submap(s["properties"], filters, **kwargs)]
 
 
-def dataset_exists(dataset_id=None, dataset_name=None, conn=conn, host=HOST,
-                   return_coll=True):
-    ''' Check if a dataset exists and optionally returns the dataset
+# def dataset_exists(dataset_id=None, dataset_name=None, conn=conn, host=HOST,
+#                    return_coll=True):
+#     ''' Check if a dataset exists and optionally returns the dataset
+#
+#     Args:
+#         dataset_id (str): ID of the dataset to check
+#         dataset_name (str): Name of the dataset to check
+#         conn (Oauth2 connection): server connection to use
+#         host (str): Host address to use
+#         return_coll (bool): Returns the collection when True
+#
+#     Returns:
+#         bool: Whether the dataset exists (if return_coll=False)
+#         or
+#         VedaCollectionProxy: the dataset (if return_coll=True)
+#     '''
+#     if dataset_id:
+#         r = conn.get(_bec._dataset_base_furl.format(host_url=host,
+#                                                     dataset_id=dataset_id))
+#         r.raise_for_status()
+#         if r.status_code == 200:
+#             return True if not return_coll else VedaCollectionProxy.from_doc(r.json())
+#     if dataset_name:
+#         results = search(filters={"name": dataset_name})
+#         if results:
+#             return True if not return_coll else results[0]
+#         return False
+#
+#     raise ValueError("Must provide dataset_id or name arguments")
+
+def from_id(dataset_id= None, conn = conn, host = HOST, return_coll = True):
+    ''' Check if a dataset exists based on the id and optionally returns the dataset
 
     Args:
         dataset_id (str): ID of the dataset to check
-        dataset_name (str): Name of the dataset to check
         conn (Oauth2 connection): server connection to use
         host (str): Host address to use
         return_coll (bool): Returns the collection when True
@@ -74,19 +103,35 @@ def dataset_exists(dataset_id=None, dataset_name=None, conn=conn, host=HOST,
         or
         VedaCollectionProxy: the dataset (if return_coll=True)
     '''
-    if dataset_id:
-        r = conn.get(_bec._dataset_base_furl.format(host_url=host,
-                                                    dataset_id=dataset_id))
-        r.raise_for_status()
-        if r.status_code == 200:
-            return True if not return_coll else VedaCollectionProxy.from_doc(r.json())
-    if dataset_name:
+
+    r = conn.get(_bec._dataset_base_furl.format(host_url=host,
+                                                dataset_id=dataset_id))
+    r.raise_for_status()
+    if r.status_code == 200:
+        return True if not return_coll else VedaCollectionProxy.from_doc(r.json())
+    else:
+        raise Exception('Invalid dataset id, does not exist in the database.')
+
+def from_name(dataset_name = None, conn = conn, host = HOST, return_coll = True):
+        ''' Check if a dataset exists based on the name and optionally returns the dataset
+
+        Args:
+            dataset_name (str): name of the dataset to check
+            conn (Oauth2 connection): server connection to use
+            host (str): Host address to use
+            return_coll (bool): Returns the collection when True
+
+        Returns:
+            bool: Whether the dataset exists (if return_coll=False)
+            or
+            VedaCollectionProxy: the dataset (if return_coll=True)
+        '''
+
         results = search(filters={"name": dataset_name})
         if results:
             return True if not return_coll else results[0]
-        return False
-
-    raise ValueError("Must provide dataset_id or name arguments")
+        else:
+            raise Exception('Invalid dataset name, does not exist in the database.')
 
 def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10], **kwargs):
     """
@@ -107,9 +152,11 @@ def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10]
     # Check for dataset on veda
     vcp = False
     if dataset_id:
-        vcp = dataset_exists(dataset_id=dataset_id)
+        #vcp = dataset_exists(dataset_id=dataset_id)
+        vcp = from_id(dataset_id = dataset_id)
     elif dataset_name:
-        vcp = dataset_exists(dataset_name=dataset_name)
+        #vcp = dataset_exists(dataset_name=dataset_name)
+        vcp = from_name(dataset_name = dataset_name)
     if vcp:
         return _load_stream(vcp, partition=partition, **kwargs)
     if filename:
@@ -131,10 +178,13 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
     Returns:
         vedabase
     """
-    if not dataset_id or dataset_name:
+    if not dataset_id and not dataset_name:
         raise ValueError("When calling pyveda.store, specify one of: dataset_id, dataset_name")
-    coll = dataset_exists(dataset_id=dataset_id, dataset_name=dataset_name)
-    vb = VedaBase.from_path(filename, 
+    if dataset_id:
+        coll = from_id(dataset_id=dataset_id)
+    if dataset_name:
+        coll = from_name(dataset_name = dataset_name)
+    vb = VedaBase.from_path(filename,
                           mltype=coll.mltype,
                           klasses=coll.classes,
                           image_shape=coll.imshape,
@@ -155,7 +205,7 @@ def _load_stream(vc, *args, **kwargs):
 
     Args:
         vc(): ?
-    
+
     Returns:
         VedaStream
     '''
@@ -165,9 +215,9 @@ def _load_stream(vc, *args, **kwargs):
 def _load_store(filename, **kwargs):
     ''' Opens a Veda collection from a local hdf5 file
 
-    Args: 
+    Args:
         filename(str): Path to the hdf5 file
-    
+
     Returns:
         VedaBase
     '''
@@ -220,5 +270,3 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
     return VedaCollectionProxy.from_doc(doc)
 
 create_from_tarball = from_tarball
-
-
