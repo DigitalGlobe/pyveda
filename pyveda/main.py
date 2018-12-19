@@ -89,7 +89,7 @@ def search(params={}, host=HOST, filters={}, **kwargs):
 #
 #     raise ValueError("Must provide dataset_id or name arguments")
 
-def from_id(dataset_id= None, conn = conn, host = HOST, return_coll = True):
+def from_id(dataset_id= None, conn = conn, host = HOST):
     ''' Check if a dataset exists based on the id and optionally returns the dataset
 
     Args:
@@ -99,20 +99,20 @@ def from_id(dataset_id= None, conn = conn, host = HOST, return_coll = True):
         return_coll (bool): Returns the collection when True
 
     Returns:
-        bool: Whether the dataset exists (if return_coll=False)
+        bool: Whether the dataset exists
         or
-        VedaCollectionProxy: the dataset (if return_coll=True)
+        VedaCollectionProxy: the dataset 
     '''
 
     r = conn.get(_bec._dataset_base_furl.format(host_url=host,
                                                 dataset_id=dataset_id))
     r.raise_for_status()
     if r.status_code == 200:
-        return True if not return_coll else VedaCollectionProxy.from_doc(r.json())
+        return VedaCollectionProxy.from_doc(r.json())
     else:
         raise Exception('Invalid dataset id, does not exist in the database.')
 
-def from_name(dataset_name = None, conn = conn, host = HOST, return_coll = True):
+def from_name(dataset_name = None, conn = conn, host = HOST):
         ''' Check if a dataset exists based on the name and optionally returns the dataset
 
         Args:
@@ -122,14 +122,14 @@ def from_name(dataset_name = None, conn = conn, host = HOST, return_coll = True)
             return_coll (bool): Returns the collection when True
 
         Returns:
-            bool: Whether the dataset exists (if return_coll=False)
+            bool: Whether the dataset exists
             or
-            VedaCollectionProxy: the dataset (if return_coll=True)
+            VedaCollectionProxy: the dataset
         '''
 
         results = search(filters={"name": dataset_name})
         if results:
-            return True if not return_coll else results[0]
+            return results[0]
         else:
             raise Exception('Invalid dataset name, does not exist in the database.')
 
