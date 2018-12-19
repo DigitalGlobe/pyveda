@@ -110,7 +110,7 @@ def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10]
       Either an intance of VedaStream (via dataset_id or dataset_name) or VedaBase (when filename is not None)
     """
 
-    if not dataset_id or dataset_name or filename:
+    if not dataset_id and not dataset_name and not filename:
         raise ValueError("When calling pyveda.load, specify one of: dataset_id, dataset_name, or filename")
     # Check for dataset on veda
     vcp = False
