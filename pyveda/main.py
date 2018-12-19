@@ -58,37 +58,6 @@ def search(params={}, host=HOST, filters={}, **kwargs):
     return [VedaCollectionProxy.from_doc(s) for s in results
             if _map_contains_submap(s["properties"], filters, **kwargs)]
 
-
-# def dataset_exists(dataset_id=None, dataset_name=None, conn=conn, host=HOST,
-#                    return_coll=True):
-#     ''' Check if a dataset exists and optionally returns the dataset
-#
-#     Args:
-#         dataset_id (str): ID of the dataset to check
-#         dataset_name (str): Name of the dataset to check
-#         conn (Oauth2 connection): server connection to use
-#         host (str): Host address to use
-#         return_coll (bool): Returns the collection when True
-#
-#     Returns:
-#         bool: Whether the dataset exists (if return_coll=False)
-#         or
-#         VedaCollectionProxy: the dataset (if return_coll=True)
-#     '''
-#     if dataset_id:
-#         r = conn.get(_bec._dataset_base_furl.format(host_url=host,
-#                                                     dataset_id=dataset_id))
-#         r.raise_for_status()
-#         if r.status_code == 200:
-#             return True if not return_coll else VedaCollectionProxy.from_doc(r.json())
-#     if dataset_name:
-#         results = search(filters={"name": dataset_name})
-#         if results:
-#             return True if not return_coll else results[0]
-#         return False
-#
-#     raise ValueError("Must provide dataset_id or name arguments")
-
 def from_id(dataset_id= None, conn = conn, host = HOST):
     ''' Check if a dataset exists based on the id and optionally returns the dataset
 
@@ -99,9 +68,7 @@ def from_id(dataset_id= None, conn = conn, host = HOST):
         return_coll (bool): Returns the collection when True
 
     Returns:
-        bool: Whether the dataset exists
-        or
-        VedaCollectionProxy: the dataset 
+        VedaCollectionProxy: the dataset
     '''
 
     r = conn.get(_bec._dataset_base_furl.format(host_url=host,
@@ -122,8 +89,6 @@ def from_name(dataset_name = None, conn = conn, host = HOST):
             return_coll (bool): Returns the collection when True
 
         Returns:
-            bool: Whether the dataset exists
-            or
             VedaCollectionProxy: the dataset
         '''
 
