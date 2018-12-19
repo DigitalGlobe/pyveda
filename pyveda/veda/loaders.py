@@ -29,9 +29,19 @@ def args_to_meta(name, description, dtype, imshape,
     }
 
 
-def from_tarball(s3path, meta, default_label=None,
-                                  label_field=None, conn=conn,
-                                  url="{}/data/bulk".format(HOST)):
+def from_tarball(s3path, name=None, dtype='uint8',
+                                    imshape=[3,256,256],
+                                    label_field=None, 
+                                    conn=conn,
+                                    default_label=None,
+                                    mltype="classification",
+                                    description="",
+                                    public=False,
+                                    sensors=[],
+                                    partition=[100,0,0],
+                                    url="{}/data/bulk".format(HOST)):
+    dtype = np.dtype(dtype) 
+    meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors)
     options = {
         'default_label': default_label,
         'label_field':  label_field,

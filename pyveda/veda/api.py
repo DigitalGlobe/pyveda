@@ -261,11 +261,11 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         meta = {k: v for k, v in r.json()['properties'].items() if k in self._metaprops}
         self._meta.update(meta)
 
-    def gen_sample_ids(self, count=None, page_size=100, get_urls=True):
+    def gen_sample_ids(self, count=None, page_size=100, get_urls=True, **kwargs):
         """ Creates a generator of Datapoint IDs or URLs for every datapoint in the VedaCollection
             This is useful for gaining access to the ID or the URL for datapoints.
             Args:
-            `size` (int): the total number of points to fetch, defaults to None
+            `count` (int): the total number of points to fetch, defaults to None
             `page_size` (int): the size of the pages to use in the API.
             `get_urls` (bool): generate urls tuples ((`dp_url`, `dp_image_url`)) instead of IDs.
             Returns:
@@ -296,7 +296,8 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         qs = self._querystring(includeLinks=False)
         label_url = "{}/datapoints/{}?{}".format(self._host, _id, qs)
         image_url = "{}/datapoints/{}/image.tif".format(self._host, _id)
-        return (_id, [label_url, image_url])
+        #return (_id, [label_url, image_url])
+        return (label_url, image_url)
 
     def append_from_geojson(self, geojson, image, **kwargs):
         if image.dtype is not self.dtype:
@@ -308,7 +309,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         if self.status == "BUILDING":
             raise VedaUploadError("Cannot load while server-side caching active")
         self.sensors.append(image.__class__.__name__)
-        params = dict(self.meta, **kwargs, url=self._base_url, conn=self.conn)
+        params = dict(self.meta, url=self._base_url, conn=self.conn, **kwargs)
         doc = from_geo(geojson, image, **params)
 
     def append_from_tarball(self, s3path, **kwargs):
