@@ -10,7 +10,6 @@ from pyveda.vedaset import VedaBase
 
 import unittest
 
-#from urllib.error import HTTPError
 from requests.exceptions import HTTPError
 
 class MainFunctionsTest(unittest.TestCase):
@@ -18,7 +17,6 @@ class MainFunctionsTest(unittest.TestCase):
         id = 'f9548932-29d5-4668-bf9b-3644b335491b'
         self.vcp = VedaCollectionProxy.from_id(id)
         self.h5 = './test.h5'
-        #self.vs = vb.load(self.vcp)
 
     def tearDown(self):
             try:
@@ -38,7 +36,6 @@ class MainFunctionsTest(unittest.TestCase):
 
     def test_from_id(self):
         self.assertTrue(isinstance(pv.from_id('f9548932-29d5-4668-bf9b-3644b335491b'), VedaCollectionProxy))
-
 
     def test_load(self):
         self.assertRaises(ValueError, pv.store, self.vcp)
