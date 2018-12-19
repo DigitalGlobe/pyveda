@@ -35,9 +35,9 @@ class MainFunctionsTest(unittest.TestCase):
 
     def test_datasetexists(self):
         self.assertTrue(isinstance(pv.dataset_exists('f9548932-29d5-4668-bf9b-3644b335491b'), VedaCollectionProxy))
-        #self.assertTrue(isinstance(pv.dataset_exists(dataset_name = 'Austin Segmentation'), VedaCollectionProxy))
-        #self.assertRaises(HTTPError, pv.dataset_exists, 'a')
-        #self.assertRaises(HTTPError, pv.dataset_exists, None, dataset_name = 'xyz')
+        self.assertTrue(isinstance(pv.dataset_exists(dataset_name = 'Austin Segmentation'), VedaCollectionProxy))
+        self.assertEqual(pv.dataset_exists(dataset_name = 'a'), False)
+        self.assertEqual(pv.dataset_exists(None, dataset_name = 'xyz'), False)
 
     def test_load(self):
         self.assertRaises(ValueError, pv.store, self.vcp)
@@ -47,7 +47,7 @@ class MainFunctionsTest(unittest.TestCase):
     def test_store(self):
         self.assertRaises(ValueError, pv.store, self.vcp)
         self.assertRaises(HTTPError, pv.store, dataset_id = id, filename = self.h5)
-        #self.assertTrue(isinstance(pv.store(dataset_id = 'a15f07fa-85d4-4af7-a22e-7e0c50c7dfb9', filename = self.h5, count = 10), VedaBase))
+        self.assertTrue(isinstance(pv.store(dataset_id = 'f9548932-29d5-4668-bf9b-3644b335491b', filename = self.h5, count = 10), VedaBase))
 
     def test_loadexisting(self):
         self.assertTrue(isinstance(pv.open('f9548932-29d5-4668-bf9b-3644b335491b'), VedaStream))
