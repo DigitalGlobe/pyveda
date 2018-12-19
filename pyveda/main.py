@@ -225,7 +225,20 @@ def create_from_tarball(s3path, name=None, dtype=None, label_field=None,
                                 sensors=[], url="{}/data/bulk".format(HOST),
                                 conn=conn, **kwargs):
     """
-    docs here
+    Loads a tarball of image and geojson files from s3 into a new collection of data
+    Args:
+        s3path: The path to the tarball in s3
+        name (str): A name for the TrainingSet.
+        mltype (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
+        partition (list):Internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
+        imshape (list): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
+        dtype (str): Data type of image data.
+        description (str): An optional description of the training dataset. Useful for attaching external info and links to a collection.
+        public (bool): Indicates if data is publically available for others to access.
+        default_label: default label value to apply to all features when  `label` in the geojson `Properties` is missing.
+        label_field: Field in the geojson `Properties` to use for the label instead of `label`.
+    Returns:
+        VedaCollectionProxy
     """
     assert isinstance(name, str), ValueError('Name must be defined as a string')
     doc = from_tarball(s3path, name=name,  dtype=dtype, label_field=label_field,
