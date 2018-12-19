@@ -35,10 +35,9 @@ class BaseEndpointConstructor(object):
     _dataset_create_furl = "{host_url}/datapoints"
     _dataset_release_furl = "/".join([_dataset_base_furl, "release"])
     _dataset_publish_furl = "/".join([_dataset_base_furl, "publish"])
-    _datapoint_create_furl = None
-    _datapoint_append_furl = None
-    _datapoint_update_furl = None
-    _datapoint_remove_furl = None
+    _datapoint_search_furl = "{base_url}/datapoints?{qs}"
+    _datapoint_base_furl = "{host_url}/datapoints/{datapoint_id}"
+    _datapoint_fetch_furl = "/".join([_dataset_base_furl, "datapoints", "{}?{}"])
 
     def __init__(self, host):
         self._host_ = host
@@ -85,40 +84,29 @@ _bec = BaseEndpointConstructor
 
 class DataSampleClient(BaseClient):
     """ Veda API wrapper for remote DataSample-relevant methods """
-    _accessors = ["create", "append", "update", "remove"]
-
-    def __init__(self, host=None, dataset_id=None, datasample_id=None):
-        self._dataset_id = dataset_id
-        self._datasample_id = datasample_id
+    _accessors = ["update", "remove"]
+    def __init__(self, payload, host=HOST, conn=conn, **kwargs):
+        self.data = payload['properties']
+        self.links = payload["properties"].get("links")
+        self._conn = conn
+        self._host = host
         super(DataSampleClient, self).__init__(host=host)
+        for k,v in self.data.items():
+            setattr(self, k, v)
+
 
     @property
-    def _create_url(self, dpid):
-        raise NotImplementedError
+    def _dp_url(self):
+        return self._datapoint_base_furl.format(host_url=self._host, 
+                                          dataset_id=self.dataset_id, 
+                                          datapoint_id=self.id)
 
-    @property
-    def _append_url(self, dpid):
-        raise NotImplementedError
+    def update(self, data):
+        pass
+        
 
-    @property
-    def _update_url(self, dpid):
-        raise NotImplementedError
-
-    @property
-    def _remove_url(self, dpid):
-        raise NotImplementedError
-
-    def create(self, dpid):
-        raise NotImplementedError
-
-    def append(self, dpid):
-        raise NotImplementedError
-
-    def update(self, dpid):
-        raise NotImplementedError
-
-    def remove(self, dpid):
-        raise NotImplementedError
+    def remove(self):
+        pass
 
 
 class DataCollectionClient(BaseClient):
@@ -183,6 +171,15 @@ class DataCollectionClient(BaseClient):
         return cls(host, dataset_id, conn=conn)
 
 
+class VedaSampleProxy(DataSampleClient):
+    """ Base class for handling all API interactions on points."""
+
+    def __init__(self, dataset_id, host=HOST, conn=conn, **kwargs):
+        self._meta = {k: v for k, v in kwargs.items() if k in self._metaprops}
+        self.id = t_id
+        self._dataset_id = dataset_id
+        super(VedaSampleProxy, self).__init__(host, conn)
+
 
 _VedaCollectionProxy = prop_wrap(DataCollectionClient, VEDAPROPS)
 
@@ -226,7 +223,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             dtype = self.dtype
         if not mltype:
             mltype = self.mltype
-        return DataPoint(payload, shape=shape, dtype=dtype, mltype=mltype, **kwargs)
+        return self._data_sample_client(payload, shape=shape, dtype=dtype, mltype=mltype, **kwargs)
 
     def _page_sample_ids(self, page_size=100, page_id=None):
         """ Fetch a batch of datapoint ids """
@@ -238,22 +235,23 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def fetch_samples_from_slice(self, idx, num_points=1, include_links=True, **kwargs):
         """ Fetch a single data point at a given index in the dataset """
         qs = self._querystring(offset=idx, limit=num_points, includeLinks=include_links)
-        resp = self.conn.get(self._datapoint_search_furl.format(self._datapoint_url, qs))
+        resp = self.conn.get(self._datapoint_search_furl.format(base_url=self._base_url, qs=qs))
         resp.raise_for_status()
         dps = [self._to_dp(p, **kwargs) for p in resp.json()]
+        return dps
 
     def fetch_sample_from_id(self, dp_id, include_links=True, **kwargs):
         """ Fetch a point for a given ID """
         qs = self._querystring(includeLinks=include_links)
-        resp = self.conn.get(self._datapoint_search_furl.format(self._base_url, dp_id, qs))
+        resp = self.conn.get(self._datapoint_fetch_furl.format(self._host, dp_id, qs))
         resp.raise_for_status()
         return self._to_dp(resp.json(), **kwargs)
 
-    def fetch_sample_from_id(self, idx, **kwargs):
-        return self.fetch_dps_from_slice(idx, **kwargs).pop()
-
     def fetch_samples_from_ids(self, dp_ids=[], **kwargs):
         return [self.fetch_sample_from_id(dp_id) for dp_id in dp_ids]
+    
+    def fetch_sample_from_index(self, idx, **kwargs):
+        return self.fetch_dps_from_slice(idx, **kwargs).pop()
 
     def refresh(self):
         r = self.conn.get(self._base_url)
@@ -333,6 +331,28 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         doc['properties']['host'] = host
         doc['properties']['id'] = _id
         return cls.from_doc(doc)
+
+    def __iter__(self):
+        self.n = 0
+        return self
+
+    def __next__(self):
+        if self.n <= self.count:
+            dp = self.fetch_samples_from_slice(self.n, num_points=1)
+            self.n += 1
+            return dp[0]
+        else:
+            raise StopIteration
+
+    def __getitem__(self, slc):
+        """ Enable slicing of the data by index/slice """
+        if slc.__class__.__name__ == 'int':
+            start = slc
+            limit = 1
+        else:
+            start, stop = slc.start, slc.stop
+            limit = (stop-1) - start
+        return self.fetch_samples_from_slice(start, num_points=limit)
 
 
 
