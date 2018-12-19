@@ -33,11 +33,12 @@ class MainFunctionsTest(unittest.TestCase):
         for x in pv.search():
             self.assertTrue(isinstance(x, VedaCollectionProxy))
 
-    def test_datasetexists(self):
-        self.assertTrue(isinstance(pv.dataset_exists('f9548932-29d5-4668-bf9b-3644b335491b'), VedaCollectionProxy))
-        self.assertTrue(isinstance(pv.dataset_exists(dataset_name = 'Austin Segmentation'), VedaCollectionProxy))
-        self.assertEqual(pv.dataset_exists(dataset_name = 'a'), False)
-        self.assertEqual(pv.dataset_exists(None, dataset_name = 'xyz'), False)
+    def test_from_name(self):
+        self.assertTrue(isinstance(pv.from_name('Austin Segmentation'), VedaCollectionProxy))
+
+    def test_from_id(self):
+        self.assertTrue(isinstance(pv.from_id('f9548932-29d5-4668-bf9b-3644b335491b'), VedaCollectionProxy))
+
 
     def test_load(self):
         self.assertRaises(ValueError, pv.store, self.vcp)
