@@ -242,7 +242,7 @@ def create_from_tarball(s3path, name=None, dtype=None, label_field=None,
     """
     assert isinstance(name, str), ValueError('Name must be defined as a string')
     doc = from_tarball(s3path, name=name,  dtype=dtype, label_field=label_field,
-                       default_label=default_label, mltype=mltype, imshape=imshape
+                       default_label=default_label, mltype=mltype, imshape=imshape,
                        description=description, public=public, partition=partition,
                        sensors=sensors, url=url, conn=conn, **kwargs)
     return VedaCollectionProxy.from_doc(doc)

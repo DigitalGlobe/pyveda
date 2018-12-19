@@ -313,8 +313,10 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         doc = from_geo(geojson, image, **params)
 
     def append_from_tarball(self, s3path, **kwargs):
-        from_tarball(s3path, self.meta, conn=self.conn,
-                                      url=self._base_url, **kwargs)
+        if self.status == "BUILDING":
+            raise VedaUploadError("Cannot load while server-side caching active")
+        params = dict(self.meta, url=self._base_url, conn=self.conn, **kwargs)
+        doc = from_tarball(s3path, **params)
 
     @classmethod
     def from_doc(cls, doc):
@@ -333,6 +335,3 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         doc['properties']['host'] = host
         doc['properties']['id'] = _id
         return cls.from_doc(doc)
-
-
-
