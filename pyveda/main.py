@@ -134,7 +134,7 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
     if not dataset_id or dataset_name:
         raise ValueError("When calling pyveda.store, specify one of: dataset_id, dataset_name")
     coll = dataset_exists(dataset_id=dataset_id, dataset_name=dataset_name)
-    vb = VedaBase.from_path(filename, 
+    vb = VedaBase.from_path(filename,
                           mltype=coll.mltype,
                           klasses=coll.classes,
                           image_shape=coll.imshape,
@@ -155,7 +155,7 @@ def _load_stream(vc, *args, **kwargs):
 
     Args:
         vc(): ?
-    
+
     Returns:
         VedaStream
     '''
@@ -165,9 +165,9 @@ def _load_stream(vc, *args, **kwargs):
 def _load_store(filename, **kwargs):
     ''' Opens a Veda collection from a local hdf5 file
 
-    Args: 
+    Args:
         filename(str): Path to the hdf5 file
-    
+
     Returns:
         VedaBase
     '''
@@ -219,6 +219,17 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
                    url=url, conn=conn, **kwargs)
     return VedaCollectionProxy.from_doc(doc)
 
-create_from_tarball = from_tarball
-
-
+def create_from_tarball(s3path, name=None, dtype=None, label_field=None,
+                                default_label=None, mltype="classification",
+                                description='', public=False, partition=[100,0,0],
+                                sensors=[], url="{}/data/bulk".format(HOST),
+                                conn=conn, **kwargs):
+    """
+    docs here
+    """
+    assert isinstance(name, str), ValueError('Name must be defined as a string')
+    doc = from_tarball(s3path, name=name,  dtype=dtype, label_field=label_field,
+                       default_label=default_label, mltype=mltype,
+                       description=description, public=public, partition=partition,
+                       sensors=sensors, url=url, conn=conn, **kwargs)
+    return VedaCollectionProxy.from_doc(doc)
