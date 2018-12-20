@@ -239,8 +239,12 @@ class BufferedDataStream(BaseDataSet):
         self._initialize_buffer()
 
     def _stop_consumer(self):
+        self._consumer_fut.cancel()
         f = asyncio.run_coroutine_threadsafe(self._fetcher.kill_workers(), loop=self._loop)
         f.result() # Wait for workers to shutdown gracefully
+        for task in asyncio.Task.all_tasks():
+            task.cancel()
+        self._loop.create_task(self._fetcher.session.close())
         self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join()
         self._loop.close()
@@ -251,12 +255,16 @@ class BufferedDataStream(BaseDataSet):
                    vc.imshape, **kwargs)
 
     def __enter__(self):
+
+        print('starting consumer...')
         self._start_consumer()
+        while len(self.train) + len(self.test) + len(self.validate) < 1:
+            pass
+        print('data loading...')
         return self
 
     def __exit__(self, *args):
-        pass
-        #self._stop_consumer()
+        self._stop_consumer()
 
     def __getitem__(self, slc):
         return slc
