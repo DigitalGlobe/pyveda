@@ -86,7 +86,7 @@ def dataset_exists(dataset_id=None, dataset_name=None, conn=conn, host=HOST,
             return True if not return_coll else results[0]
         return False
 
-    raise ValueError("Must provide dataset_id or name arguments")
+    raise ValueError("Must provide dataset_id or dataset_name arguments")
 
 def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10], **kwargs):
     """

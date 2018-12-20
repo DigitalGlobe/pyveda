@@ -38,9 +38,9 @@ class BaseEndpointConstructor(object):
     _dataset_create_furl = "{host_url}/datapoints"
     _dataset_release_furl = "/".join([_dataset_base_furl, "release"])
     _dataset_publish_furl = "/".join([_dataset_base_furl, "publish"])
-    _datapoint_fetch_furl = "/".join([_dataset_base_furl, "datapoints", "{datapoint_id}?{qs}"])
-    _datapoint_search_furl = "{base_url}/datapoints?{qs}"
     _datapoint_base_furl = "{host_url}/datapoints/{datapoint_id}"
+    _datapoint_search_furl = "{base_url}/datapoints?{qs}"
+    _datapoint_fetch_furl = _datapoint_base_furl + "?{qs}"
 
     def __init__(self, host):
         self._host_ = host
@@ -113,11 +113,17 @@ class DataSampleClient(BaseClient):
         img = Image.open(self._conn.get(url, stream=True).raw)
         return np.array(img)
 
-    def update(self, data):
+    def _map_data_props(self):
+        for k,v in self.data.items():
+            setattr(self, k, v)
+
+    def update(self, new_data):
         """
           Updates metadata props with new values in data
         """
-        r = self._conn.put(self._url, json=data)
+        self.data.update(new_data)
+        self._map_data_props()
+        r = self._conn.put(self._url, json=new_data)
         r.raise_for_status()
         return r.json()
         
@@ -128,6 +134,11 @@ class DataSampleClient(BaseClient):
         r = self._conn.delete(self._url)
         r.raise_for_status()
         return r.json()
+
+    def __repr__(self):
+        data = self.data.copy()
+        del data['links']
+        return str(data)
 
 
 class DataCollectionClient(BaseClient):
@@ -254,7 +265,9 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def fetch_sample_from_id(self, dp_id, include_links=True, **kwargs):
         """ Fetch a point for a given ID """
         qs = self._querystring(includeLinks=include_links)
-        resp = self.conn.get(self._datapoint_fetch_furl.format(host_url=self._host, datapoint_id=dp_id, qs=qs))
+        resp = self.conn.get(self._datapoint_fetch_furl.format(host_url=self._host, 
+                                                        datapoint_id=dp_id, 
+                                                        qs=qs))
         resp.raise_for_status()
         return self._to_dp(resp.json(), **kwargs)
 
