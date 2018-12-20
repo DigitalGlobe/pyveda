@@ -5,7 +5,6 @@ from gbdx_auth import gbdx_auth
 import logging
 
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
-print('HOST', HOST)
 auth = None
 
 def Auth(**kwargs):
