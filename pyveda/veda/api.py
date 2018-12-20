@@ -11,14 +11,17 @@ import numpy as np
 from pyveda.auth import Auth
 from shapely.geometry import shape as shp, mapping, box
 
+from PIL import Image
+import requests
+
 from pyveda.veda.props import prop_wrap, VEDAPROPS
 from pyveda.veda.loaders import from_geo, from_tarball
 
 VALID_MLTYPES = ['classification', 'object_detection', 'segmentation']
 VALID_MATCHTYPES = ['INSIDE', 'INTERSECT', 'ALL']
 
-gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
+gbdx = Auth()
 conn = gbdx.gbdx_connection
 
 
@@ -35,10 +38,9 @@ class BaseEndpointConstructor(object):
     _dataset_create_furl = "{host_url}/datapoints"
     _dataset_release_furl = "/".join([_dataset_base_furl, "release"])
     _dataset_publish_furl = "/".join([_dataset_base_furl, "publish"])
-    _datapoint_create_furl = None
-    _datapoint_append_furl = None
-    _datapoint_update_furl = None
-    _datapoint_remove_furl = None
+    _datapoint_fetch_furl = "/".join([_dataset_base_furl, "datapoints", "{datapoint_id}?{qs}"])
+    _datapoint_search_furl = "{base_url}/datapoints?{qs}"
+    _datapoint_base_furl = "{host_url}/datapoints/{datapoint_id}"
 
     def __init__(self, host):
         self._host_ = host
@@ -85,40 +87,47 @@ _bec = BaseEndpointConstructor
 
 class DataSampleClient(BaseClient):
     """ Veda API wrapper for remote DataSample-relevant methods """
-    _accessors = ["create", "append", "update", "remove"]
-
-    def __init__(self, host=None, dataset_id=None, datasample_id=None):
-        self._dataset_id = dataset_id
-        self._datasample_id = datasample_id
+    _accessors = ["update", "remove"]
+    def __init__(self, payload, host=HOST, conn=conn, **kwargs):
+        self.data = payload['properties']
+        self.links = payload["properties"].get("links")
+        self._conn = conn
+        self._host = host
         super(DataSampleClient, self).__init__(host=host)
+        for k,v in self.data.items():
+            setattr(self, k, v)
 
     @property
-    def _create_url(self, dpid):
-        raise NotImplementedError
+    def _url(self):
+        return self._datapoint_base_furl.format(host_url=self._host, datapoint_id=self.id)
 
     @property
-    def _append_url(self, dpid):
-        raise NotImplementedError
+    def image(self):
+        return self._get_image(self.links['image']['href'])
 
     @property
-    def _update_url(self, dpid):
-        raise NotImplementedError
+    def preview(self):
+        return self._get_image(self.links['thumbnail']['href'])
 
-    @property
-    def _remove_url(self, dpid):
-        raise NotImplementedError
+    def _get_image(self, url):
+        img = Image.open(self._conn.get(url, stream=True).raw)
+        return np.array(img)
 
-    def create(self, dpid):
-        raise NotImplementedError
-
-    def append(self, dpid):
-        raise NotImplementedError
-
-    def update(self, dpid):
-        raise NotImplementedError
-
-    def remove(self, dpid):
-        raise NotImplementedError
+    def update(self, data):
+        """
+          Updates metadata props with new values in data
+        """
+        r = self._conn.put(self._url, json=data)
+        r.raise_for_status()
+        return r.json()
+        
+    def remove(self):
+        """
+          Removes the sample from Veda
+        """
+        r = self._conn.delete(self._url)
+        r.raise_for_status()
+        return r.json()
 
 
 class DataCollectionClient(BaseClient):
@@ -183,7 +192,6 @@ class DataCollectionClient(BaseClient):
         return cls(host, dataset_id, conn=conn)
 
 
-
 _VedaCollectionProxy = prop_wrap(DataCollectionClient, VEDAPROPS)
 
 class VedaCollectionProxy(_VedaCollectionProxy):
@@ -226,7 +234,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             dtype = self.dtype
         if not mltype:
             mltype = self.mltype
-        return DataPoint(payload, shape=shape, dtype=dtype, mltype=mltype, **kwargs)
+        return self._data_sample_client(payload, shape=shape, dtype=dtype, mltype=mltype, **kwargs)
 
     def _page_sample_ids(self, page_size=100, page_id=None):
         """ Fetch a batch of datapoint ids """
@@ -238,22 +246,23 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def fetch_samples_from_slice(self, idx, num_points=1, include_links=True, **kwargs):
         """ Fetch a single data point at a given index in the dataset """
         qs = self._querystring(offset=idx, limit=num_points, includeLinks=include_links)
-        resp = self.conn.get(self._datapoint_search_furl.format(self._datapoint_url, qs))
+        resp = self.conn.get(self._datapoint_search_furl.format(base_url=self._base_url, qs=qs))
         resp.raise_for_status()
         dps = [self._to_dp(p, **kwargs) for p in resp.json()]
+        return dps
 
     def fetch_sample_from_id(self, dp_id, include_links=True, **kwargs):
         """ Fetch a point for a given ID """
         qs = self._querystring(includeLinks=include_links)
-        resp = self.conn.get(self._datapoint_search_furl.format(self._base_url, dp_id, qs))
+        resp = self.conn.get(self._datapoint_fetch_furl.format(host_url=self._host, datapoint_id=dp_id, qs=qs))
         resp.raise_for_status()
         return self._to_dp(resp.json(), **kwargs)
 
-    def fetch_sample_from_id(self, idx, **kwargs):
-        return self.fetch_dps_from_slice(idx, **kwargs).pop()
-
     def fetch_samples_from_ids(self, dp_ids=[], **kwargs):
         return [self.fetch_sample_from_id(dp_id) for dp_id in dp_ids]
+    
+    def fetch_sample_from_index(self, idx, **kwargs):
+        return self.fetch_dps_from_slice(idx, **kwargs).pop()
 
     def refresh(self):
         r = self.conn.get(self._base_url)
@@ -333,6 +342,28 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         doc['properties']['host'] = host
         doc['properties']['id'] = _id
         return cls.from_doc(doc)
+
+    def __iter__(self):
+        self.n = 0
+        return self
+
+    def __next__(self):
+        if self.n <= self.count:
+            dp = self.fetch_samples_from_slice(self.n, num_points=1)
+            self.n += 1
+            return dp[0]
+        else:
+            raise StopIteration
+
+    def __getitem__(self, slc):
+        """ Enable slicing of the data by index/slice """
+        if slc.__class__.__name__ == 'int':
+            start = slc
+            limit = 1
+        else:
+            start, stop = slc.start, slc.stop
+            limit = (stop-1) - start
+        return self.fetch_samples_from_slice(start, num_points=limit)
 
 
 
