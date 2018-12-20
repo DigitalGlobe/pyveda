@@ -46,7 +46,7 @@ class WrappedDataNode(object):
 
     def __iter__(self, spec=None):
         if not spec:
-            spec = slice(0, len(self)-1, 1)
+            spec = slice(0, len(self), 1)
         gimg = self.images.__iter__(spec)
         glbl = self.labels.__iter__(spec)
         while True:
