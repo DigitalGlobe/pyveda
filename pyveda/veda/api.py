@@ -110,10 +110,21 @@ class DataSampleClient(BaseClient):
         return self._get_image(self.links['thumbnail']['href'])
 
     def _get_image(self, url):
+        """
+          gets an image, either a prview png or image chip tif
+
+          Args:
+            url (str): the url to the image to fetch
+          Returns: 
+            image (ndarray): the image response as an array
+        """
         img = Image.open(self._conn.get(url, stream=True).raw)
         return np.array(img)
 
     def _map_data_props(self):
+        """
+          Lifts everything in self.data to a property on the class
+        """
         for k,v in self.data.items():
             setattr(self, k, v)
 
@@ -133,7 +144,7 @@ class DataSampleClient(BaseClient):
         """
         r = self._conn.delete(self._url)
         r.raise_for_status()
-        return r.json()
+        return None
 
     def __repr__(self):
         data = self.data.copy()
