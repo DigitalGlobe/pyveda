@@ -2,6 +2,7 @@ import os
 import json
 import mmap
 import numpy as np
+import requests
 from tempfile import NamedTemporaryFile
 from pyveda.auth import Auth
 from shapely.geometry import shape
@@ -126,7 +127,10 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
             'file': (os.path.basename(geojson), mfile, 'application/text'),
             'options': (None, json.dumps(options), 'application/json')
         }
-        doc = conn.post(url, files=body).json()
-    return doc
+        r = conn.post(url, files=body)
+        if r.status_code == 200:
+            return r.json()
+        else:
+            raise requests.exceptions.HTTPError(r.json())
 
 

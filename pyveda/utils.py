@@ -129,40 +129,6 @@ class NamedTemporaryHDF5Generator(object):
     def mktempfilename(self, prefix="veda", suffix="h5"):
         return mktempfilename(prefix, suffix=suffix, path=self.dirpath)
 
-
-
-def extract_load_tasks(dsk):
-    """
-    Given a veda image dask, extract request data into
-    (url, token) tuple
-    """
-    d = dict(dsk)
-    for k in d:
-        if isinstance(k, str) and k.startswith("load_image"):
-            task = d[k]
-            url = task[2][0]
-            token = task[2][1]
-            return (url, token)
-    return None
-
-def rda(dsk):
-    return [json.dumps({
-      'graph': dsk.rda_id,
-      'node': dsk.rda.graph()['nodes'][0]['id'],
-      'bounds': dsk.bounds,
-      'bounds_wgs84': dsk._reproject(box(*dsk.bounds), from_proj=dsk.proj, to_proj="EPSG:4326").bounds
-    })]
-
-def maps_api(dsk):
-    return [json.dumps({
-      'bounds': dsk.bounds,
-      'bounds_wgs84': dsk._reproject(box(*dsk.bounds), from_proj=dsk.proj, to_proj="EPSG:4326").bounds
-    })]
-
-
-def transforms(source):
-    return rda if source == 'rda' else maps_api
-
 def _atom_from_dtype(_type):
     if isinstance(_type, np.dtype):
         return tables.Atom.from_dtype(_type)
