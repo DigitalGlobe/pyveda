@@ -182,7 +182,7 @@ class H5DataBase(BaseDataSet):
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, *args):
         self.close()
 
     def __repr__(self):
