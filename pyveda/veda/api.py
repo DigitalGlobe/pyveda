@@ -11,14 +11,17 @@ import numpy as np
 from pyveda.auth import Auth
 from shapely.geometry import shape as shp, mapping, box
 
+from PIL import Image
+import requests
+
 from pyveda.veda.props import prop_wrap, VEDAPROPS
 from pyveda.veda.loaders import from_geo, from_tarball
 
 VALID_MLTYPES = ['classification', 'object_detection', 'segmentation']
 VALID_MATCHTYPES = ['INSIDE', 'INTERSECT', 'ALL']
 
-gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
+gbdx = Auth()
 conn = gbdx.gbdx_connection
 
 
@@ -35,9 +38,9 @@ class BaseEndpointConstructor(object):
     _dataset_create_furl = "{host_url}/datapoints"
     _dataset_release_furl = "/".join([_dataset_base_furl, "release"])
     _dataset_publish_furl = "/".join([_dataset_base_furl, "publish"])
+    _datapoint_fetch_furl = "/".join([_dataset_base_furl, "datapoints", "{datapoint_id}?{qs}"])
     _datapoint_search_furl = "{base_url}/datapoints?{qs}"
     _datapoint_base_furl = "{host_url}/datapoints/{datapoint_id}"
-    _datapoint_fetch_furl = "/".join([_dataset_base_furl, "datapoints", "{}?{}"])
 
     def __init__(self, host):
         self._host_ = host
@@ -94,19 +97,37 @@ class DataSampleClient(BaseClient):
         for k,v in self.data.items():
             setattr(self, k, v)
 
+    @property
+    def _url(self):
+        return self._datapoint_base_furl.format(host_url=self._host, datapoint_id=self.id)
 
     @property
-    def _dp_url(self):
-        return self._datapoint_base_furl.format(host_url=self._host, 
-                                          dataset_id=self.dataset_id, 
-                                          datapoint_id=self.id)
+    def image(self):
+        return self._get_image(self.links['image']['href'])
+
+    @property
+    def preview(self):
+        return self._get_image(self.links['thumbnail']['href'])
+
+    def _get_image(self, url):
+        img = Image.open(self._conn.get(url, stream=True).raw)
+        return np.array(img)
 
     def update(self, data):
-        pass
+        """
+          Updates metadata props with new values in data
+        """
+        r = self._conn.put(self._url, json=data)
+        r.raise_for_status()
+        return r.json()
         
-
     def remove(self):
-        pass
+        """
+          Removes the sample from Veda
+        """
+        r = self._conn.delete(self._url)
+        r.raise_for_status()
+        return r.json()
 
 
 class DataCollectionClient(BaseClient):
@@ -171,16 +192,6 @@ class DataCollectionClient(BaseClient):
         return cls(host, dataset_id, conn=conn)
 
 
-class VedaSampleProxy(DataSampleClient):
-    """ Base class for handling all API interactions on points."""
-
-    def __init__(self, dataset_id, host=HOST, conn=conn, **kwargs):
-        self._meta = {k: v for k, v in kwargs.items() if k in self._metaprops}
-        self.id = t_id
-        self._dataset_id = dataset_id
-        super(VedaSampleProxy, self).__init__(host, conn)
-
-
 _VedaCollectionProxy = prop_wrap(DataCollectionClient, VEDAPROPS)
 
 class VedaCollectionProxy(_VedaCollectionProxy):
@@ -243,7 +254,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def fetch_sample_from_id(self, dp_id, include_links=True, **kwargs):
         """ Fetch a point for a given ID """
         qs = self._querystring(includeLinks=include_links)
-        resp = self.conn.get(self._datapoint_fetch_furl.format(self._host, dp_id, qs))
+        resp = self.conn.get(self._datapoint_fetch_furl.format(host_url=self._host, datapoint_id=dp_id, qs=qs))
         resp.raise_for_status()
         return self._to_dp(resp.json(), **kwargs)
 
