@@ -256,11 +256,9 @@ class BufferedDataStream(BaseDataSet):
 
     def __enter__(self):
 
-        print('starting consumer...')
         self._start_consumer()
         while len(self.train) + len(self.test) + len(self.validate) < 1:
             pass
-        print('data loading...')
         return self
 
     def __exit__(self, *args):
