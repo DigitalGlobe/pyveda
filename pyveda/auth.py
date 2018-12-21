@@ -5,7 +5,6 @@ from gbdx_auth import gbdx_auth
 import logging
 
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
-
 auth = None
 
 def Auth(**kwargs):
@@ -14,6 +13,14 @@ def Auth(**kwargs):
         auth = _Auth(**kwargs)
     return auth
 
+def localhost(_conn):
+    token = _conn.token
+    headers = {"Authorization": "Bearer {}".format(_conn.access_token)}
+    conn = requests.Session()
+    conn.token = token
+    conn.access_token = token['access_token']
+    conn.headers.update(headers)
+    return conn
 
 class _Auth(object):
     gbdx_connection = None
@@ -42,12 +49,7 @@ class _Auth(object):
 
         # for local dev, cant use oauth2
         if HOST == 'http://host.docker.internal:3002':
-            token = self.gbdx_connection.token
-            headers = {"Authorization": "Bearer {}".format(self.gbdx_connection.access_token)}
-            self.gbdx_connection = requests.Session()
-            self.gbdx_connection.token = token
-            self.gbdx_connection.access_token = token['access_token']
-            self.gbdx_connection.headers.update(headers) 
+            self.gbdx_connection = localhost(self.gbdx_connection)
 
         def expire_token(r, *args, **kw):
             """
@@ -66,6 +68,8 @@ class _Auth(object):
                                            config_file=kwargs.get('config_file'))
                     # re-init the session
                     self.gbdx_connection = gbdx_auth.get_session(kwargs.get('config_file'))
+                    if HOST == 'http://host.docker.internal:3002':
+                        self.gbdx_connection = localhost(self.gbdx_connection)
 
                     # make original request, triggers new token request first
                     res = self.gbdx_connection.request(method=r.request.method, url=r.request.url)

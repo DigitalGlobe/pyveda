@@ -46,7 +46,7 @@ class WrappedDataNode(object):
 
     def __iter__(self, spec=None):
         if not spec:
-            spec = slice(0, len(self)-1, 1)
+            spec = slice(0, len(self), 1)
         gimg = self.images.__iter__(spec)
         glbl = self.labels.__iter__(spec)
         while True:
@@ -182,7 +182,7 @@ class H5DataBase(BaseDataSet):
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, *args):
         self.close()
 
     def __repr__(self):

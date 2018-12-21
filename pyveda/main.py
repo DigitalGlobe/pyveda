@@ -92,9 +92,11 @@ def from_name(dataset_name, conn = conn, host = HOST):
 
         results = search(filters={"name": dataset_name})
         if results:
-            return results[0]
-        else:
-            raise Exception('Invalid dataset name, does not exist in the database.')
+
+            return True if not return_coll else results[0]
+        return False
+
+    raise ValueError("Must provide dataset_id or dataset_name arguments")
 
 def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10], **kwargs):
     """
@@ -110,8 +112,8 @@ def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10]
       Either an intance of VedaStream (via dataset_id or dataset_name) or VedaBase (when filename is not None)
     """
 
-    if not dataset_id and not dataset_name and not filename:
-        raise ValueError("When calling pyveda.load, specify one of: dataset_id, dataset_name, or filename")
+    if all(v is None for v in [dataset_id, dataset_name, filename]):
+        raise ValueError("When calling pyveda.open, specify one of: dataset_id, dataset_name, or filename")
     # Check for dataset on veda
     vcp = False
     if dataset_id:
@@ -141,7 +143,8 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
     Returns:
         vedabase
     """
-    if not dataset_id and not dataset_name:
+
+    if all(v is None for v in [dataset_id, dataset_name]):
         raise ValueError("When calling pyveda.store, specify one of: dataset_id, dataset_name")
     if dataset_id:
         coll = from_id(dataset_id=dataset_id)

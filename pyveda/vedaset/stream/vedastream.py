@@ -68,7 +68,13 @@ class BufferedSampleArray(BaseSampleArray):
         return self
 
     def __getitem__(self, idx):
-        return [self.images[idx], self.labels[idx]]
+        try:
+            return [self.images[idx], self.labels[idx]]
+        # wait until that index is loaded
+        # this could be bad, I don't think the buffer knows to keep loading
+        except ValueError:
+            time.sleep(0.5)
+            return self[idx]
 
     def __next__(self):
         while self._n_consumed < self.allocated:
@@ -239,8 +245,12 @@ class BufferedDataStream(BaseDataSet):
         self._initialize_buffer()
 
     def _stop_consumer(self):
+        self._consumer_fut.cancel()
         f = asyncio.run_coroutine_threadsafe(self._fetcher.kill_workers(), loop=self._loop)
         f.result() # Wait for workers to shutdown gracefully
+        for task in asyncio.Task.all_tasks():
+            task.cancel()
+        self._loop.create_task(self._fetcher.session.close())
         self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join()
         self._loop.close()
@@ -255,11 +265,10 @@ class BufferedDataStream(BaseDataSet):
         return self
 
     def __exit__(self, *args):
-        pass
-        #self._stop_consumer()
+        self._stop_consumer()
 
     def __getitem__(self, slc):
-        return slc
+            return slc
 
 
 
