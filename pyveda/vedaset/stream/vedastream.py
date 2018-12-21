@@ -68,7 +68,13 @@ class BufferedSampleArray(BaseSampleArray):
         return self
 
     def __getitem__(self, idx):
-        return [self.images[idx], self.labels[idx]]
+        try:
+            return [self.images[idx], self.labels[idx]]
+        # wait until that index is loaded
+        # this could be bad, I don't think the buffer knows to keep loading
+        except ValueError:
+            time.sleep(0.5)
+            return self[idx]
 
     def __next__(self):
         while self._n_consumed < self.allocated:
@@ -255,17 +261,14 @@ class BufferedDataStream(BaseDataSet):
                    vc.imshape, **kwargs)
 
     def __enter__(self):
-
         self._start_consumer()
-        while len(self.train) + len(self.test) + len(self.validate) < 1:
-            pass
         return self
 
     def __exit__(self, *args):
         self._stop_consumer()
 
     def __getitem__(self, slc):
-        return slc
+            return slc
 
 
 
