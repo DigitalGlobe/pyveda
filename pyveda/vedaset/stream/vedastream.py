@@ -90,7 +90,7 @@ class BufferedSampleArray(BaseSampleArray):
             # the thread running the asyncio loop to fetch more data while the
             # source generator is not yet exhausted
             dps = self._vset._q.get()
-            
+
             self._n_consumed += 1
             return dps
 
@@ -110,12 +110,20 @@ class BufferedSampleArray(BaseSampleArray):
 
     @property
     def images(self):
-        _, imgs = zip(*self._vset._buf)
+        try:
+            _, imgs = zip(*self._vset._buf)
+        except:
+            time.sleep(.5)
+            #_, imgs = zip(*self._vset._buf)
+            return self.images
         return BufferedVariableArray(imgs)
 
     @property
     def labels(self):
-        lbls, _ = zip(*self._vset._buf)
+        try:
+            lbls, _ = zip(*self._vset._buf)
+        except:
+            time.sleep(.5)
         return BufferedVariableArray(lbls)
 
 
@@ -269,7 +277,3 @@ class BufferedDataStream(BaseDataSet):
 
     def __getitem__(self, slc):
             return slc
-
-
-
-
