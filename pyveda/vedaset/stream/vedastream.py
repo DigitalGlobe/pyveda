@@ -114,7 +114,6 @@ class BufferedSampleArray(BaseSampleArray):
             _, imgs = zip(*self._vset._buf)
         except:
             time.sleep(.5)
-            #_, imgs = zip(*self._vset._buf)
             return self.images
         return BufferedVariableArray(imgs)
 
@@ -124,6 +123,7 @@ class BufferedSampleArray(BaseSampleArray):
             lbls, _ = zip(*self._vset._buf)
         except:
             time.sleep(.5)
+            return self.labels
         return BufferedVariableArray(lbls)
 
 
