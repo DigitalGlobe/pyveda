@@ -112,7 +112,7 @@ class BufferedSampleArray(BaseSampleArray):
     def images(self):
         try:
             _, imgs = zip(*self._vset._buf)
-        except:
+        except ValueError:
             time.sleep(.5)
             return self.images
         return BufferedVariableArray(imgs)
@@ -121,7 +121,7 @@ class BufferedSampleArray(BaseSampleArray):
     def labels(self):
         try:
             lbls, _ = zip(*self._vset._buf)
-        except:
+        except ValueError:
             time.sleep(.5)
             return self.labels
         return BufferedVariableArray(lbls)
