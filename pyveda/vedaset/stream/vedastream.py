@@ -240,12 +240,10 @@ class BufferedDataStream(BaseDataSet):
 
         self._thread.start()
         time.sleep(0.5)
-        if init_buff:
-            self._initialize_buffer() # Fill the buffer and block until full
-
         self._consumer_fut = asyncio.run_coroutine_threadsafe(self._fetcher.start_fetch(self._loop),
                                                               loop=self._loop)
-        self._initialize_buffer()
+        if init_buff:
+            self._initialize_buffer() # Fill the buffer and block until full
 
     def _stop_consumer(self):
         self._consumer_fut.cancel()
