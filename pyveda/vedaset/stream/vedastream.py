@@ -269,8 +269,7 @@ class BufferedDataStream(BaseDataSet):
         self._stop_consumer()
 
     def __getitem__(self, slc):
-            return slc
-
+        raise NotImplementedError
 
 
 
