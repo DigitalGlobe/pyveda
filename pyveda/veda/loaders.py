@@ -6,6 +6,7 @@ import requests
 from tempfile import NamedTemporaryFile
 from pyveda.auth import Auth
 from shapely.geometry import shape
+import warnings
 
 gbdx = Auth()
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
@@ -102,7 +103,8 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
        dtype = np.dtype(dtype)
 
     if dtype.name != image.dtype.name:
-       raise ValueError('Image dtype ({}) and given dtype ({}) must match.'.format(image.dtype, dtype))
+        warnings.warn('Image dtype ({}) and given dtype ({}) do not match.'.format(image.dtype, dtype))
+    #   raise ValueError('Image dtype ({}) and given dtype ({}) must match.'.format(image.dtype, dtype))
 
     imshape = [image.shape[0]] + list(tilesize)
     meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors)
@@ -128,7 +130,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
             'options': (None, json.dumps(options), 'application/json')
         }
         r = conn.post(url, files=body)
-        if r.status_code == 200:
+        if r.status_code <= 201:
             return r.json()
         else:
             raise requests.exceptions.HTTPError(r.json())
