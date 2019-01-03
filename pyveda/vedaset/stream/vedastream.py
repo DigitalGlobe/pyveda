@@ -90,7 +90,7 @@ class BufferedSampleArray(BaseSampleArray):
             # the thread running the asyncio loop to fetch more data while the
             # source generator is not yet exhausted
             dps = self._vset._q.get()
-            
+
             self._n_consumed += 1
             return dps
 
@@ -110,12 +110,18 @@ class BufferedSampleArray(BaseSampleArray):
 
     @property
     def images(self):
-        _, imgs = zip(*self._vset._buf)
+        try:
+            _, imgs = zip(*self._vset._buf)
+        except ValueError:
+            imgs = []
         return BufferedVariableArray(imgs)
 
     @property
     def labels(self):
-        lbls, _ = zip(*self._vset._buf)
+        try:
+            lbls, _ = zip(*self._vset._buf)
+        except ValueError:
+            lbls = []
         return BufferedVariableArray(lbls)
 
 
@@ -232,7 +238,7 @@ class BufferedDataStream(BaseDataSet):
         self._loop = loop
         self._thread = threading.Thread(target=partial(self._fetcher.run_loop, loop=loop))
 
-    def _start_consumer(self):
+    def _start_consumer(self, init_buff=True):
         if not self._fetcher:
             self._configure_fetcher()
         if not self._thread:
@@ -242,7 +248,8 @@ class BufferedDataStream(BaseDataSet):
         time.sleep(0.5)
         self._consumer_fut = asyncio.run_coroutine_threadsafe(self._fetcher.start_fetch(self._loop),
                                                               loop=self._loop)
-        self._initialize_buffer()
+        if init_buff:
+            self._initialize_buffer() # Fill the buffer and block until full
 
     def _stop_consumer(self):
         self._consumer_fut.cancel()
@@ -268,8 +275,7 @@ class BufferedDataStream(BaseDataSet):
         self._stop_consumer()
 
     def __getitem__(self, slc):
-            return slc
-
+        raise NotImplementedError
 
 
 
