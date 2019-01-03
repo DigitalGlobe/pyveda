@@ -5,6 +5,8 @@ import threading
 import time
 from functools import partial
 
+import numpy as np
+
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
@@ -122,7 +124,7 @@ class BufferedSampleArray(BaseSampleArray):
             lbls, _ = zip(*self._vset._buf)
         except ValueError:
             lbls = []
-        return BufferedVariableArray(lbls)
+        return BufferedVariableArray(np.array(lbls))
 
 
 class BufferedDataStream(BaseDataSet):
@@ -276,6 +278,3 @@ class BufferedDataStream(BaseDataSet):
 
     def __getitem__(self, slc):
         raise NotImplementedError
-
-
-
