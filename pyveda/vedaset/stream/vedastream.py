@@ -7,9 +7,11 @@ from functools import partial
 
 import numpy as np
 
+
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
+from pyveda.frameworks.augmentation_generator import BatchGenerator
 
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):
@@ -125,6 +127,9 @@ class BufferedSampleArray(BaseSampleArray):
         except ValueError:
             lbls = []
         return BufferedVariableArray(np.array(lbls))
+
+    def batch_generator(self, batch_size, **kwargs):
+        return BatchGenerator(self, batch_size = batch_size, mltype=self._vset.mltype, **kwargs)
 
 
 class BufferedDataStream(BaseDataSet):
