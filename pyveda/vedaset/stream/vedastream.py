@@ -129,7 +129,7 @@ class BufferedSampleArray(BaseSampleArray):
         return BufferedVariableArray(np.array(lbls))
 
     def batch_generator(self, batch_size, **kwargs):
-        return BatchGenerator(self, batch_size = batch_size, mltype=self._vset.mltype, **kwargs)
+        return BatchGenerator(self, batch_size=batch_size, mltype=self._vset.mltype, **kwargs)
 
 
 class BufferedDataStream(BaseDataSet):
