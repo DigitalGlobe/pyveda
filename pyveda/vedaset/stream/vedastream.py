@@ -110,12 +110,18 @@ class BufferedSampleArray(BaseSampleArray):
 
     @property
     def images(self):
-        _, imgs = zip(*self._vset._buf)
+        try:
+            _, imgs = zip(*self._vset._buf)
+        except ValueError:
+            imgs = []
         return BufferedVariableArray(imgs)
 
     @property
     def labels(self):
-        lbls, _ = zip(*self._vset._buf)
+        try:
+            lbls, _ = zip(*self._vset._buf)
+        except ValueError:
+            lbls = []
         return BufferedVariableArray(lbls)
 
 
