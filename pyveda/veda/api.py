@@ -1,21 +1,21 @@
 import os
 import json
 import math
-from functools import partial
+import mmap
 try:
     from urllib.parse import urlencode
 except:
     from urllib import urlencode
 import numpy as np
-
-from pyveda.auth import Auth
-from shapely.geometry import shape as shp, mapping, box
-
+from skimage.io import imsave
 from PIL import Image
 import requests
+from tempfile import NamedTemporaryFile
 
+from pyveda.utils import features_to_pixels
 from pyveda.veda.props import prop_wrap, VEDAPROPS
 from pyveda.veda.loaders import from_geo, from_tarball
+from pyveda.auth import Auth
 
 VALID_MLTYPES = ['classification', 'object_detection', 'segmentation']
 VALID_MATCHTYPES = ['INSIDE', 'INTERSECT', 'ALL']
@@ -35,7 +35,7 @@ class BaseEndpointConstructor(object):
     _veda_load_furl = "{host_url}/data"
     _veda_bulk_load_furl = "{host_url}/data/bulk"
     _dataset_base_furl = "{host_url}/data/{dataset_id}"
-    _dataset_create_furl = "{host_url}/datapoints"
+    _dataset_create_furl = "{host_url}/data/{dataset_id}/datapoints"
     _dataset_release_furl = "/".join([_dataset_base_furl, "release"])
     _dataset_publish_furl = "/".join([_dataset_base_furl, "publish"])
     _datapoint_base_furl = "{host_url}/datapoints/{datapoint_id}"
@@ -161,7 +161,7 @@ class DataCollectionClient(BaseClient):
 
     @property
     def _create_url(self):
-        return self._dataset_create_furl.format(host_url=self.host)
+        return self._dataset_create_furl.format(host_url=self._host, dataset_id=self.id)
 
     @property
     def _update_url(self):
@@ -179,8 +179,8 @@ class DataCollectionClient(BaseClient):
     def _remove_url(self):
         return self._base_url
 
-    def create(self, data):
-        r = self.conn.post(self._create_url, json=data)
+    def _add_sample(self, data):
+        r = self.conn.post(self._create_url, files=data)
         r.raise_for_status()
         return r.json()
 
@@ -333,21 +333,61 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         return (label_url, image_url)
 
     def append_from_geojson(self, geojson, image, **kwargs):
+        """ 
+          Appends new samples to the collection from an image and geojson features.
+        """
         if image.dtype is not self.dtype:
             raise ValueError("Image dtype must be {} to match collection".format(self.dtype))
         image = np.squeeze(image)
-        #if image.shape != self.imshape:
-        #    raise ValueError("Image shape must be {} to match collection".format(self.imshape))
-        #self.refresh()
         if self.status == "BUILDING":
             raise VedaUploadError("Cannot load while server-side caching active")
-        self.sensors.append(image.__class__.__name__)
-        params = dict(self.meta, url=self._base_url, conn=self.conn, **kwargs)
+        params = dict(self.meta, url=self._base_url, conn=self.conn, sensors=self.sensors, **kwargs)
         doc = from_geo(geojson, image, **params)
+        return self
 
     def append_from_tarball(self, s3path, **kwargs):
+        """ 
+          Appends new samples to the collection from an image and geojson features.
+        """
         from_tarball(s3path, self.meta, conn=self.conn,
                                       url=self._base_url, **kwargs)
+
+    def add_sample(self, image, label):
+        """
+          Adds a sample (image/label pair) to the collection
+        
+          Args:
+            image (rda image): The image to use as the sample image. Must match existing dtype and shapes
+            label (dict): Depending on the mltype of the collection is either a dict of ints or a dict of arrays (geojson geometries)
+        """
+        if image.shape != tuple(self.imshape):
+            raise ValueError("Image shape must be {} to match collection".format(self.imshape))
+        image = np.squeeze(image)
+
+        # converts labels to pixel coords for obj_detect and segmentation
+        for cls, val in label.items():
+            label[cls] = features_to_pixels(image, val, self.mltype)
+
+        with NamedTemporaryFile(prefix="veda", suffix='.tif', delete=True) as temp:
+            imsave(temp.name, image.read())
+            mfile = mmap.mmap(temp.fileno(), 0, access=mmap.ACCESS_READ) 
+            meta = {
+                "bounds": image.bounds,
+                "label": label,
+                "mltype": self.mltype,
+                "dtype": self.dtype.name,
+                "dataset_id": self.id,
+                "tile_coords": [int(image.bounds[0] * 1000), int(image.bounds[1] * 1000)],
+                "cached": True,
+                "rda_template": image.rda_id
+            }
+            payload = {
+                "file": (os.path.basename(temp.name), mfile, 'application/text'),
+                "metadata": (None, json.dumps(meta), 'application/json'),
+            }
+            doc = self._add_sample(payload)
+            return self._to_dp(doc)
+
 
     @classmethod
     def from_doc(cls, doc):
