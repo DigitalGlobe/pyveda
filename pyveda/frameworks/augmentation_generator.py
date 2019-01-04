@@ -83,6 +83,166 @@ class BatchGenerator(): #keras.utils.Sequence
     cache: VedaBase training object
     mltype: Str. Type of ml type: classification, segmentation, or object_detection
     batch_size: Int.
+    image_shape: Tuple. (number of bands - after data has been preprocessed bands, height, width)
+    dataset = Veda VedaBase object
+    rescale_toa: Boolean. To rescale values between 0 and 1.
+    bands_subset: List. List of band numbers to subset.
+    random_rotation: Boolean. Randomly rotate image by selected degree.
+    horizontal_flip: Boolean. Randomly flip inputs horizontally.
+    vertical_flip: Boolean. Randomly flip inputs vertically.
+    '''
+
+    def __init__(self, cache, mltype = 'classification', image_shape = None, shuffle=True, batch_size = 32,
+                 rescale_toa=False, bands_subset=None,
+                 random_rotation=False, horizontal_flip=False,
+                 vertical_flip=False):
+
+        #self.cache = cache.train
+        self.cache = cache
+        self.mltype = mltype
+        #self.shape = cache.images[0].shape
+        self.image_shape = image_shape
+        self.batch_size = batch_size
+        self.list_ids = [i for i in range(0, len(self.cache))]
+        self.shuffle = shuffle
+        self.on_epoch_end()
+        self.rescale_toa = rescale_toa
+        self.bands_subset = bands_subset #is this necessary now?
+        self.random_rotation = random_rotation
+        self.horizontal_flip = horizontal_flip
+        self.vertical_flip = vertical_flip
+        self.index = 0
+
+    def process(self, random_rotation, horizontal_flip, vertical_flip):
+        augmentation_list = []
+        if self.random_rotation:
+            augmentation_list.append(random_rotation_f)
+        if self.horizontal_flip:
+            augmentation_list.append(np.fliplr)
+        if self.vertical_flip:
+            augmentation_list.append(np.flipud)
+        return augmentation_list
+
+    def on_epoch_end(self):
+        '''update index for each epoch'''
+        self.indexes = np.arange(len(self.list_ids))
+        if self.shuffle:
+            np.random.shuffle(self.indexes)
+
+    # def data_generation(self, list_ids_temp):
+    # #def data_generation(self):
+    #     '''Generates data containing batch_size samples
+    #     optionally pre-processes the data'''
+    #
+    #     X = np.empty((self.batch_size, *self.image_shape[::-1])) #issue with shape?
+    #     if self.mltype == 'classification':
+    #         y = np.empty((self.batch_size), dtype=int) # needs classes
+    #     if self.mltype == 'segmentation':
+    #         y = np.empty((self.batch_size, *self.image_shape[1:])) # good
+    #     if self.mltype == 'object_detection':
+    #         #nclasses = len(self.cache.labels[0])
+    #         #y = np.empty((self.batch_size, *(nclasses, 4)))
+    #         y = []
+    #
+    #     #
+    #     augmentation_lst = self.process(self.random_rotation,
+    #                                     self.horizontal_flip,
+    #                                     self.vertical_flip)
+    #
+    #     for i, _id in enumerate(list_ids_temp):
+    #         if self.rescale_toa and self.bands_subset is not None:
+    #             x = rescale_toa(bands_subset_f(self.cache.images[_id], self.bands_subset))
+    #         if self.bands_subset is not None and not self.rescale_toa:
+    #             x = bands_subset_f(self.cache.images[_id], self.bands_subset).T
+    #         if self.rescale_toa is True and self.bands_subset is None:
+    #             x = rescale_toa(self.cache.images[_id])
+    #         if self.bands_subset is None and not self.rescale_toa:
+    #             x = self.cache.images[_id].T
+    #
+    #         # user selects no augmentation functions
+    #         if len(augmentation_lst) == 0:
+    #             X[i, ] = x
+    #
+    #         else:
+    #             randomly_selected_functions_lst = sample(augmentation_lst, randint(0, len(augmentation_lst) - 1))
+    #             # possibility that no augmentation functions were selected
+    #             if len(randomly_selected_functions_lst) == 0:
+    #                 X[i, ] = x
+    #             for func in randomly_selected_functions_lst:
+    #                 if func is random_rotation_f:
+    #                     random_rotation = randint(0, 359)
+    #                     x = func(x, random_rotation)
+    #                 else:
+    #                     x = func(x)
+    #             X[i, ] = x
+    #         if self.mltype == 'classification':
+    #             y[i, ] = self.cache.labels[_id]
+    #         if self.mltype == 'object_detection':
+    #             y.append(self.cache.labels[_id])
+    #         if self.mltype == 'segmentation':
+    #              # will need to adjust based on augmentation (flipping/rotation)
+    #              y[i, ] = self.cache.labels[_id]
+    #         else:
+    #             pass
+    #     return X, np.array(y)
+    #
+    # def __len__(self):
+    #     '''Denotes the number of batches per epoch'''
+    #     return int(np.floor(len(self.list_ids) / self.batch_size))
+    #
+    # def __getitem__(self, index): #does index need keras.utils.Sequence??
+    #     '''Generate one batch of data'''
+    #     if index > len(self):
+    #         raise IndexError("index is invalid")
+    #     indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
+    #     list_ids_temp = [self.list_ids[k] for k in indexes]
+    #     X, y = self.data_generation(list_ids_temp)
+    #     return X, y
+    #
+    # #
+    # def __iter__(self):
+    #     """Create a generator that iterates over the Sequence."""
+    #     for item in (self[i] for i in range(len(self))):
+    #         self.index += 1
+    #         yield item
+    #
+    # # def __iter__(self):
+    # #     # for item in (self[i] for i in range(len(self))):
+    # #     #     self.index += 1
+    # #     #     yield item
+    # #     while True:
+    # #         yield (self.__next__())
+    #
+    # #     def __iter__(self, spec=None):
+    # #         if not spec:
+    # #             spec = slice(0, len(self), 1)
+    # #         gimg = self.images.__iter__(spec)
+    # #         glbl = self.labels.__iter__(spec)
+    # #         while True:
+    # #             yield (gimg.__next__(), glbl.__next__())
+    #
+    # def __next__(self):
+    #     try:
+    #         item = self[self.index] #index???
+    #     except IndexError:
+    #         raise StopIteration
+    #     self.index += 1
+    #     return item
+    #
+    # # def __next__(self):
+    # #     try:
+    # #         for dp in self:
+    # #             yield dp
+    # #     except IndexError:
+    # #         raise StopIteration
+    # #     return dp
+
+
+class BatchGenerator(): #keras.utils.Sequence
+    '''
+    cache: VedaBase training object
+    mltype: Str. Type of ml type: classification, segmentation, or object_detection
+    batch_size: Int.
     shape: Tuple. (number of bands - after data has been preprocessed bands, height, width)
     dataset = Veda VedaBase object
     rescale_toa: Boolean. To rescale values between 0 and 1.
@@ -92,7 +252,7 @@ class BatchGenerator(): #keras.utils.Sequence
     vertical_flip: Boolean. Randomly flip inputs vertically.
     '''
 
-    def __init__(self, cache, mltype = 'classification', shuffle=True, batch_size = 32,
+    def __init__(self, cache, mltype = 'classification', shape = None, shuffle=True, batch_size = 32,
                  rescale_toa=False, bands_subset=None,
                  random_rotation=False, horizontal_flip=False,
                  vertical_flip=False):
@@ -100,7 +260,7 @@ class BatchGenerator(): #keras.utils.Sequence
         #self.cache = cache.train
         self.cache = cache
         self.mltype = mltype
-        self.shape = cache.images[0].shape
+        self.shape = shape
         self.batch_size = batch_size
         self.list_ids = [i for i in range(0, len(self.cache))]
         self.shuffle = shuffle
@@ -134,7 +294,7 @@ class BatchGenerator(): #keras.utils.Sequence
 
         X = np.empty((self.batch_size, *self.shape[::-1])) #issue with shape?
         if self.mltype == 'classification':
-            y = np.empty((self.batch_size), dtype=int) # needs classes 
+            y = np.empty((self.batch_size), dtype=int) # needs classes
         if self.mltype == 'segmentation':
             y = np.empty((self.batch_size, *self.shape[1:])) # good
         if self.mltype == 'object_detection':
@@ -211,3 +371,19 @@ class BatchGenerator(): #keras.utils.Sequence
             raise StopIteration
         self.index += 1
         return item
+
+    class BatchGenerator2():
+
+        def __init__(self, cache, mltype = 'classification', shape = None, shuffle=True, batch_size = 32,
+                         rescale_toa=False, bands_subset=None,
+                         random_rotation=False, horizontal_flip=False,
+                         vertical_flip=False):
+        #self.cache = cache.train
+            self.cache = cache
+            self.mltype = mltype
+            self.shape = shape
+            self.batch_size = batch_size
+            self.list_ids = [i for i in range(0, len(self.cache))]
+            self.shuffle = shuffle
+            self.on_epoch_end()
+            self.index = 0
