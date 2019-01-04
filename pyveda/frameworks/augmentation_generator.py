@@ -134,7 +134,7 @@ class BatchGenerator(): #keras.utils.Sequence
 
         X = np.empty((self.batch_size, *self.shape[::-1])) #issue with shape?
         if self.mltype == 'classification':
-            y = np.empty((self.batch_size), dtype=int) # needs classes 
+            y = np.empty((self.batch_size), dtype=int) # needs classes
         if self.mltype == 'segmentation':
             y = np.empty((self.batch_size, *self.shape[1:])) # good
         if self.mltype == 'object_detection':
@@ -160,6 +160,9 @@ class BatchGenerator(): #keras.utils.Sequence
             # user selects no augmentation functions
             if len(augmentation_lst) == 0:
                 X[i, ] = x
+
+            if len(augmentation_lst) != 0 and self.mltype != 'classification':
+                raise NotImplementedError
 
             else:
                 randomly_selected_functions_lst = sample(augmentation_lst, randint(0, len(augmentation_lst) - 1))
