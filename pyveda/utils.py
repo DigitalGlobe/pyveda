@@ -10,8 +10,9 @@ import numpy as np
 import threading
 import warnings
 import inspect
-
-from shapely.geometry import box
+from functools import partial
+from shapely.geometry import box, mapping, shape
+from shapely import ops
 from affine import Affine
 
 
@@ -36,6 +37,8 @@ def assert_kwargs_empty(kwargs):
     # It only checks if kwargs is empty.
     parse_kwargs(kwargs)
 
+def transform_to_int(tfm, x, y):
+    return tuple(map(int, tfm * (x, y)))
 
 def from_bounds(west, south, east, north, width, height):
     """Return an Affine transformation given bounds, width and height.
@@ -48,6 +51,32 @@ def from_bounds(west, south, east, north, width, height):
     """
     return Affine.translation(west, north) * Affine.scale(
         (east - west) / width, (south - north) / height)
+
+def features_to_pixels(image, features, mltype):
+    """
+      Converts geometries to pixels coords for object detection and segmentation
+      Each feature is converted using the bounds of the givein image.
+
+      Args:
+          image (rda image): The rda image to use for pixel transformations 
+          features (list): a list of geojson feature geometries
+          mytype (str): the mltype of data that should be returned
+    """
+    if mltype == 'classification':
+        return features
+    else:
+        _, size_y, size_x = image.shape
+        params = image.bounds + (size_x, size_y)
+        xfm = partial(transform_to_int, ~from_bounds(*params))
+        converted = []
+        for f in features:
+            if mltype == 'object_detection':
+                geom = box(*shape(f).bounds).intersection(shape(image))
+                converted.append(list(map(int, ops.transform(xfm, geom).bounds)))
+            elif mltype == 'segmentation':
+                geom = shape(f).intersection(shape(image))
+                converted.append(mapping(ops.transform(xfm, geom)))
+        return converted
 
 def mklogfilename(prefix, suffix="json", path=None):
     timestamp = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
