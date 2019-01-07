@@ -264,17 +264,17 @@ class BatchGenerator(): #keras.utils.Sequence
         return item
 
     def batch_iter_vs(self, batch_size):
-        while True:
-            i = 0
-            X = np.empty((batch_size, *self._vset.image_shape))
-            y = np.empty(batch_size, dtype=int)
+        #while True:
+        i = 0
+        X = np.empty((batch_size, *self._vset.image_shape))
+        y = np.empty(batch_size, dtype=int)
 
-            g_img = self.images.__iter__()
-            g_lbl = self.labels.__iter__()
+        g_img = self.images.__iter__()
+        g_lbl = self.labels.__iter__()
 
-            while i < batch_size:
-                yield g_img.__next__(), g_lbl.__next__()
-                X[i, ] = g_img.__next__()
-                y[i, ] = g_lbl.__next__()
-                i += 1
+        while i < batch_size:
+            yield g_img.__next__(), g_lbl.__next__()
+            X[i, ] = g_img.__next__()
+            y[i, ] = g_lbl.__next__()
+            i += 1
         return X, y

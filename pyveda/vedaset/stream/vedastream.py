@@ -128,9 +128,6 @@ class BufferedSampleArray(BaseSampleArray):
             lbls = []
         return BufferedVariableArray(np.array(lbls))
 
-    # def batch_generator(self, batch_size, **kwargs):
-    #     return BatchGenerator(self, batch_size=batch_size, shape = self._vset.image_shape, mltype=self._vset.mltype, **kwargs)
-
     def batch_generator(self, batch_size):
         return BatchGenerator.batch_iter_vs(self, batch_size = batch_size)
 
