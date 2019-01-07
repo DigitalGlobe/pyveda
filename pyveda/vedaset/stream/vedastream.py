@@ -62,7 +62,7 @@ class BufferedSampleArray(BaseSampleArray):
             self.exhausted = True
 
     def __len__(self):
-        return len(self._vset._buf)
+        return self.allocated
 
     def __iter__(self):
         return self
