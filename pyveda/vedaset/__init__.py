@@ -1,2 +1,2 @@
-from pyveda.vedaset.store.vedabase import VedaBase
-from pyveda.vedaset.stream.vedastream import VedaStream
+from pyveda.vedaset.vedaset import VedaBase
+from pyveda.vedaset.vedaset import VedaStream

@@ -9,10 +9,36 @@ import tables
 import numpy as np
 import threading
 import warnings
-
-
-from shapely.geometry import box
+import inspect
+from functools import partial
+from shapely.geometry import box, mapping, shape
+from shapely import ops
 from affine import Affine
+
+
+def check_unexpected_kwargs(kwargs, **unexpected):
+    for key, message in unexpected.items():
+        if key in kwargs:
+            raise ValueError(message)
+
+def parse_kwargs(kwargs, *name_and_values, **unexpected):
+    values = [kwargs.pop(name, default_value)
+              for name, default_value in name_and_values]
+    if kwargs:
+        check_unexpected_kwargs(kwargs, **unexpected)
+        caller = inspect.stack()[1]
+        args = ', '.join(repr(arg) for arg in sorted(kwargs.keys()))
+        message = caller[3] + \
+            '() got unexpected keyword argument(s) {}'.format(args)
+        raise TypeError(message)
+    return tuple(values)
+
+def assert_kwargs_empty(kwargs):
+    # It only checks if kwargs is empty.
+    parse_kwargs(kwargs)
+
+def transform_to_int(tfm, x, y):
+    return tuple(map(int, tfm * (x, y)))
 
 def from_bounds(west, south, east, north, width, height):
     """Return an Affine transformation given bounds, width and height.
@@ -25,6 +51,32 @@ def from_bounds(west, south, east, north, width, height):
     """
     return Affine.translation(west, north) * Affine.scale(
         (east - west) / width, (south - north) / height)
+
+def features_to_pixels(image, features, mltype):
+    """
+      Converts geometries to pixels coords for object detection and segmentation
+      Each feature is converted using the bounds of the givein image.
+
+      Args:
+          image (rda image): The rda image to use for pixel transformations 
+          features (list): a list of geojson feature geometries
+          mytype (str): the mltype of data that should be returned
+    """
+    if mltype == 'classification':
+        return features
+    else:
+        _, size_y, size_x = image.shape
+        params = image.bounds + (size_x, size_y)
+        xfm = partial(transform_to_int, ~from_bounds(*params))
+        converted = []
+        for f in features:
+            if mltype == 'object_detection':
+                geom = box(*shape(f).bounds).intersection(shape(image))
+                converted.append(list(map(int, ops.transform(xfm, geom).bounds)))
+            elif mltype == 'segmentation':
+                geom = shape(f).intersection(shape(image))
+                converted.append(mapping(ops.transform(xfm, geom)))
+        return converted
 
 def mklogfilename(prefix, suffix="json", path=None):
     timestamp = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
@@ -105,40 +157,6 @@ class NamedTemporaryHDF5Generator(object):
 
     def mktempfilename(self, prefix="veda", suffix="h5"):
         return mktempfilename(prefix, suffix=suffix, path=self.dirpath)
-
-
-
-def extract_load_tasks(dsk):
-    """
-    Given a veda image dask, extract request data into
-    (url, token) tuple
-    """
-    d = dict(dsk)
-    for k in d:
-        if isinstance(k, str) and k.startswith("load_image"):
-            task = d[k]
-            url = task[2][0]
-            token = task[2][1]
-            return (url, token)
-    return None
-
-def rda(dsk):
-    return [json.dumps({
-      'graph': dsk.rda_id,
-      'node': dsk.rda.graph()['nodes'][0]['id'],
-      'bounds': dsk.bounds,
-      'bounds_wgs84': dsk._reproject(box(*dsk.bounds), from_proj=dsk.proj, to_proj="EPSG:4326").bounds
-    })]
-
-def maps_api(dsk):
-    return [json.dumps({
-      'bounds': dsk.bounds,
-      'bounds_wgs84': dsk._reproject(box(*dsk.bounds), from_proj=dsk.proj, to_proj="EPSG:4326").bounds
-    })]
-
-
-def transforms(source):
-    return rda if source == 'rda' else maps_api
 
 def _atom_from_dtype(_type):
     if isinstance(_type, np.dtype):

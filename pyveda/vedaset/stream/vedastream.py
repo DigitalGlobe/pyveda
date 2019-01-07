@@ -7,7 +7,7 @@ from functools import partial
 
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
-from pyveda.vedaset.abstract import BaseVedaSet, BaseVedaGroup, BaseVedaSequence
+from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
 
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):
@@ -38,7 +38,7 @@ class VSGenWrapper(object):
         return val
 
 
-class StreamingVedaSequence(BaseVedaSequence):
+class BufferedVariableArray(BaseVariableArray):
     def __init__(self, buf):
         self.buf = buf
 
@@ -52,7 +52,7 @@ class StreamingVedaSequence(BaseVedaSequence):
         return self.buf[idx]
 
 
-class StreamingVedaGroup(BaseVedaGroup):
+class BufferedSampleArray(BaseSampleArray):
     def __init__(self, allocated, vset):
         self.allocated = allocated
         self._n_consumed = 0
@@ -62,7 +62,7 @@ class StreamingVedaGroup(BaseVedaGroup):
             self.exhausted = True
 
     def __len__(self):
-        return len(self._vset._buf)
+        return self.allocated
 
     def __iter__(self):
         return self
@@ -84,11 +84,19 @@ class StreamingVedaGroup(BaseVedaGroup):
             # the thread running the asyncio loop to fetch more data while the
             # source generator is not yet exhausted
             dps = self._vset._q.get()
+
             self._n_consumed += 1
             return dps
 
         self.exhausted = True
         raise StopIteration
+
+    def batch_iter(self, batch_size):
+        while True:
+            batch = []
+            while len(batch) < batch_size:
+                batch.append(self.__next__())
+            yield batch
 
     @property
     def exhausted(self):
@@ -103,36 +111,42 @@ class StreamingVedaGroup(BaseVedaGroup):
 
     @property
     def images(self):
-        _, imgs = zip(*self._vset._buf)
-        return StreamingVedaSequence(imgs)
+        try:
+            _, imgs = zip(*self._vset._buf)
+        except ValueError:
+            imgs = []
+        return BufferedVariableArray(imgs)
 
     @property
     def labels(self):
-        lbls, _ = zip(*self._vset._buf)
-        return StreamingVedaSequence(lbls)
+        try:
+            lbls, _ = zip(*self._vset._buf)
+        except ValueError:
+            lbls = []
+        return BufferedVariableArray(lbls)
 
 
-class VedaStream(BaseVedaSet):
+class BufferedDataStream(BaseDataSet):
     _lbl_handler_map = {"classification": ClassificationHandler,
                        "segmentation": SegmentationHandler,
                        "object_detection": ObjDetectionHandler}
 
-    def __init__(self, mltype, classes, count, gen, partition, bufsize,
-                 image_shape, cachetype=collections.deque, auto_startup=False,
-                 auto_shutdown=False, fetcher=None, loop=None):
+    def __init__(self, mltype, classes, _count, gen, image_shape,
+                 partition=[70, 20, 10], bufsize=100, cachetype=collections.deque,
+                 auto_startup=False, auto_shutdown=False, fetcher=None, loop=None, **kwargs):
         self.partition = partition
-        self.count = count
+        self.count = _count
         self.image_shape = image_shape
         self._mltype = mltype
         self._classes = classes
         self._gen = VSGenWrapper(self, gen)
-        self._bufsize = bufsize
         self._auto_startup = auto_startup
         self._auto_shutdown = auto_shutdown
         self._exhausted = False
         self._train = None
         self._test = None
         self._validate = None
+        self._bufsize = bufsize if bufsize < self.count else self.count
 
         self._fetcher = fetcher
         self._loop = loop
@@ -146,22 +160,9 @@ class VedaStream(BaseVedaSet):
         if auto_startup:
             self._start_consumer()
 
-    @classmethod
-    def from_vc(cls, vc, count=None, bufsize=50, cachetype=collections.deque,
-                auto_startup=False, auto_shutdown=False, fetcher=None, loop=None):
-        if not count:
-            count = vc.count
-        if count > vc.count:
-            raise ValueError('Input count must be less than or equal to total size of input VedaCollection instance')
-        return cls(mltype=vc.mltype, classes=vc.classes, count=count,
-                          gen=vc.ids(), partition=vc.partition, bufsize=bufsize,
-                          image_shape=vc.imshape, cachetype=cachetype,
-                          auto_startup=auto_startup, auto_shutdown=auto_shutdown,
-                          fetcher=fetcher, loop=loop)
-
 
     def __len__(self):
-        return self._bufsize # Whatever for now
+        return self.count
 
     @property
     def mltype(self):
@@ -174,19 +175,19 @@ class VedaStream(BaseVedaSet):
     @property
     def train(self):
         if not self._train:
-            self._train = StreamingVedaGroup(round(self.count*self.partition[0]*0.01), self)
+            self._train = BufferedSampleArray(round(self.count*self.partition[0]*0.01), self)
         return self._train
 
     @property
     def test(self):
         if not self._test:
-            self._test = StreamingVedaGroup(round(self.count*self.partition[1]*0.01), self)
+            self._test = BufferedSampleArray(round(self.count*self.partition[1]*0.01), self)
         return self._test
 
     @property
     def validate(self):
         if not self._validate:
-            self._validate = StreamingVedaGroup(round(self.count*self.partition[2]*0.01), self)
+            self._validate = BufferedSampleArray(round(self.count*self.partition[2]*0.01), self)
         return self._validate
 
     @property
@@ -232,13 +233,13 @@ class VedaStream(BaseVedaSet):
 
     def _configure_worker(self, fetcher=None, loop=None):
         if not self._fetcher:
-            self._fetcher = self._configure_fetcher()
+            self._configure_fetcher()
         if not loop:
             loop = asyncio.new_event_loop()
         self._loop = loop
         self._thread = threading.Thread(target=partial(self._fetcher.run_loop, loop=loop))
 
-    def _start_consumer(self):
+    def _start_consumer(self, init_buff=True):
         if not self._fetcher:
             self._configure_fetcher()
         if not self._thread:
@@ -248,11 +249,34 @@ class VedaStream(BaseVedaSet):
         time.sleep(0.5)
         self._consumer_fut = asyncio.run_coroutine_threadsafe(self._fetcher.start_fetch(self._loop),
                                                               loop=self._loop)
-        self._initialize_buffer()
+        if init_buff:
+            self._initialize_buffer() # Fill the buffer and block until full
 
     def _stop_consumer(self):
+        self._consumer_fut.cancel()
         f = asyncio.run_coroutine_threadsafe(self._fetcher.kill_workers(), loop=self._loop)
         f.result() # Wait for workers to shutdown gracefully
+        for task in asyncio.Task.all_tasks():
+            task.cancel()
+        self._loop.create_task(self._fetcher.session.close())
         self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join()
         self._loop.close()
+
+    @classmethod
+    def from_vc(cls, vc, **kwargs):
+        return cls(vc.mltype, vc.classes, vc.count, vc.gen_sample_ids(**kwargs),
+                   vc.imshape, **kwargs)
+
+    def __enter__(self):
+        self._start_consumer()
+        return self
+
+    def __exit__(self, *args):
+        self._stop_consumer()
+
+    def __getitem__(self, slc):
+        raise NotImplementedError
+
+
+
