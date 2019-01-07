@@ -58,7 +58,7 @@ def search(params={}, host=HOST, filters={}, **kwargs):
     return [VedaCollectionProxy.from_doc(s) for s in results
             if _map_contains_submap(s["properties"], filters, **kwargs)]
 
-def from_id(dataset_id, conn = conn, host = HOST):
+def from_id(dataset_id, conn=conn, host=HOST):
     ''' Returns the dataset as a VedaCollectionProxy from an ID if it exists.
 
     Args:
@@ -78,7 +78,7 @@ def from_id(dataset_id, conn = conn, host = HOST):
     else:
         raise Exception('Invalid dataset id, does not exist in the database.')
 
-def from_name(dataset_name, conn = conn, host = HOST):
+def from_name(dataset_name, conn=conn, host=HOST):
         ''' Returns the dataset as a VedaCollectionProxy from a name if it exists.
 
         Args:
