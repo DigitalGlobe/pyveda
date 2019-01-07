@@ -24,9 +24,11 @@ class MLImage(RDAImage):
                                       correctionType="ACOMP",
                                       bands="MS",
                                       fallbackToTOA=True)
+
         dra = rda.HistogramDRA(strip)
         rgb = rda.SmartBandSelect(dra, bandSelection="RGB")
-        self = super(MLImage, cls).__new__(cls, rgb)
+        img = rda.Format(rgb, dataType=0)
+        self = super(MLImage, cls).__new__(cls, img)
         self.cat_id = cat_id
         return self
 

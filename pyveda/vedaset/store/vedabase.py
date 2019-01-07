@@ -6,8 +6,8 @@ import tables
 from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, NDImageArray
-from pyveda.vedaset.abstract import BaseVedaGroup, BaseVedaSet
-from pyveda.augmentation_generator import BatchGenerator
+from pyveda.vedaset.abstract import BaseSampleArray, BaseDataSet
+from pyveda.frameworks.augmentation_generator import BatchGenerator
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
@@ -46,7 +46,7 @@ class WrappedDataNode(object):
 
     def __iter__(self, spec=None):
         if not spec:
-            spec = slice(0, len(self)-1, 1)
+            spec = slice(0, len(self), 1)
         gimg = self.images.__iter__(spec)
         glbl = self.labels.__iter__(spec)
         while True:
@@ -56,17 +56,19 @@ class WrappedDataNode(object):
         return len(self._node.images)
 
 
-class VedaBase(BaseVedaSet):
+
+class H5DataBase(BaseDataSet):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
-    def __init__(self, fname, mltype=None, klasses=None, image_shape=None, image_dtype=None, framework=None,
-                 title="VedaBase", label_dtype=None, overwrite=False, mode="a"):
-
+    def __init__(self, fname, mltype=None, klasses=None, image_shape=None,
+                 image_dtype=None, title="NoTitle", framework=None,
+                 overwrite=False, mode="a"):
         self._framework = framework
         self._fw_loader = lambda x: x
 
         if os.path.exists(fname):
+            # TODO need to figure how to deal with existing files.
             if overwrite:
                 os.remove(fname)
             else:
@@ -180,7 +182,7 @@ class VedaBase(BaseVedaSet):
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, *args):
         self.close()
 
     def __repr__(self):
@@ -188,3 +190,13 @@ class VedaBase(BaseVedaSet):
 
     def __del__(self):
         self.close()
+
+    @classmethod
+    def from_path(cls, fname, **kwargs):
+        inst = cls(fname, **kwargs)
+        return inst
+
+    #@classmethod
+    #def from_vc(cls, vc, **kwargs):
+    #    # Load an empty H5DataBase from a VC
+        
