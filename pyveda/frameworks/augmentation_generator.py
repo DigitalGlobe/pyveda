@@ -272,7 +272,7 @@ class BatchGenerator(): #keras.utils.Sequence
         g_img = self.images.__iter__()
         g_lbl = self.labels.__iter__()
 
-        while i < batch_size:
+        while len() < batch_size:
             yield g_img.__next__(), g_lbl.__next__()
             X[i, ] = g_img.__next__()
             y[i, ] = g_lbl.__next__()
