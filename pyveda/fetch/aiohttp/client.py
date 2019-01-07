@@ -72,7 +72,6 @@ class BaseVedaSetFetcher(BatchFetchTracer):
                  write_executor=concurrent.futures.ThreadPoolExecutor,
                  run_tracer=False, *args, **kwargs):
 
-        
         self.max_concurrent_reqs = min(total_count, max_concurrent_requests)
         self.max_retries = max_retries
         self.timeout = timeout
@@ -156,11 +155,11 @@ class BaseVedaSetFetcher(BatchFetchTracer):
     async def consume_reqs(self):
         while True:
             try:
-                label_url, image_url = await self._qreq.get()
+                label_url, image_url, _id = await self._qreq.get()
                 flbl = asyncio.ensure_future(self.fetch_with_retries(label_url, callback=self.lbl_payload_handler))
                 fimg = asyncio.ensure_future(self.fetch_with_retries(image_url, json=False, callback=self.img_payload_handler))
-                label, image = await asyncio.gather(flbl,fimg)
-                await self._qwrite.put([label, image])
+                label, image = await asyncio.gather(flbl, fimg)
+                await self._qwrite.put([label, image, _id])
             except CancelledError:
                 break
 
@@ -210,28 +209,29 @@ class VedaBaseFetcher(BaseVedaSetFetcher):
 
     async def write_stack(self):
         await asyncio.sleep(0.0)
-        labels, images = [], []
+        labels, images, _ids = [], [], []
         while True:
             try:
-                label, image = await self._qwrite.get()
+                label, image, _id = await self._qwrite.get()
                 labels.append(label)
                 images.append(image)
+                _ids.append(_id)
                 if len(images) == self.max_memarrs:
-                    data = [self._img_batch_transform(images), self._lbl_batch_transform(labels)]
+                    data = [self._img_batch_transform(images), self._lbl_batch_transform(labels), _ids]
                     async with self._write_lock:
                         try:
                             await self.loop.run_in_executor(self._write_executor, self.write_fn, data)
                             logger.info("SUCCESS WRITE {} DATAPOINTS".format(len(images)))
                         except Exception as e:
                             logger.info("Exception is WRITE_STACK: {}".format(e))
-                    labels, images = [], []
+                    labels, images, _ids = [], [], []
                 self._qreq.task_done()
                 self._qwrite.task_done()
                 if self._pbar:
                     self._pbar.update(1)
             except CancelledError: # write out anything remaining
                 if images:
-                    data = [self._img_batch_transform(images), self._lbl_batch_transform(labels)]
+                    data = [self._img_batch_transform(images), self._lbl_batch_transform(labels), _ids]
                     async with self._write_lock:
                         await self.loop.run_in_executor(self._write_executor, self.write_fn, data)
                 break
