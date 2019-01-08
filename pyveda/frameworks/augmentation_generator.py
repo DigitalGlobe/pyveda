@@ -77,58 +77,6 @@ def random_rotation_f(x, rg, row_index=1, col_index=2, channel_index=0,
     x = apply_transform(x, transform_matrix, channel_index, fill_mode, cval)
     return x
 
-
-class BatchGenerator(): #keras.utils.Sequence
-    '''
-    cache: VedaBase training object
-    mltype: Str. Type of ml type: classification, segmentation, or object_detection
-    batch_size: Int.
-    image_shape: Tuple. (number of bands - after data has been preprocessed bands, height, width)
-    dataset = Veda VedaBase object
-    rescale_toa: Boolean. To rescale values between 0 and 1.
-    bands_subset: List. List of band numbers to subset.
-    random_rotation: Boolean. Randomly rotate image by selected degree.
-    horizontal_flip: Boolean. Randomly flip inputs horizontally.
-    vertical_flip: Boolean. Randomly flip inputs vertically.
-    '''
-
-    def __init__(self, cache, mltype = 'classification', image_shape = None, shuffle=True, batch_size = 32,
-                 rescale_toa=False, bands_subset=None,
-                 random_rotation=False, horizontal_flip=False,
-                 vertical_flip=False):
-
-        #self.cache = cache.train
-        self.cache = cache
-        self.mltype = mltype
-        #self.shape = cache.images[0].shape
-        self.image_shape = image_shape
-        self.batch_size = batch_size
-        self.list_ids = [i for i in range(0, len(self.cache))]
-        self.shuffle = shuffle
-        self.on_epoch_end()
-        self.rescale_toa = rescale_toa
-        self.bands_subset = bands_subset #is this necessary now?
-        self.random_rotation = random_rotation
-        self.horizontal_flip = horizontal_flip
-        self.vertical_flip = vertical_flip
-        self.index = 0
-
-    def process(self, random_rotation, horizontal_flip, vertical_flip):
-        augmentation_list = []
-        if self.random_rotation:
-            augmentation_list.append(random_rotation_f)
-        if self.horizontal_flip:
-            augmentation_list.append(np.fliplr)
-        if self.vertical_flip:
-            augmentation_list.append(np.flipud)
-        return augmentation_list
-
-    def on_epoch_end(self):
-        '''update index for each epoch'''
-        self.indexes = np.arange(len(self.list_ids))
-        if self.shuffle:
-            np.random.shuffle(self.indexes)
-
 class BatchGenerator(): #keras.utils.Sequence
     '''
     cache: VedaBase training object
@@ -230,18 +178,18 @@ class BatchGenerator(): #keras.utils.Sequence
                 y.append(self.cache.labels[_id])
             if self.mltype == 'segmentation':
                  # will need to adjust based on augmentation (flipping/rotation)
-                    if len(randomly_selected_functions_lst) == 0:
-                        y[i, ] = self.cache.labels[_id]
-                    for fun in randomly_selected_functions_lst:
-                        if func is random_rotation_f:
-                            y_aug = self.cache.labels[_id]
-                            y_aug = func(y_aug, random_rotation)
-                        else:
-                            y_aug = func(y_aug)
-                    y[i, ] = y_aug
-
-
-                    y[i, ] = y_aug
+                    # if len(randomly_selected_functions_lst) == 0:
+                    #     y[i, ] = self.cache.labels[_id]
+                    # for fun in randomly_selected_functions_lst:
+                    #     if func is random_rotation_f:
+                    #         y_aug = self.cache.labels[_id]
+                    #         y_aug = func(y_aug, random_rotation)
+                    #     else:
+                    #         y_aug = func(y_aug)
+                    # y[i, ] = y_aug
+                    #
+                    # y[i, ] = y_aug
+                y[i, ] = self.cache.labels[_id]
             else:
                 pass
         return X, np.array(y)
