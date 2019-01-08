@@ -230,7 +230,18 @@ class BatchGenerator(): #keras.utils.Sequence
                 y.append(self.cache.labels[_id])
             if self.mltype == 'segmentation':
                  # will need to adjust based on augmentation (flipping/rotation)
-                 y[i, ] = self.cache.labels[_id]
+                    if len(randomly_selected_functions_lst) == 0:
+                        y[i, ] = self.cache.labels[_id]
+                    for fun in randomly_selected_functions_lst:
+                        if func is random_rotation_f:
+                            y_aug = self.cache.labels[_id]
+                            y_aug = func(y_aug, random_rotation)
+                        else:
+                            y_aug = func(y_aug)
+                    y[i, ] = y_aug
+
+
+                    y[i, ] = y_aug
             else:
                 pass
         return X, np.array(y)
