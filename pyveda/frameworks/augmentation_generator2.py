@@ -40,18 +40,17 @@ class BaseGenerator():
             self.index += 1
             yield item
 
+    def __len__(self):
+        '''Denotes the number of batches per epoch'''
+        return int(np.floor(len(self.cache)/self.batch_size))
+
+
 class VedaStoreGenerator(BaseGenerator):
     def __init__(self, cache, batch_size):
-        #BaseGenerator.__init__(self, cache, mltype, shape, batch_size)
         super().__init__(cache, batch_size = batch_size, shuffle = True)
         self.list_ids = [i for i in range(0, len(self.cache))]
         self.mltype = cache._trainer.mltype
         self.shape = cache._trainer.image_shape
-
-    def __len__(self):
-        #right now this only applies to VedaStore, not VedaStream
-        '''Denotes the number of batches per epoch'''
-        return int(np.floor(len(self.list_ids) / self.batch_size))
 
     def build_batch(self, index):
         '''Generate one batch of data'''
