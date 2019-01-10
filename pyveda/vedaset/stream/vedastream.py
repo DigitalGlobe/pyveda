@@ -5,6 +5,9 @@ import threading
 import time
 from functools import partial
 
+import numpy as np
+
+
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
@@ -62,13 +65,19 @@ class BufferedSampleArray(BaseSampleArray):
             self.exhausted = True
 
     def __len__(self):
-        return self.allocated
+        return len(self._vset._buf)
 
     def __iter__(self):
         return self
 
     def __getitem__(self, idx):
-        return [self.images[idx], self.labels[idx]]
+        try:
+            return [self.images[idx], self.labels[idx]]
+        # wait until that index is loaded
+        # this could be bad, I don't think the buffer knows to keep loading
+        except ValueError:
+            time.sleep(0.5)
+            return self[idx]
 
     def __next__(self):
         while self._n_consumed < self.allocated:
@@ -90,13 +99,6 @@ class BufferedSampleArray(BaseSampleArray):
 
         self.exhausted = True
         raise StopIteration
-
-    def batch_iter(self, batch_size):
-        while True:
-            batch = []
-            while len(batch) < batch_size:
-                batch.append(self.__next__())
-            yield batch
 
     @property
     def exhausted(self):
@@ -123,8 +125,7 @@ class BufferedSampleArray(BaseSampleArray):
             lbls, _ = zip(*self._vset._buf)
         except ValueError:
             lbls = []
-        return BufferedVariableArray(lbls)
-
+        return BufferedVariableArray(np.array(lbls))
 
 class BufferedDataStream(BaseDataSet):
     _lbl_handler_map = {"classification": ClassificationHandler,
@@ -277,6 +278,3 @@ class BufferedDataStream(BaseDataSet):
 
     def __getitem__(self, slc):
         raise NotImplementedError
-
-
-

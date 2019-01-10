@@ -8,6 +8,7 @@ from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, NDImageArray
 from pyveda.vedaset.abstract import BaseSampleArray, BaseDataSet
 from pyveda.frameworks.augmentation_generator import BatchGenerator
+from pyveda.frameworks.augmentation_generator2 import VedaStoreGenerator
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
@@ -37,6 +38,9 @@ class WrappedDataNode(object):
 
     def batch_generator(self, batch_size, **kwargs):
         return BatchGenerator(self, batch_size = batch_size, mltype=self._trainer.mltype, **kwargs)
+
+    def batch_generator2(self, batch_size, **kwargs):
+        return VedaStoreGenerator(self, batch_size= batch_size, **kwargs)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):
@@ -199,4 +203,3 @@ class H5DataBase(BaseDataSet):
     #@classmethod
     #def from_vc(cls, vc, **kwargs):
     #    # Load an empty H5DataBase from a VC
-        
