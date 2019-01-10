@@ -40,17 +40,6 @@ class BaseGenerator():
             self.index += 1
             yield item
 
-    # def data_generation(self):
-    #     X = np.empty((self.batch_size, *self.shape[::-1])) #issue with shape?
-    #
-    #     if self.mltype == 'classification':
-    #         y = np.empty((self.batch_size), dtype=int) # needs classes
-    #     if self.mltype == 'segmentation':
-    #         y = np.empty((self.batch_size, *self.shape[1:])) # good
-    #     if self.mltype == 'object_detection':
-    #         y = []
-    #     return X, y
-
 class VedaStoreGenerator(BaseGenerator):
     def __init__(self, cache, batch_size):
         #BaseGenerator.__init__(self, cache, mltype, shape, batch_size)
@@ -70,11 +59,10 @@ class VedaStoreGenerator(BaseGenerator):
             raise IndexError("index is invalid")
         indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
         list_ids_temp = [self.list_ids[k] for k in indexes]
-        print(list_ids_temp)
+        #print(list_ids_temp)
         X, y = self.data_generation(list_ids_temp)
-        print("build vb batch")
+        #print("build vb batch")
         return X, y
-        #yield X, y
 
     def data_generation(self, list_ids_temp):
         '''Generates data containing batch_size samples
@@ -97,26 +85,10 @@ class VedaStoreGenerator(BaseGenerator):
             if self.mltype == 'segmentation':
                      # will need to adjust based on augmentation (flipping/rotation)
                 y[i, ] = self.cache.labels[_id]
-        print("data generation")
-        print(i)
-        print(X)
-        print(y)
-        return X, np.array(y)
-        #yield X, np.array(y)
-
-    # def data_generation_vb(self, index, list_ids_temp):
-    #     X,y = data_generation(index)
-    #
-    #     for i, _id in enumerate(list_ids_temp):
-    #         X[i, ] = self.cache.images[_id].T
-    #
-    #         if self.mltype == 'classification':
-    #             y[i, ] = self.cache.labels[_id]
-    #         if self.mltype == 'object_detection':
-    #             y.append(self.cache.labels[_id])
-    #         if self.mltype == 'segmentation':
-    #             y[i, ] = self.cache.labels[_id]
-    #     return X, np.array(y)
+        if self.mltype == 'object_detection':
+            return X, np.array(y)
+        else:
+            return X, y
 
 class VedaStreamGenerator(BaseGenerator):
     def __init__(self):
