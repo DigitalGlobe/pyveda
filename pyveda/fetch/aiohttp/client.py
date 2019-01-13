@@ -17,6 +17,7 @@ import sys
 import functools
 import json
 import logging
+import logging.handlers
 
 from pyveda.fetch.diagnostics import BatchFetchTracer
 from pyveda.utils import write_trace_profile
@@ -29,13 +30,14 @@ try:
 except ImportError:
     pass
 
+log_fh = ".{}.log".format(__name__)
 logger = logging.getLogger(__name__)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger.setLevel(logging.INFO)
-fh = logging.FileHandler('fetcher.log')
-fh.setLevel(logging.DEBUG)
-fh.setFormatter(formatter)
-logger.addHandler(fh)
+logger.setLevel(logging.DEBUG)
+handler = logging.handlers.RotatingFileHandler(
+            log_fh, mode="w", maxBytes=10485760, backupCount=1)
+hander.setFormatter(formatter)
+logger.addHandler(handler)
 
 gbdx = Auth()
 
@@ -72,7 +74,7 @@ class BaseVedaSetFetcher(BatchFetchTracer):
                  write_executor=concurrent.futures.ThreadPoolExecutor,
                  run_tracer=False, *args, **kwargs):
 
-        
+
         self.max_concurrent_reqs = min(total_count, max_concurrent_requests)
         self.max_retries = max_retries
         self.timeout = timeout
