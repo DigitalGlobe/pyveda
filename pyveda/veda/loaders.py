@@ -62,7 +62,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
                               workers=1, cache_type="stream",
                               dtype=None, description='',
                               mltype="classification", public=False,
-                              partition=[100,0,0], mask=None, sensors=[],
+                              partition=[100,0,0], sensors=[],
                               url="{}/data".format(HOST), conn=conn, **kwargs):
     """
         Loads a geojson file into the collection
