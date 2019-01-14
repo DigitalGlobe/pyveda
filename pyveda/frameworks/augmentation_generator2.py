@@ -1,16 +1,16 @@
 import numpy as np
 
+
 class Process():
     def __init__(self):
-
-    def rescale_toa(arr, dtype=np.float32):
+        pass
+    def rescale_toa(self, arr, dtype=np.float32):
         """
         Rescale any multi-dimensional array of shape (D, M, N) by first subtracting
         the min from each (M, N) array along axis 0, then divide each by the
         resulting maximum to get (float32) distributions between [0, 1].
         Optionally spec uint8 for 0-255 ints.
         """
-        # First look at raw value dists along bands
 
         arr_trans = np.subtract(arr, arr.min(axis=(1, 2))[:, np.newaxis, np.newaxis])
         arr_rs = np.divide(arr_trans, arr_trans.max(axis=(1, 2))[:, np.newaxis, np.newaxis])
@@ -18,7 +18,7 @@ class Process():
             arr_rs = np.array(arr_rs*255, dtype=np.uint8)
         return arr_rs.T
 
-    def bands_subset_f(arr, band_numbers):
+    def bands_subset_f(self, arr, band_numbers):
         """
         Subset array to array of  just given band indices
         arr: float32
@@ -26,7 +26,7 @@ class Process():
         """
         return arr[band_numbers, ...]
 
-    def apply_transform(x, transform_matrix, channel_index=0, fill_mode='nearest', cval=0.):
+    def apply_transform(self, x, transform_matrix, channel_index=0, fill_mode='nearest', cval=0.):
         x = np.rollaxis(x, channel_index, 0)
         final_affine_matrix = transform_matrix[:2, :2]
         final_offset = transform_matrix[:2, 2]
@@ -38,7 +38,7 @@ class Process():
         x = np.rollaxis(x, 0, channel_index+1)
         return x
 
-    def transform_matrix_offset_center(matrix, x, y):
+    def transform_matrix_offset_center(self, matrix, x, y):
         o_x = float(x) / 2 + 0.5
         o_y = float(y) / 2 + 0.5
         offset_matrix = np.array([[1, 0, o_x], [0, 1, o_y], [0, 0, 1]])
@@ -47,7 +47,7 @@ class Process():
         return transform_matrix
 
 
-    def random_rotation_f(x, rg, row_index=1, col_index=2, channel_index=0,
+    def random_rotation_f(self, x, rg, row_index=1, col_index=2, channel_index=0,
                           fill_mode='nearest', cval=0.):
         theta = np.pi / 180 * np.random.uniform(-rg, rg)
         rotation_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],
@@ -61,17 +61,6 @@ class Process():
 
 
 class BaseGenerator():
-        '''
-        cache: VedaBase or VedaStream training object
-        mltype: Str. Type of ml type: classification, segmentation, or object_detection
-        batch_size: Int.
-        shape: Tuple. (number of bands - after data has been preprocessed bands, height, width)
-        rescale_toa: Boolean. To rescale values between 0 and 1.
-        bands_subset: List. List of band numbers to subset.
-        random_rotation: Boolean. Randomly rotate image by selected degree.
-        horizontal_flip: Boolean. Randomly flip inputs horizontally.
-        vertical_flip: Boolean. Randomly flip inputs vertically.
-        '''
     def __init__(self, cache, shape=None, batch_size=32, shuffle=True, rescale_toa=False, bands_subset=None,
                 random_rotation=False, horizontal_flip=False, vertical_flip=False):
         self.cache = cache
@@ -100,8 +89,15 @@ class BaseGenerator():
         self.index += 1
         return item
 
-    def _process_(self):
-        raise NotImplemented
+    def _process(self, random_rotation, horizontal_flip, vertical_flip):
+        augmentation_list = []
+        if self.random_rotation:
+            augmentation_list.append(random_rotation_f)
+        if self.horizontal_flip:
+            augmentation_list.append(np.fliplr)
+        if self.vertical_flip:
+            augmentation_list.append(np.flipud)
+        return augmentation_list
 
     def on_epoch_end(self):
         '''update index for each epoch'''
@@ -122,8 +118,13 @@ class BaseGenerator():
 
 
 class VedaStoreGenerator(BaseGenerator):
+    '''
+    VedaBase
+    '''
     def __init__(self, cache, batch_size):
-        super().__init__(cache, batch_size=batch_size, shuffle=True)
+        super().__init__(cache, batch_size=batch_size, shuffle=True,
+                        rescale_toa=False, bands_subset=None,random_rotation=False,
+                        horizontal_flip=False, vertical_flip=False)
         self.list_ids = [i for i in range(0, len(self.cache))]
         self.mltype = cache._trainer.mltype
         self.shape = cache._trainer.image_shape
@@ -167,6 +168,9 @@ class VedaStoreGenerator(BaseGenerator):
 
 
 class VedaStreamGenerator(BaseGenerator):
+    '''
+    VedaStream
+    '''
     def __init__(self):
             # self.mltype = cache._vset.mltype
             # self.shape = cache._vset.image_shape
