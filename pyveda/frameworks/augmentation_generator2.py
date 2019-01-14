@@ -2,13 +2,15 @@ import numpy as np
 
 from pyveda.frameworks.transforms import *
 
+
 class BaseGenerator():
-    def __init__(self, cache, shape=None, batch_size=32, shuffle=True, vertical_flip=False,
-        random_rotation = False,horizontal_flip = False):
+    def __init__(self, cache, shape=None, batch_size=32, shuffle=True, rescale_toa=False, random_rotation=False,
+                horizontal_flip=False, vertical_flip=False):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
         self.shuffle = shuffle
+        self.rescale_toa = rescale_toa
         self.random_rotation = random_rotation
         self.horizontal_flip = horizontal_flip
         self.vertical_flip = vertical_flip
@@ -29,7 +31,8 @@ class BaseGenerator():
         self.index += 1
         return item
 
-    def _process(self, random_rotation, horizontal_flip, vertical_flip):
+    @classmethod
+    def process(self):
         augmentation_list = []
         if self.random_rotation:
             augmentation_list.append(random_rotation_f)
@@ -62,8 +65,9 @@ class VedaStoreGenerator(BaseGenerator):
     VedaBase
     '''
     def __init__(self, cache, batch_size):
-        super().__init__(cache, batch_size=batch_size, shuffle=True)
-        self.list_ids = [i for i in range(0, len(self.cache))]
+        super().__init__(cache, batch_size=batch_size, shuffle=True, rescale_toa=False, random_rotation=False,
+                        vertical_flip=False, horizontal_flip=False)
+        self.list_ids = np.arange(0, len(self.cache))
         self.mltype = cache._trainer.mltype
         self.shape = cache._trainer.image_shape
 
@@ -90,8 +94,28 @@ class VedaStoreGenerator(BaseGenerator):
         if self.mltype == 'object_detection':
             y = []
 
+        augmentation_lst = self.process()
+
+
         for i, _id in enumerate(list_ids_temp):
-            X[i, ] = self.cache.images[_id].T
+            if self.rescale_toa:
+                x = rescale_toa(self.cache.images[_id])
+            else:
+                x = self.cache.images[_id].T
+            if len(augmentation_lst) == 0:
+                X[i, ] = x
+            else:
+                randomly_selected_functions_lst = sample(augmentation_lst, randint(0, len(augmentation_lst) - 1))
+                # possibility that no augmentation functions were selected
+                if len(randomly_selected_functions_lst) == 0:
+                    X[i, ] = x
+                for func in randomly_selected_functions_lst:
+                    if func is random_rotation_f:
+                        random_rotation = randint(0, 359)
+                        x = func(x, random_rotation)
+                    else:
+                        x = func(x)
+                X[i, ] = x
             if self.mltype == 'classification':
                 y[i, ] = self.cache.labels[_id]
             if self.mltype == 'object_detection':
