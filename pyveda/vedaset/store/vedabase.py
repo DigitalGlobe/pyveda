@@ -29,14 +29,19 @@ class WrappedDataNode(object):
 
     @property
     def images(self):
-        return self._trainer._image_array_factory(self._node.images, self._trainer, output_transform = self._trainer._fw_loader)
+        return self._trainer._image_array_factory(self._node.images, self._trainer,
+                                                  output_transform=self._trainer._fw_loader)
 
     @property
     def labels(self):
-        return self._trainer._label_array_factory(self._node.hit_table, self._node.labels,  self._trainer)
+        return self._trainer._label_array_factory(self._node.hit_table, self._node.labels, self._trainer)
+
+    @property
+    def id_table(self):
+        return self._node.id_table
 
     def batch_generator(self, batch_size, **kwargs):
-        return BatchGenerator(self, batch_size = batch_size, mltype=self._trainer.mltype, **kwargs)
+        return BatchGenerator(self, batch_size=batch_size, mltype=self._trainer.mltype, **kwargs)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):
@@ -117,9 +122,13 @@ class H5DataBase(BaseDataSet):
 
     @ignore_NaturalNameWarning
     def _create_tables(self, classifications, filters=tables.Filters(0)):
+        # Create index table separately (flat on root) for now
         for name, group in self._groups.items():
             self._fileh.create_table(group, "hit_table", classifications,
                                      "Label Hit Record", filters)
+            # Create sep table for ids for now
+            self._fileh.create_table(group, "id_table", {"ids": tables.UInt8Col(pos=0)},
+                                     "Vedaset Sample Id Index", filters)
 
     def _build_label_tables(self, rebuild=True):
         pass
@@ -199,4 +208,4 @@ class H5DataBase(BaseDataSet):
     #@classmethod
     #def from_vc(cls, vc, **kwargs):
     #    # Load an empty H5DataBase from a VC
-        
+
