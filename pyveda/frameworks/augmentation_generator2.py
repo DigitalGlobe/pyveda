@@ -1,5 +1,8 @@
 import numpy as np
 
+from random import randint
+from random import sample
+
 from pyveda.frameworks.transforms import *
 
 
@@ -31,7 +34,7 @@ class BaseGenerator():
         self.index += 1
         return item
 
-    @classmethod
+    #@classmethod
     def process(self):
         augmentation_list = []
         if self.random_rotation:
@@ -64,9 +67,10 @@ class VedaStoreGenerator(BaseGenerator):
     '''
     VedaBase
     '''
-    def __init__(self, cache, batch_size):
-        super().__init__(cache, batch_size=batch_size, shuffle=True, rescale_toa=False, random_rotation=False,
-                        vertical_flip=False, horizontal_flip=False)
+    def __init__(self, cache, batch_size, rescale_toa=False, random_rotation=False, vertical_flip=False,
+                    horizontal_flip=False):
+        super().__init__(cache, batch_size=batch_size, shuffle=True, rescale_toa=rescale_toa, random_rotation=random_rotation,
+                        vertical_flip=vertical_flip, horizontal_flip=horizontal_flip)
         self.list_ids = np.arange(0, len(self.cache))
         self.mltype = cache._trainer.mltype
         self.shape = cache._trainer.image_shape
@@ -95,7 +99,6 @@ class VedaStoreGenerator(BaseGenerator):
             y = []
 
         augmentation_lst = self.process()
-
 
         for i, _id in enumerate(list_ids_temp):
             if self.rescale_toa:
