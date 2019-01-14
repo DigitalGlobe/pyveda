@@ -1,13 +1,18 @@
 import numpy as np
 
+from pyveda.frameworks.transforms import *
+
 class BaseGenerator():
-    def __init__(self, cache, shape=None, batch_size=32, shuffle=True):
+    def __init__(self, cache, shape=None, batch_size=32, shuffle=True, vertical_flip=False,
+        random_rotation = False,horizontal_flip = False):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
         self.shuffle = shuffle
+        self.random_rotation = random_rotation
+        self.horizontal_flip = horizontal_flip
+        self.vertical_flip = vertical_flip
         self.on_epoch_end()
-
 
     def build_batch(self, index):
         raise NotImplemented
@@ -24,15 +29,15 @@ class BaseGenerator():
         self.index += 1
         return item
 
-    # def _process(self, random_rotation, horizontal_flip, vertical_flip):
-    #     augmentation_list = []
-    #     if self.random_rotation:
-    #         augmentation_list.append(random_rotation_f)
-    #     if self.horizontal_flip:
-    #         augmentation_list.append(np.fliplr)
-    #     if self.vertical_flip:
-    #         augmentation_list.append(np.flipud)
-    #     return augmentation_list
+    def _process(self, random_rotation, horizontal_flip, vertical_flip):
+        augmentation_list = []
+        if self.random_rotation:
+            augmentation_list.append(random_rotation_f)
+        if self.horizontal_flip:
+            augmentation_list.append(np.fliplr)
+        if self.vertical_flip:
+            augmentation_list.append(np.flipud)
+        return augmentation_list
 
     def on_epoch_end(self):
         '''update index for each epoch'''
