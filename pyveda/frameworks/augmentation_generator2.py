@@ -167,6 +167,7 @@ class VedaStoreGenerator(BaseGenerator):
             return X, y
 
 
+
 class VedaStreamGenerator(BaseGenerator):
     '''
     VedaStream
