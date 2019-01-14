@@ -61,12 +61,29 @@ class Process():
 
 
 class BaseGenerator():
-    def __init__(self, cache, shape=None, batch_size=32, shuffle=True):
+        '''
+        cache: VedaBase or VedaStream training object
+        mltype: Str. Type of ml type: classification, segmentation, or object_detection
+        batch_size: Int.
+        shape: Tuple. (number of bands - after data has been preprocessed bands, height, width)
+        rescale_toa: Boolean. To rescale values between 0 and 1.
+        bands_subset: List. List of band numbers to subset.
+        random_rotation: Boolean. Randomly rotate image by selected degree.
+        horizontal_flip: Boolean. Randomly flip inputs horizontally.
+        vertical_flip: Boolean. Randomly flip inputs vertically.
+        '''
+    def __init__(self, cache, shape=None, batch_size=32, shuffle=True, rescale_toa=False, bands_subset=None,
+                random_rotation=False, horizontal_flip=False, vertical_flip=False):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
         self.shuffle = shuffle
         self.on_epoch_end()
+        self.rescale_toa = rescale_toa
+        self.bands_subset = bands_subset
+        self.random_rotation = random_rotation
+        self.horizontal_flip = horizontal_flip
+        self.vertical_flip = vertical_flip
 
     def build_batch(self, index):
         raise NotImplemented
