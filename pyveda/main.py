@@ -18,7 +18,8 @@ __all__ = ["search",
            "from_id",
            "from_name",
            "create_from_geojson",
-           "create_from_tarball"]
+           "create_from_tarball",
+           ]
 
 def _map_contains_submap(mmap, submap, hard_match=True):
     """ Checks if a submap is contained in a master map.

@@ -16,6 +16,7 @@ from pyveda.utils import features_to_pixels
 from pyveda.veda.props import prop_wrap, VEDAPROPS
 from pyveda.veda.loaders import from_geo, from_tarball
 from pyveda.auth import Auth
+from pyveda.vv.labelizer import Labelizer
 
 VALID_MLTYPES = ['classification', 'object_detection', 'segmentation']
 VALID_MATCHTYPES = ['INSIDE', 'INTERSECT', 'ALL']
@@ -115,7 +116,7 @@ class DataSampleClient(BaseClient):
 
           Args:
             url (str): the url to the image to fetch
-          Returns: 
+          Returns:
             image (ndarray): the image response as an array
         """
         img = Image.open(self._conn.get(url, stream=True).raw)
@@ -137,7 +138,7 @@ class DataSampleClient(BaseClient):
         r = self._conn.put(self._url, json=new_data)
         r.raise_for_status()
         return r.json()
-        
+
     def remove(self):
         """
           Removes the sample from Veda
@@ -276,15 +277,15 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def fetch_sample_from_id(self, dp_id, include_links=True, **kwargs):
         """ Fetch a point for a given ID """
         qs = self._querystring(includeLinks=include_links)
-        resp = self.conn.get(self._datapoint_fetch_furl.format(host_url=self._host, 
-                                                        datapoint_id=dp_id, 
+        resp = self.conn.get(self._datapoint_fetch_furl.format(host_url=self._host,
+                                                        datapoint_id=dp_id,
                                                         qs=qs))
         resp.raise_for_status()
         return self._to_dp(resp.json(), **kwargs)
 
     def fetch_samples_from_ids(self, dp_ids=[], **kwargs):
         return [self.fetch_sample_from_id(dp_id) for dp_id in dp_ids]
-    
+
     def fetch_sample_from_index(self, idx, **kwargs):
         return self.fetch_dps_from_slice(idx, **kwargs).pop()
 
@@ -333,7 +334,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         return (label_url, image_url)
 
     def append_from_geojson(self, geojson, image, **kwargs):
-        """ 
+        """
           Appends new samples to the collection from an image and geojson features.
         """
         if image.dtype is not self.dtype:
@@ -346,7 +347,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         return self
 
     def append_from_tarball(self, s3path, **kwargs):
-        """ 
+        """
           Appends new samples to the collection from an image and geojson features.
         """
         from_tarball(s3path, self.meta, conn=self.conn,
@@ -355,7 +356,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def add_sample(self, image, label):
         """
           Adds a sample (image/label pair) to the collection
-        
+
           Args:
             image (rda image): The image to use as the sample image. Must match existing dtype and shapes
             label (dict): Depending on the mltype of the collection is either a dict of ints or a dict of arrays (geojson geometries)
@@ -370,7 +371,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
 
         with NamedTemporaryFile(prefix="veda", suffix='.tif', delete=True) as temp:
             imsave(temp.name, image.read())
-            mfile = mmap.mmap(temp.fileno(), 0, access=mmap.ACCESS_READ) 
+            mfile = mmap.mmap(temp.fileno(), 0, access=mmap.ACCESS_READ)
             meta = {
                 "bounds": image.bounds,
                 "label": label,
@@ -429,5 +430,5 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             limit = (stop-1) - start
         return self.fetch_samples_from_slice(start, num_points=limit)
 
-
-
+    def clean(self):
+        Labelizer(self._base_url, self.count, self.imshape, self.dtype, self.mltype).clean()

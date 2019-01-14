@@ -24,7 +24,6 @@ import numpy as np
 import requests
 
 from pyveda.auth import Auth
-from pyveda.datapoint import DataPoint
 
 gbdx = Auth()
 conn = gbdx.gbdx_connection
