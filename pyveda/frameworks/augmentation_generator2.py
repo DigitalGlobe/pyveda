@@ -1,78 +1,13 @@
 import numpy as np
 
-
-class Process():
-    def __init__(self):
-        pass
-    def rescale_toa(self, arr, dtype=np.float32):
-        """
-        Rescale any multi-dimensional array of shape (D, M, N) by first subtracting
-        the min from each (M, N) array along axis 0, then divide each by the
-        resulting maximum to get (float32) distributions between [0, 1].
-        Optionally spec uint8 for 0-255 ints.
-        """
-
-        arr_trans = np.subtract(arr, arr.min(axis=(1, 2))[:, np.newaxis, np.newaxis])
-        arr_rs = np.divide(arr_trans, arr_trans.max(axis=(1, 2))[:, np.newaxis, np.newaxis])
-        if dtype == np.uint8:
-            arr_rs = np.array(arr_rs*255, dtype=np.uint8)
-        return arr_rs.T
-
-    def bands_subset_f(self, arr, band_numbers):
-        """
-        Subset array to array of  just given band indices
-        arr: float32
-        band_numbers: List. List of band numbers to subset
-        """
-        return arr[band_numbers, ...]
-
-    def apply_transform(self, x, transform_matrix, channel_index=0, fill_mode='nearest', cval=0.):
-        x = np.rollaxis(x, channel_index, 0)
-        final_affine_matrix = transform_matrix[:2, :2]
-        final_offset = transform_matrix[:2, 2]
-        channel_images = [ndi.interpolation.affine_transform(x_channel,
-                          final_affine_matrix,
-                          final_offset, order=0, mode=fill_mode, cval=cval)
-                          for x_channel in x]
-        x = np.stack(channel_images, axis=0)
-        x = np.rollaxis(x, 0, channel_index+1)
-        return x
-
-    def transform_matrix_offset_center(self, matrix, x, y):
-        o_x = float(x) / 2 + 0.5
-        o_y = float(y) / 2 + 0.5
-        offset_matrix = np.array([[1, 0, o_x], [0, 1, o_y], [0, 0, 1]])
-        reset_matrix = np.array([[1, 0, -o_x], [0, 1, -o_y], [0, 0, 1]])
-        transform_matrix = np.dot(np.dot(offset_matrix, matrix), reset_matrix)
-        return transform_matrix
-
-
-    def random_rotation_f(self, x, rg, row_index=1, col_index=2, channel_index=0,
-                          fill_mode='nearest', cval=0.):
-        theta = np.pi / 180 * np.random.uniform(-rg, rg)
-        rotation_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],
-                                    [np.sin(theta), np.cos(theta), 0],
-                                    [0, 0, 1]])
-
-        h, w = x.shape[row_index], x.shape[col_index]
-        transform_matrix = transform_matrix_offset_center(rotation_matrix, h, w)
-        x = apply_transform(x, transform_matrix, channel_index, fill_mode, cval)
-        return x
-
-
 class BaseGenerator():
-    def __init__(self, cache, shape=None, batch_size=32, shuffle=True, rescale_toa=False, bands_subset=None,
-                random_rotation=False, horizontal_flip=False, vertical_flip=False):
+    def __init__(self, cache, shape=None, batch_size=32, shuffle=True):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
         self.shuffle = shuffle
         self.on_epoch_end()
-        self.rescale_toa = rescale_toa
-        self.bands_subset = bands_subset
-        self.random_rotation = random_rotation
-        self.horizontal_flip = horizontal_flip
-        self.vertical_flip = vertical_flip
+
 
     def build_batch(self, index):
         raise NotImplemented
@@ -89,15 +24,15 @@ class BaseGenerator():
         self.index += 1
         return item
 
-    def _process(self, random_rotation, horizontal_flip, vertical_flip):
-        augmentation_list = []
-        if self.random_rotation:
-            augmentation_list.append(random_rotation_f)
-        if self.horizontal_flip:
-            augmentation_list.append(np.fliplr)
-        if self.vertical_flip:
-            augmentation_list.append(np.flipud)
-        return augmentation_list
+    # def _process(self, random_rotation, horizontal_flip, vertical_flip):
+    #     augmentation_list = []
+    #     if self.random_rotation:
+    #         augmentation_list.append(random_rotation_f)
+    #     if self.horizontal_flip:
+    #         augmentation_list.append(np.fliplr)
+    #     if self.vertical_flip:
+    #         augmentation_list.append(np.flipud)
+    #     return augmentation_list
 
     def on_epoch_end(self):
         '''update index for each epoch'''
@@ -122,9 +57,7 @@ class VedaStoreGenerator(BaseGenerator):
     VedaBase
     '''
     def __init__(self, cache, batch_size):
-        super().__init__(cache, batch_size=batch_size, shuffle=True,
-                        rescale_toa=False, bands_subset=None,random_rotation=False,
-                        horizontal_flip=False, vertical_flip=False)
+        super().__init__(cache, batch_size=batch_size, shuffle=True)
         self.list_ids = [i for i in range(0, len(self.cache))]
         self.mltype = cache._trainer.mltype
         self.shape = cache._trainer.image_shape
@@ -136,11 +69,11 @@ class VedaStoreGenerator(BaseGenerator):
         indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
         list_ids_temp = [self.list_ids[k] for k in indexes]
         # print(list_ids_temp)
-        X, y = self.data_generation(list_ids_temp)
+        X, y = self._data_generation(list_ids_temp)
         # print("build vb batch")
         return X, y
 
-    def data_generation(self, list_ids_temp):
+    def _data_generation(self, list_ids_temp):
         '''Generates data containing batch_size samples
         optionally pre-processes the data'''
 
@@ -165,7 +98,6 @@ class VedaStoreGenerator(BaseGenerator):
             return X, np.array(y)
         else:
             return X, y
-
 
 
 class VedaStreamGenerator(BaseGenerator):
