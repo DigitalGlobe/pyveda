@@ -36,7 +36,7 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 logger.setLevel(logging.DEBUG)
 handler = logging.handlers.RotatingFileHandler(
             log_fh, mode="w", maxBytes=10485760, backupCount=1)
-hander.setFormatter(formatter)
+handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 gbdx = Auth()
@@ -282,6 +282,3 @@ class VedaStreamFetcher(BaseVedaSetFetcher):
                 return True
             await self._qreq.put(req)
         return True
-
-
-
