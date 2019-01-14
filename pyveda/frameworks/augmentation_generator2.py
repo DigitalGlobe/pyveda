@@ -8,7 +8,7 @@ from pyveda.frameworks.transforms import *
 
 class BaseGenerator():
     def __init__(self, cache, shape=None, batch_size=32, shuffle=True, rescale_toa=False, random_rotation=False,
-                horizontal_flip=False, vertical_flip=False):
+                 horizontal_flip=False, vertical_flip=False):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
@@ -34,7 +34,6 @@ class BaseGenerator():
         self.index += 1
         return item
 
-    #@classmethod
     def process(self):
         augmentation_list = []
         if self.random_rotation:
@@ -68,9 +67,9 @@ class VedaStoreGenerator(BaseGenerator):
     VedaBase
     '''
     def __init__(self, cache, batch_size, rescale_toa=False, random_rotation=False, vertical_flip=False,
-                    horizontal_flip=False):
+                 horizontal_flip=False):
         super().__init__(cache, batch_size=batch_size, shuffle=True, rescale_toa=rescale_toa, random_rotation=random_rotation,
-                        vertical_flip=vertical_flip, horizontal_flip=horizontal_flip)
+                         vertical_flip=vertical_flip, horizontal_flip=horizontal_flip)
         self.list_ids = np.arange(0, len(self.cache))
         self.mltype = cache._trainer.mltype
         self.shape = cache._trainer.image_shape
@@ -94,7 +93,7 @@ class VedaStoreGenerator(BaseGenerator):
         if self.mltype == 'classification':
             y = np.empty((self.batch_size), dtype=int)   # needs classes
         if self.mltype == 'segmentation':
-            y = np.empty((self.batch_size, *self.shape[1:]))   # good
+            y = np.empty((self.batch_size, *self.shape[1:]))
         if self.mltype == 'object_detection':
             y = []
 
@@ -122,11 +121,19 @@ class VedaStoreGenerator(BaseGenerator):
             if self.mltype == 'classification':
                 y[i, ] = self.cache.labels[_id]
             if self.mltype == 'object_detection':
-                y.append(self.cache.labels[_id])
-            if self.mltype == 'segmentation':
                 #  will need to adjust based on augmentation (flipping/rotation)
+                y.append(self.cache.labels[_id])
+            if self.mltype == 'segmentation' and len(augmentation_lst) == 0:
                 y[i, ] = self.cache.labels[_id]
-        if self.mltype == 'object_detection':
+            else:
+                for func in randomly_selected_functions_lst:
+                    if func is random_rotation_f:
+                        random_rotation = randint(0, 359)
+                        y = func(self.cache.labels[_id], random_rotation)
+                    else:
+                        y = func(self.cache.labels[_id])
+                y[i, ] = y
+        if self.mltype == 'object_detection':  # indent level?
             return X, np.array(y)
         else:
             return X, y
