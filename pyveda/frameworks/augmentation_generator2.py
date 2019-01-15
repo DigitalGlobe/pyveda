@@ -124,8 +124,8 @@ class VedaStoreGenerator(BaseGenerator):
 
             if self.mltype == 'object_detection':
                 y.append(self.cache.labels[_id])
-            # if self.mltype == 'object_detection' and len(augmentation_lst) == 0:
-            #     y.append(self.cache.labels[_id])
+            # if self.mltype == 'object_detection' and len(randomly_selected_functions_lst) == 0:
+            #      y.append(self.cache.labels[_id])
             # else:
             #     for func in randomly_selected_functions_lst:
             #         if func is random_rotation_f:
@@ -141,8 +141,8 @@ class VedaStoreGenerator(BaseGenerator):
             #     y.append(y_od)
             if self.mltype == 'segmentation':
                 y[i, ] = y
-            # if self.mltype == 'segmentation' and len(augmentation_lst) == 0:
-            #     y[i, ] = self.cache.labels[_id]
+            # if self.mltype == 'segmentation' and len(randomly_selected_functions_lst) == 0:
+            #      y[i, ] = self.cache.labels[_id]
             # else:
             #     for func in randomly_selected_functions_lst:
             #         if func is random_rotation_f:
@@ -150,7 +150,7 @@ class VedaStoreGenerator(BaseGenerator):
             #             y = func(self.cache.labels[_id], random_rotation)
             #         else:
             #             y = func(self.cache.labels[_id])
-                # y[i, ] = y
+            #     y[i, ] = y
         if self.mltype == 'object_detection':  # indent level?
             return X, np.array(y)
         else:
