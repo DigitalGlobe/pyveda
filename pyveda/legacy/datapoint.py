@@ -63,8 +63,8 @@ class DataPoint(object):
     def image(self):
         """ Returns a delayed dask call for fetching the image for a data point """
         token = gbdx.gbdx_connection.access_token
-        delay = load_image(self.links["image"]["href"], token, self.imshape, dtype=self.dtype)
-        return self._delayed_image(delay)
+        load = load_image(self.links["image"]["href"], token, self.imshape, dtype=self.dtype)
+        return da.from_delayed(load, shape=self.imshape, dtype=self.dtype)
 
     @property
     def thumbnail(self):
