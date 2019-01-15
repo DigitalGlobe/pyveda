@@ -4,15 +4,13 @@ import mmap
 import numpy as np
 import requests
 from tempfile import NamedTemporaryFile
-from pyveda.auth import Auth
 from shapely.geometry import shape
 import warnings
+from pyveda.config import VedaConfig
 
-gbdx = Auth()
-HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
-conn = gbdx.gbdx_connection
+cfg = VedaConfig()
 
-def args_to_meta(name, description, dtype, imshape, 
+def args_to_meta(name, description, dtype, imshape,
                  mltype, partition, public, sensors):
     """
       Helper method for just building a dict of meta fields to pass to the API
@@ -27,22 +25,21 @@ def args_to_meta(name, description, dtype, imshape,
       'partition': partition,
       'sensors': sensors,
       'classes': [],
-      'bounds': None 
+      'bounds': None
     }
 
 
 def from_tarball(s3path, name=None, dtype='uint8',
                                     imshape=[3,256,256],
-                                    label_field=None, 
-                                    conn=conn,
+                                    label_field=None,
                                     default_label=None,
                                     mltype="classification",
                                     description="",
                                     public=False,
                                     sensors=[],
                                     partition=[100,0,0],
-                                    url="{}/data/bulk".format(HOST)):
-    dtype = np.dtype(dtype) 
+                                    url="{}/data/bulk".format(cfg.host)):
+    dtype = np.dtype(dtype)
     meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors)
     options = {
         'default_label': default_label,
@@ -53,7 +50,7 @@ def from_tarball(s3path, name=None, dtype='uint8',
         'metadata': meta,
         'options': options
     }
-    doc = conn.post(url, json=body).json()
+    doc = cfg.conn.post(url, json=body).json()
     return doc
 
 
@@ -63,7 +60,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
                               dtype=None, description='',
                               mltype="classification", public=False,
                               partition=[100,0,0], sensors=[],
-                              url="{}/data".format(HOST), conn=conn, **kwargs):
+                              url="{}/data".format(cfg.host), **kwargs):
     """
         Loads a geojson file into the collection
 
@@ -129,7 +126,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
             'file': (os.path.basename(geojson), mfile, 'application/text'),
             'options': (None, json.dumps(options), 'application/json')
         }
-        r = conn.post(url, files=body)
+        r = cfg.conn.post(url, files=body)
         if r.status_code <= 201:
             return r.json()
         else:
