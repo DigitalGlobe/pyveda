@@ -108,6 +108,7 @@ class VedaStoreGenerator(BaseGenerator):
                 X[i, ] = x
             else:
                 randomly_selected_functions_lst = sample(augmentation_lst, randint(0, len(augmentation_lst) - 1))
+                #print(randomly_selected_functions_lst)
                 # possibility that no augmentation functions were selected
                 if len(randomly_selected_functions_lst) == 0:
                     X[i, ] = x
@@ -120,19 +121,36 @@ class VedaStoreGenerator(BaseGenerator):
                 X[i, ] = x
             if self.mltype == 'classification':
                 y[i, ] = self.cache.labels[_id]
+
             if self.mltype == 'object_detection':
-                #  will need to adjust based on augmentation (flipping/rotation)
                 y.append(self.cache.labels[_id])
-            if self.mltype == 'segmentation' and len(augmentation_lst) == 0:
-                y[i, ] = self.cache.labels[_id]
-            else:
-                for func in randomly_selected_functions_lst:
-                    if func is random_rotation_f:
-                        random_rotation = randint(0, 359)
-                        y = func(self.cache.labels[_id], random_rotation)
-                    else:
-                        y = func(self.cache.labels[_id])
+            # if self.mltype == 'object_detection' and len(augmentation_lst) == 0:
+            #     y.append(self.cache.labels[_id])
+            # else:
+            #     for func in randomly_selected_functions_lst:
+            #         if func is random_rotation_f:
+            #             y_od = self.cache.labels[_id] #need to fix
+            #         if func is np.fliplr:
+            #             y_od = flip_labels_horizontal(self.shape, self.cache.labels[_id])
+            #             print(y_od)
+            #
+            #         if func is np.flipud:
+            #             y_od = flip_labels_vertical(self.shape, self.cache.labels[_id])
+            #             print(y_od)
+            #     #  will need to adjust based on augmentation (flipping/rotation)
+            #     y.append(y_od)
+            if self.mltype == 'segmentation':
                 y[i, ] = y
+            # if self.mltype == 'segmentation' and len(augmentation_lst) == 0:
+            #     y[i, ] = self.cache.labels[_id]
+            # else:
+            #     for func in randomly_selected_functions_lst:
+            #         if func is random_rotation_f:
+            #             random_rotation = randint(0, 359)
+            #             y = func(self.cache.labels[_id], random_rotation)
+            #         else:
+            #             y = func(self.cache.labels[_id])
+                # y[i, ] = y
         if self.mltype == 'object_detection':  # indent level?
             return X, np.array(y)
         else:
