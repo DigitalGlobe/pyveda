@@ -127,7 +127,7 @@ class H5DataBase(BaseDataSet):
             self._fileh.create_table(group, "hit_table", classifications,
                                      "Label Hit Record", filters)
             # Create sep table for ids for now
-            self._fileh.create_table(group, "id_table", {"ids": tables.UInt8Col(pos=0)},
+            self._fileh.create_table(group, "id_table", {"ids": tables.StringCol(36, pos=0)},
                                      "Vedaset Sample Id Index", filters)
 
     def _build_label_tables(self, rebuild=True):
