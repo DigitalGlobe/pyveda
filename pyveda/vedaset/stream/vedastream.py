@@ -94,6 +94,13 @@ class BufferedSampleArray(BaseSampleArray):
         self.exhausted = True
         raise StopIteration
 
+    def batch_iter(self, batch_size):
+        while True:
+            batch = []
+            while len(batch) < batch_size:
+                batch.append(self.__next__())
+            yield batch
+
     @property
     def exhausted(self):
         return self._exhausted
