@@ -121,7 +121,7 @@ def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10]
 
 
 def store(filename, dataset_id=None, dataset_name=None, count=None,
-          partition=[70,20,10], **kwargs):
+          partition=[70,20,10], overwrite=False, **kwargs):
     """ Download a collection locally into a VedaBase hdf5 store
 
     Args:
@@ -146,6 +146,7 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
                           klasses=coll.classes,
                           image_shape=coll.imshape,
                           image_dtype=coll.dtype,
+                          overwrite=overwrite,
                           **kwargs)
     if count is None:
         count = coll.count
