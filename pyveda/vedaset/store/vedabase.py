@@ -7,7 +7,6 @@ from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, NDImageArray
 from pyveda.vedaset.abstract import BaseSampleArray, BaseDataSet
-from pyveda.frameworks.augmentation_generator import BatchGenerator
 from pyveda.frameworks.augmentation_generator2 import VedaStoreGenerator
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
@@ -35,9 +34,6 @@ class WrappedDataNode(object):
     @property
     def labels(self):
         return self._trainer._label_array_factory(self._node.hit_table, self._node.labels,  self._trainer)
-
-    def batch_generator(self, batch_size, **kwargs):
-        return BatchGenerator(self, batch_size = batch_size, mltype=self._trainer.mltype, **kwargs)
 
     def batch_generator2(self, batch_size, **kwargs):
         return VedaStoreGenerator(self, batch_size= batch_size, **kwargs)
