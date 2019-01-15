@@ -44,13 +44,12 @@ def search(params={}, filters={}, **kwargs):
 
     Args:
         params (dict): Additional search params for Elasticsearch (optional)
-        host (str): Host address to use (optional)
         filters (dict): additional filters to apply to results (optional)
 
     Returns:
         list: VedaCollectionProxies for collections returned by the search
     '''
-    r = cfg.conn.post('{}/{}'.format(host, "search"), json=params)
+    r = cfg.conn.post('{}/{}'.format(cfg.host, "search"), json=params)
     r.raise_for_status()
     results = r.json()
     return [VedaCollectionProxy.from_doc(s) for s in results
@@ -61,14 +60,11 @@ def from_id(dataset_id):
 
     Args:
         dataset_id (str): ID of the dataset to check
-        conn (Oauth2 connection): server connection to use
-        host (str): Host address to use
-
     Returns:
         VedaCollectionProxy: the dataset
     '''
 
-    r = cfg.conn.get(_bec._dataset_base_furl.format(host_url=host,
+    r = cfg.conn.get(_bec._dataset_base_furl.format(host_url=cfg.host,
                                                 dataset_id=dataset_id))
     r.raise_for_status()
     if r.status_code == 200:
@@ -82,7 +78,6 @@ def from_name(dataset_name):
         Args:
             dataset_name (str): name of the dataset to check
             conn (Oauth2 connection): server connection to use
-            host (str): Host address to use
 
         Returns:
             VedaCollectionProxy: the dataset
