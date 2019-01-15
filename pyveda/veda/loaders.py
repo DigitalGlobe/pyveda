@@ -38,7 +38,7 @@ def from_tarball(s3path, name=None, dtype='uint8',
                                     public=False,
                                     sensors=[],
                                     partition=[100,0,0],
-                                    url="{}/data/bulk".format(cfg.HOST)):
+                                    url="{}/data/bulk".format(cfg.host)):
     dtype = np.dtype(dtype)
     meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors)
     options = {
@@ -60,7 +60,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
                               dtype=None, description='',
                               mltype="classification", public=False,
                               partition=[100,0,0], sensors=[],
-                              url="{}/data".format(cfg.HOST), **kwargs):
+                              url="{}/data".format(cfg.host), **kwargs):
     """
         Loads a geojson file into the collection
 
