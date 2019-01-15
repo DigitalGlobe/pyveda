@@ -191,7 +191,7 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
                               dtype=None, description='',
                               mltype="classification", public=False,
                               partition=[100,0,0], mask=None,
-                              url="{}/data".format(cfg.HOST), **kwargs):
+                              url="{}/data".format(cfg.host), **kwargs):
     """ Loads geojson and an image into a new collection of data
 
     Args:
