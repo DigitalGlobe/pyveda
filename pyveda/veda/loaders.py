@@ -116,7 +116,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
         'graph': image.rda_id,
         'node': rda_node,
     }
-    if 'mask' in kwargs:
+    if 'mask' in kwargs and kwargs.get('mask'):
         options['mask'] = shape(kwargs.get('mask')).wkt
 
     with open(geojson, 'r') as fh:
