@@ -53,3 +53,39 @@ def random_rotation_f(x, rg, row_index=1, col_index=2, channel_index=0,
     transform_matrix = transform_matrix_offset_center(rotation_matrix, h, w)
     x = apply_transform(x, transform_matrix, channel_index, fill_mode, cval)
     return x
+
+def flip_labels_horizontal(vb, bbox_lst):
+    """
+    Adjust object detection image labels if image is horizontally rotated.
+    """
+    bbox_flipped_h = []
+    shp_center = (np.array(vb.image_shape[1:])/2)[0]
+    for x in bbox_lst[0]:
+        if (shp_center - x[0]) < 0:
+            xmin_new = shp_center + (shp_center - x[0])
+        else:
+            xmin_new = shp_center - (shp_center - x[0])
+        if (shp_center - x[2]) < 0:
+            xmax_new = shp_center + (shp_center - x[2])
+        else:
+            xmax_new = shp_center - (shp_center - x[2])
+        bbox_flipped_h.append([int(xmin_new), x[1], int(xmax_new), x[3]])
+    return bbox_flipped_h
+
+def flip_labels_vertical(img, bbox):
+    """
+    Adjust object detection image labels if the image is verically roated.
+    """
+    bbox_flipped_v = []
+    shp_center = (np.array(vb.image_shape[1:])/2)[0]
+    for x in bbox_lst[1]:
+        if (shp_center - x[0]) < 0:
+            ymin_new = shp_center + (shp_center - x[0])
+        else:
+            ymin_new = shp_center - (shp_center - x[0])
+        if (shp_center - x[3]) < 0:
+            ymax_new = shp_center + (shp_center - x[2])
+        else:
+            ymax_new = shp_center - (shp_center - x[2])
+        bbox_flipped_v.append([int(ymin_new), x[1], int(ymax_new), x[3]])
+    return bbox_flipped_v
