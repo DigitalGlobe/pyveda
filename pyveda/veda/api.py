@@ -374,7 +374,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     @classmethod
     def from_id(cls, _id):
         """ Helper method that fetches an id into a VedaCollection """
-        r = conn.get("{}/data/{}".format(self.host, _id))
+        r = self.conn.get("{}/data/{}".format(self.host, _id))
         r.raise_for_status()
         doc = r.json()
         doc['properties']['host'] = host
