@@ -30,8 +30,7 @@ def set_host(host):
 
 
 class VedaConfig:
-    def __init__(self, conn=Auth().gbdx_connection):
-        self._conn = conn
+    _conn = Auth().gbdx_connection
 
     @property
     def host(self):
