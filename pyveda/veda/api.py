@@ -173,7 +173,8 @@ class DataCollectionClient(BaseClient):
 
     @property
     def _release_url(self):
-        return self._base_url
+        return self._dataset_release_furl.format(host_url=self._host,
+                                                 dataset_id=self.id)
 
     @property
     def _remove_url(self):
@@ -187,12 +188,28 @@ class DataCollectionClient(BaseClient):
     def update(self, data):
         r = self.conn.put(self._update_url, json=data)
         r.raise_for_status()
+        self.refresh()
         return r.json()
 
     def release(self, version):
         r = self.conn.post(self._release_url, json={"version": version})
         r.raise_for_status()
-        return r.json()
+        doc = r.json()
+        return doc.releases
+
+    def download_release(self, version, path=None):
+        self.refresh()
+        assert version in self.releases, 'Release version not found'
+        assert self.releases[version]['status'] == 'complete', 'You can only download completed releases.'
+        path = path if path is not None else './{}-{}.tar.gz'.format(self.id, version)
+        try:
+            os.makedirs(os.path.dirname(path))
+        except Exception as err:
+            pass
+        r = self.conn.get(os.path.join(self._release_url, version))
+        with open(path, 'wb') as fh:
+            fh.write(r.content)
+        return path
 
     def publish(self):
         r = self.conn.put(self._publish_url, json={"public": True})
@@ -205,6 +222,12 @@ class DataCollectionClient(BaseClient):
     def remove(self):
         r = self.conn.delete(self._remove_url)
         r.raise_for_status()
+
+    def refresh(self):
+        r = self.conn.get(self._base_url)
+        r.raise_for_status()
+        meta = {k: v for k, v in r.json()['properties'].items() if k in self._metaprops}
+        self._meta.update(meta)
 
     @classmethod
     def _from_links(cls, links, conn=None):
@@ -287,12 +310,6 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     
     def fetch_sample_from_index(self, idx, **kwargs):
         return self.fetch_dps_from_slice(idx, **kwargs).pop()
-
-    def refresh(self):
-        r = self.conn.get(self._base_url)
-        r.raise_for_status()
-        meta = {k: v for k, v in r.json()['properties'].items() if k in self._metaprops}
-        self._meta.update(meta)
 
     def gen_sample_ids(self, count=None, page_size=100, get_urls=True, **kwargs):
         """ Creates a generator of Datapoint IDs or URLs for every datapoint in the VedaCollection
