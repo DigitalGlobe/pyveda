@@ -149,7 +149,7 @@ class DataCollectionClient(BaseClient):
 
     @property
     def _release_url(self):
-        return self._dataset_release_furl.format(host_url=self._host,
+        return self._dataset_release_furl.format(host_url=self.host,
                                                  dataset_id=self.id)
 
     @property
