@@ -171,7 +171,7 @@ class DataCollectionClient(BaseClient):
         r = self.conn.post(self._release_url, json={"version": version})
         r.raise_for_status()
         doc = r.json()
-        return doc['releases']
+        return doc['properties']['releases'][version]
 
     def download_release(self, version, path=None):
         self.refresh()
