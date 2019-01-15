@@ -186,7 +186,7 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
                               dtype=None, description='',
                               mltype="classification", public=False,
                               partition=[100,0,0], mask=None,
-                              url="{}/data".format(cfg.host), **kwargs):
+                              **kwargs):
     """ Loads geojson and an image into a new collection of data
 
     Args:
@@ -223,7 +223,7 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
                    dtype=dtype, description=description,
                    mltype=mltype, public=public, sensors=sensors,
                    partition=partition, mask=mask,
-                   url=url, **kwargs)
+                   **kwargs)
     return VedaCollectionProxy.from_doc(doc)
 
 create_from_tarball = from_tarball
