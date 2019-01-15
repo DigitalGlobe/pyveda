@@ -24,7 +24,7 @@ import numpy as np
 import requests
 
 from pyveda.auth import Auth
-
+from pyveda.veda import api
 gbdx = Auth()
 conn = gbdx.gbdx_connection
 
@@ -197,13 +197,15 @@ class Labelizer():
         """
         Fetches the next DataPoint object from VedaCollection ids.
         """
-        try:
-            dp_url, img_url = self.ids.__next__()
-            r = conn.get(dp_url).json()
-            self.dp = DataPoint(r, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
-            return self.dp
-        except Exception as err:
-            return None
+        # try:
+        dp_url, img_url = self.ids.__next__()
+        r = conn.get(dp_url).json()
+        self.dp = DataPoint(r, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
+        # self.dp = api.VedaCollectionProxy.fetch_sample_from_id(dp_ids=r, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
+        return self.dp
+        # except Exception as err:
+        #     print('bad')
+        #     return None
 
     def clean_flags(self):
         """

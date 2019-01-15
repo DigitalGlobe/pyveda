@@ -431,4 +431,4 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         return self.fetch_samples_from_slice(start, num_points=limit)
 
     def clean(self):
-        Labelizer(self._base_url, self.count, self.imshape, self.dtype, self.mltype).clean()
+        Labelizer(self.gen_sample_ids(), self.count, self.imshape, self.dtype, self.mltype).clean()
