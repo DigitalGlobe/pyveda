@@ -125,7 +125,6 @@ class DataSampleClient(BaseClient):
         """
         r = self.conn.delete(self._url)
         r.raise_for_status()
-        return None
 
     def __repr__(self):
         data = self.data.copy()
@@ -319,7 +318,6 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             raise VedaUploadError("Cannot load while server-side caching active")
         params = dict(self.meta, url=self._base_url, conn=self.conn, sensors=self.sensors, **kwargs)
         doc = from_geo(geojson, image, **params)
-        return self
 
     def append_from_tarball(self, s3path, **kwargs):
         """
