@@ -72,7 +72,7 @@ def flip_labels_horizontal(vb, bbox_lst):
         bbox_flipped_h.append([int(xmin_new), x[1], int(xmax_new), x[3]])
     return bbox_flipped_h
 
-def flip_labels_vertical(img, bbox):
+def flip_labels_vertical(vb, bbox):
     """
     Adjust object detection image labels if the image is verically roated.
     """
