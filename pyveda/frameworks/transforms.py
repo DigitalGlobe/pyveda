@@ -16,15 +16,6 @@ def rescale_toa(arr, dtype=np.float32):
         arr_rs = np.array(arr_rs*255, dtype=np.uint8)
     return arr_rs.T
 
-
-def bands_subset_f(arr, band_numbers):
-    """
-    Subset array to array of  just given band indices
-    arr: float32
-    band_numbers: List. List of band numbers to subset
-    """
-    return arr[band_numbers, ...]
-
 # Augmentation Functions Definition- written by Bernardo Henz
 # https://github.com/bernardohenz/ExtendableImageDatagen/blob/master/util/extendable_datagen.py
 
