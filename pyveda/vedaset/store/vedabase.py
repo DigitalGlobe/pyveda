@@ -25,18 +25,18 @@ ignore_NaturalNameWarning = partial(ignore_warnings, _warning=tables.NaturalName
 class WrappedDataNode(object):
     def __init__(self, node, trainer):
         self._node = node
-        self._trainer = trainer
+        self._vset = trainer
 
     @property
     def images(self):
-        return self._trainer._image_array_factory(self._node.images, self._trainer, output_transform = self._trainer._fw_loader)
+        return self._vset._image_array_factory(self._node.images, self._vset, output_transform = self._vset._fw_loader)
 
     @property
     def labels(self):
-        return self._trainer._label_array_factory(self._node.hit_table, self._node.labels,  self._trainer)
+        return self._vset._label_array_factory(self._node.hit_table, self._node.labels,  self._vset)
 
     def batch_generator(self, batch_size, **kwargs):
-        return BatchGenerator(self, batch_size = batch_size, mltype=self._trainer.mltype, **kwargs)
+        return BatchGenerator(self, batch_size = batch_size, mltype=self._vset.mltype, **kwargs)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):
@@ -199,4 +199,3 @@ class H5DataBase(BaseDataSet):
     #@classmethod
     #def from_vc(cls, vc, **kwargs):
     #    # Load an empty H5DataBase from a VC
-        
