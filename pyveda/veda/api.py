@@ -83,7 +83,7 @@ class DataSampleClient(BaseClient):
         return self._datapoint_base_furl.format(host_url=self.host, datapoint_id=self.id)
 
     @property
-    def image(self):
+    def image_shape(self):
         return self._get_image(self.links['image']['href'])
 
     @property
@@ -364,7 +364,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             mfile = mmap.mmap(temp.fileno(), 0, access=mmap.ACCESS_READ)
             meta = {
                 "bounds": image.bounds,
-                "label": label,
+                "labels": label,
                 "mltype": self.mltype,
                 "dtype": self.dtype.name,
                 "dataset_id": self.id,
@@ -419,6 +419,3 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             start, stop = slc.start, slc.stop
             limit = (stop-1) - start
         return self.fetch_samples_from_slice(start, num_points=limit)
-
-
-
