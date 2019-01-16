@@ -34,6 +34,7 @@ class WrappedDataNode(object):
     @property
     def labels(self):
         return self._vset._label_array_factory(self._node.hit_table, self._node.labels,  self._vset)
+
     def batch_generator(self, batch_size, **kwargs):
         return BatchGenerator(self, batch_size = batch_size, mltype=self._vset.mltype, **kwargs)
 
