@@ -66,11 +66,6 @@ class DataPoint(object):
         load = load_image(self.links["image"]["href"], token, self.imshape, dtype=self.dtype)
         return da.from_delayed(load, shape=self.imshape, dtype=self.dtype)
 
-
-    def _delayed_image(self, delay):
-        return da.from_delayed(delay, shape=self.imshape, dtype=self.dtype)
-
-
     def save(self, data):
         """ Saves/updates the datapoint in the database """
         return self.conn.put(self.links["update"]["href"], json=data).json()
