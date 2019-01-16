@@ -7,16 +7,12 @@ from pyveda.frameworks.transforms import *
 
 
 class BaseGenerator():
-    def __init__(self, cache, shape=None, batch_size=32, shuffle=True, rescale_toa=False, random_rotation=False,
-                 horizontal_flip=False, vertical_flip=False):
+    def __init__(self, cache, shape=None, batch_size=32, shuffle=True, rescale_toa=False):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
         self.shuffle = shuffle
         self.rescale_toa = rescale_toa
-        self.random_rotation = random_rotation
-        self.horizontal_flip = horizontal_flip
-        self.vertical_flip = vertical_flip
         self.on_epoch_end()
 
     def build_batch(self, index):
@@ -33,16 +29,6 @@ class BaseGenerator():
             raise StopIteration
         self.index += 1
         return item
-
-    def process(self):
-        augmentation_list = []
-        if self.random_rotation:
-            augmentation_list.append(random_rotation_f)
-        if self.horizontal_flip:
-            augmentation_list.append(np.fliplr)
-        if self.vertical_flip:
-            augmentation_list.append(np.flipud)
-        return augmentation_list
 
     def on_epoch_end(self):
         '''update index for each epoch'''
@@ -66,10 +52,8 @@ class VedaStoreGenerator(BaseGenerator):
     '''
     VedaBase
     '''
-    def __init__(self, cache, batch_size, rescale_toa=False, random_rotation=False, vertical_flip=False,
-                 horizontal_flip=False):
-        super().__init__(cache, batch_size=batch_size, shuffle=True, rescale_toa=rescale_toa, random_rotation=random_rotation,
-                         vertical_flip=vertical_flip, horizontal_flip=horizontal_flip)
+    def __init__(self, cache, batch_size, rescale_toa=False):
+        super().__init__(cache, batch_size=batch_size, shuffle=True, rescale_toa=rescale_toa)
         self.list_ids = np.arange(0, len(self.cache))
         self.mltype = cache._trainer.mltype
         self.shape = cache._trainer.image_shape
@@ -80,9 +64,7 @@ class VedaStoreGenerator(BaseGenerator):
             raise IndexError("index is invalid")
         indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
         list_ids_temp = [self.list_ids[k] for k in indexes]
-        # print(list_ids_temp)
         X, y = self._data_generation(list_ids_temp)
-        # print("build vb batch")
         return X, y
 
     def _data_generation(self, list_ids_temp):
@@ -97,60 +79,22 @@ class VedaStoreGenerator(BaseGenerator):
         if self.mltype == 'object_detection':
             y = []
 
-        augmentation_lst = self.process()
-
         for i, _id in enumerate(list_ids_temp):
             if self.rescale_toa:
                 x = rescale_toa(self.cache.images[_id])
             else:
                 x = self.cache.images[_id].T
-            if len(augmentation_lst) == 0:
-                X[i, ] = x
-            else:
-                randomly_selected_functions_lst = sample(augmentation_lst, randint(0, len(augmentation_lst) - 1))
-                #print(randomly_selected_functions_lst)
-                # possibility that no augmentation functions were selected
-                if len(randomly_selected_functions_lst) == 0:
-                    X[i, ] = x
-                for func in randomly_selected_functions_lst:
-                    if func is random_rotation_f:
-                        random_rotation = randint(0, 359)
-                        x = func(x, random_rotation)
-                    else:
-                        x = func(x)
                 X[i, ] = x
             if self.mltype == 'classification':
                 y[i, ] = self.cache.labels[_id]
 
             if self.mltype == 'object_detection':
                 y.append(self.cache.labels[_id])
-            # if self.mltype == 'object_detection' and len(randomly_selected_functions_lst) == 0:
-            #      y.append(self.cache.labels[_id])
-            # else:
-            #     for func in randomly_selected_functions_lst:
-            #         if func is random_rotation_f:
-            #             y_od = self.cache.labels[_id] #need to fix
-            #         if func is np.fliplr:
-            #             y_od = flip_labels_horizontal(self.shape, self.cache.labels[_id])
-            #             print(y_od)
-            #
-            #         if func is np.flipud:
-            #             y_od = flip_labels_vertical(self.shape, self.cache.labels[_id])
-            #             print(y_od)
-            #     #  will need to adjust based on augmentation (flipping/rotation)
-            #     y.append(y_od)
+            if self.mltype == 'object_detection':
+                 y.append(self.cache.labels[_id])
+
             if self.mltype == 'segmentation':
                 y[i, ] = y
-            # if self.mltype == 'segmentation' and len(randomly_selected_functions_lst) == 0:
-            #      y[i, ] = self.cache.labels[_id]
-            # else:
-            #     for func in randomly_selected_functions_lst:
-            #         if func is random_rotation_f:
-            #             random_rotation = randint(0, 359)
-            #             y = func(self.cache.labels[_id], random_rotation)
-            #         else:
-            #             y = func(self.cache.labels[_id])
-            #     y[i, ] = y
         if self.mltype == 'object_detection':  # indent level?
             return X, np.array(y)
         else:
