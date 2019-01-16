@@ -7,7 +7,7 @@ from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, NDImageArray
 from pyveda.vedaset.abstract import BaseSampleArray, BaseDataSet
-from pyveda.frameworks.augmentation_generator import VedaStoreGenerator
+from pyveda.frameworks.batch_generator import VedaStoreGenerator
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
