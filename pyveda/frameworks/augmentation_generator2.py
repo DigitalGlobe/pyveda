@@ -95,3 +95,5 @@ class VedaStoreGenerator(BaseGenerator):
             return X, np.array(y)
         else:
             return X, y
+
+class VedaStreamGenerator(BaseGenerator):
