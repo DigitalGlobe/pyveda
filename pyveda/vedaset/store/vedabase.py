@@ -35,7 +35,13 @@ class WrappedDataNode(object):
     def labels(self):
         return self._trainer._label_array_factory(self._node.hit_table, self._node.labels,  self._trainer)
 
-    def batch_generator2(self, batch_size, **kwargs):
+    def batch_generator(self, batch_size, shuffle, **kwargs):
+        """
+        Generatates Batch of Images/Lables on a VedaBase partition.
+        #Arguments
+            batch_size: int. batch size
+            shuffle: boolean.       
+        """
         return VedaStoreGenerator(self, batch_size= batch_size, **kwargs)
 
     def __getitem__(self, spec):

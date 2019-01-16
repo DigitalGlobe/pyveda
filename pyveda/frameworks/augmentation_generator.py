@@ -7,12 +7,11 @@ from pyveda.frameworks.transforms import *
 
 
 class BaseGenerator():
-    def __init__(self, cache, shape=None, batch_size=32, shuffle=True, rescale_toa=False):
+    def __init__(self, cache, shape=None, batch_size=32, shuffle=True):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
         self.shuffle = shuffle
-        self.rescale_toa = rescale_toa
         self.on_epoch_end()
 
     def build_batch(self, index):
@@ -52,8 +51,9 @@ class VedaStoreGenerator(BaseGenerator):
     '''
     VedaBase
     '''
-    def __init__(self, cache, batch_size, rescale_toa=False):
-        super().__init__(cache, batch_size=batch_size, shuffle=True, rescale_toa=rescale_toa)
+
+    def __init__(self, cache, batch_size, shuffle):
+        super(VedaStoreGenerator).__init__(cache, batch_size=batch_size, shuffle=shuffle)
         self.list_ids = np.arange(0, len(self.cache))
         self.mltype = cache._trainer.mltype
         self.shape = cache._trainer.image_shape
@@ -80,9 +80,6 @@ class VedaStoreGenerator(BaseGenerator):
             y = []
 
         for i, _id in enumerate(list_ids_temp):
-            if self.rescale_toa:
-                x = rescale_toa(self.cache.images[_id])
-            else:
                 x = self.cache.images[_id].T
                 X[i, ] = x
             if self.mltype == 'classification':
@@ -90,7 +87,7 @@ class VedaStoreGenerator(BaseGenerator):
             if self.mltype == 'object_detection':
                 y.append(self.cache.labels[_id])
             if self.mltype == 'segmentation':
-                y[i, ] = y[i, ] = self.cache.labels[_id]
+                y[i, ] = self.cache.labels[_id]
         if self.mltype == 'object_detection':  # indent level?
             return X, np.array(y)
         else:
