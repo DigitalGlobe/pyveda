@@ -5,7 +5,6 @@ from random import sample
 
 from pyveda.frameworks.transforms import *
 
-
 class BaseGenerator():
     '''
     Parent Class for Generator
@@ -15,6 +14,7 @@ class BaseGenerator():
     shuffle: Boolean. To shuffle or not shuffle data between epochs.
     Rescale: Boolean. Flag to indicate if data returned from the generator should be rescaled between 0 and 1.
     '''
+
     def __init__(self, cache, batch_size=32, shuffle=True, rescale=False):
         self.cache = cache
         self.batch_size = batch_size
@@ -22,16 +22,15 @@ class BaseGenerator():
         self.shuffle = shuffle
         self.rescale = rescale
         self.on_epoch_end()
-        self.list_ids = np.arange(0, len(self.cache)
-
+        self.list_ids = np.arange(0, len(self.cache))
 
     @property
     def mltype(self):
-        return self.cache._trainer.mltype
+        return self.cache._vset.mltype
 
     @property
     def shape(self):
-        return self.cache._trainer.image_shape
+        return self.cache._vset.image_shape
 
     def build_batch(self, index):
         raise NotImplemented
@@ -92,14 +91,6 @@ class VedaStoreGenerator(BaseGenerator):
     def _data_generation(self, list_ids_temp):
         '''Generates data containing batch_size samples
         optionally pre-processes the data'''
-
-        # x = np.empty((self.batch_size, *self.shape))
-        # if self.mltype == 'classification':
-        #     y = np.empty((self.batch_size), dtype=int)   # needs classes
-        # if self.mltype == 'segmentation':
-        #     y = np.empty((self.batch_size, *self.shape[1:]))
-        # if self.mltype == 'object_detection':
-        #     y = []
 
         x, y = self._empty_batch(self.batch_size)
 
