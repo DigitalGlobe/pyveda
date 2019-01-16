@@ -21,6 +21,9 @@ def rescale_toa(arr, dtype=np.float32):
 
 
 def apply_transform(x, transform_matrix, channel_index=0, fill_mode='nearest', cval=0.):
+    """
+    Helper function for randomly rotating an image between 1 and 359 degrees.
+    """
     x = np.rollaxis(x, channel_index, 0)
     final_affine_matrix = transform_matrix[:2, :2]
     final_offset = transform_matrix[:2, 2]
@@ -34,6 +37,9 @@ def apply_transform(x, transform_matrix, channel_index=0, fill_mode='nearest', c
 
 
 def transform_matrix_offset_center(matrix, x, y):
+    """
+    Helper function for randomly rotating an image between 1 and 359 degrees.
+    """
     o_x = float(x) / 2 + 0.5
     o_y = float(y) / 2 + 0.5
     offset_matrix = np.array([[1, 0, o_x], [0, 1, o_y], [0, 0, 1]])
@@ -44,6 +50,9 @@ def transform_matrix_offset_center(matrix, x, y):
 
 def random_rotation_f(x, rg, row_index=1, col_index=2, channel_index=0,
                       fill_mode='nearest', cval=0.):
+    """
+    Randomly rotate an image between 1 and 359 degrees for data augmentation.
+    """
     theta = np.pi / 180 * np.random.uniform(-rg, rg)
     rotation_matrix = np.array([[np.cos(theta), -np.sin(theta), 0],
                                 [np.sin(theta), np.cos(theta), 0],
