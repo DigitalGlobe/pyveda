@@ -16,7 +16,6 @@ from pyveda.utils import features_to_pixels
 from pyveda.veda.props import prop_wrap, VEDAPROPS
 from pyveda.veda.loaders import from_geo, from_tarball
 from pyveda.auth import Auth
-from pyveda.vv.labelizer import Labelizer
 
 VALID_MLTYPES = ['classification', 'object_detection', 'segmentation']
 VALID_MATCHTYPES = ['INSIDE', 'INTERSECT', 'ALL']
@@ -429,6 +428,3 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             start, stop = slc.start, slc.stop
             limit = (stop-1) - start
         return self.fetch_samples_from_slice(start, num_points=limit)
-
-    def clean(self):
-        Labelizer(self.gen_sample_ids(), self.count, self.imshape, self.dtype, self.mltype).clean()

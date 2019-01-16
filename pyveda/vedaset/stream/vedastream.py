@@ -8,6 +8,7 @@ from functools import partial
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
+from pyveda.vv import labelizer
 
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):
@@ -124,6 +125,11 @@ class BufferedSampleArray(BaseSampleArray):
         except ValueError:
             lbls = []
         return BufferedVariableArray(lbls)
+
+    def clean(self):
+        count = len(self)
+        labelizer.Labelizer(self, count).clean()
+
 
 
 class BufferedDataStream(BaseDataSet):
@@ -277,6 +283,3 @@ class BufferedDataStream(BaseDataSet):
 
     def __getitem__(self, slc):
         raise NotImplementedError
-
-
-
