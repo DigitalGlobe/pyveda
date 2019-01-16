@@ -7,17 +7,45 @@ from pyveda.frameworks.transforms import *
 
 
 class BaseGenerator():
-    def __init__(self, cache, shape=None, batch_size=32, shuffle=True, rescale=False):
+    '''
+    Parent Class for Generator
+
+    cache: Parition (train, test, or validate) of VedaBase or VedaStream.
+    batch_size: int. Number of samples.
+    shuffle: Boolean. To shuffle or not shuffle data between epochs.
+    Rescale: Boolean. Flag to indicate if data returned from the generator should
+             be rescaled between 0 and 1.
+    '''
+    def __init__(self, cache, batch_size=32, shuffle=True, rescale=False):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
         self.shuffle = shuffle
         self.rescale = rescale
         self.on_epoch_end()
-        self.list_ids = np.arange(0, len(self.cache))
+        self.list_ids = np.arange(0, len(self.cache)
+
+
+    @property
+    def mltype(self):
+        return self.cache._trainer.mltype
+
+    @property
+    def shape(self):
+        return self.cache._trainer.image_shape
 
     def build_batch(self, index):
         raise NotImplemented
+
+    def _empty_batch(self, batch_size):
+        x = np.empty((self.batch_size, *self.shape))
+        if self.mltype == 'classification':
+            y = np.empty((self.batch_size), dtype=int)   # needs classes
+        if self.mltype == 'segmentation':
+            y = np.empty((self.batch_size, *self.shape[1:]))
+        if self.mltype == 'object_detection':
+            y = []
+        return x, y
 
     def __getitem__(self, index):
         return self.build_batch(index)
@@ -50,21 +78,13 @@ class BaseGenerator():
 
 class VedaStoreGenerator(BaseGenerator):
     '''
-    VedaBase
+    Generator for VedaBase partition, either train, test or validate.
     '''
-
-    @property
-    def mltype(self):
-        return self.cache._trainer.mltype
-
-    @property
-    def shape(self):
-        return self.cache._trainer.image_shape
 
     def build_batch(self, index):
         '''Generate one batch of data'''
         if index > len(self):
-            raise IndexError("Batch generator is exhausted, index is invalid.")
+            raise IndexError("Index is invalid because batch generator is exhausted.")
         indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
         list_ids_temp = [self.list_ids[k] for k in indexes]
         x, y = self._data_generation(list_ids_temp)
@@ -74,14 +94,15 @@ class VedaStoreGenerator(BaseGenerator):
         '''Generates data containing batch_size samples
         optionally pre-processes the data'''
 
-        #x = np.empty((self.batch_size, *self.shape[::-1]))
-        x = np.empty((self.batch_size, *self.shape))  # issue with shape?
-        if self.mltype == 'classification':
-            y = np.empty((self.batch_size), dtype=int)   # needs classes
-        if self.mltype == 'segmentation':
-            y = np.empty((self.batch_size, *self.shape[1:]))
-        if self.mltype == 'object_detection':
-            y = []
+        # x = np.empty((self.batch_size, *self.shape))
+        # if self.mltype == 'classification':
+        #     y = np.empty((self.batch_size), dtype=int)   # needs classes
+        # if self.mltype == 'segmentation':
+        #     y = np.empty((self.batch_size, *self.shape[1:]))
+        # if self.mltype == 'object_detection':
+        #     y = []
+
+        self._empty_batch(self.batch_size)
 
         for i, _id in enumerate(list_ids_temp):
 
@@ -95,7 +116,7 @@ class VedaStoreGenerator(BaseGenerator):
                 y.append(self.cache.labels[_id])
             if self.mltype == 'segmentation':
                 y[i, ] = self.cache.labels[_id]
-        if self.mltype == 'object_detection':  # indent level?
+        if self.mltype == 'object_detection':
             return x, np.array(y)
         else:
             return x, y
