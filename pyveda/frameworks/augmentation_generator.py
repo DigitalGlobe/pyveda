@@ -13,8 +13,7 @@ class BaseGenerator():
     cache: Parition (train, test, or validate) of VedaBase or VedaStream.
     batch_size: int. Number of samples.
     shuffle: Boolean. To shuffle or not shuffle data between epochs.
-    Rescale: Boolean. Flag to indicate if data returned from the generator should
-             be rescaled between 0 and 1.
+    Rescale: Boolean. Flag to indicate if data returned from the generator should be rescaled between 0 and 1.
     '''
     def __init__(self, cache, batch_size=32, shuffle=True, rescale=False):
         self.cache = cache
@@ -102,7 +101,7 @@ class VedaStoreGenerator(BaseGenerator):
         # if self.mltype == 'object_detection':
         #     y = []
 
-        self._empty_batch(self.batch_size)
+        x, y = self._empty_batch(self.batch_size)
 
         for i, _id in enumerate(list_ids_temp):
 
