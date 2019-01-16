@@ -53,7 +53,7 @@ class VedaStoreGenerator(BaseGenerator):
     '''
 
     def __init__(self, cache, batch_size, shuffle):
-        super(VedaStoreGenerator).__init__(cache, batch_size=batch_size, shuffle=shuffle)
+        super().__init__(cache, batch_size=batch_size, shuffle=shuffle)
         self.list_ids = np.arange(0, len(self.cache))
         self.mltype = cache._trainer.mltype
         self.shape = cache._trainer.image_shape
@@ -80,8 +80,8 @@ class VedaStoreGenerator(BaseGenerator):
             y = []
 
         for i, _id in enumerate(list_ids_temp):
-                x = self.cache.images[_id].T
-                X[i, ] = x
+            x = self.cache.images[_id].T
+            X[i, ] = x
             if self.mltype == 'classification':
                 y[i, ] = self.cache.labels[_id]
             if self.mltype == 'object_detection':

@@ -40,9 +40,9 @@ class WrappedDataNode(object):
         Generatates Batch of Images/Lables on a VedaBase partition.
         #Arguments
             batch_size: int. batch size
-            shuffle: boolean.       
+            shuffle: boolean.
         """
-        return VedaStoreGenerator(self, batch_size= batch_size, **kwargs)
+        return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle, **kwargs)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):
