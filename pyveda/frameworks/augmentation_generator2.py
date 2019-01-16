@@ -95,21 +95,3 @@ class VedaStoreGenerator(BaseGenerator):
             return X, np.array(y)
         else:
             return X, y
-
-
-class VedaStreamGenerator(BaseGenerator):
-    '''
-    VedaStream
-    '''
-    def __init__(self):
-            # self.mltype = cache._vset.mltype
-            # self.shape = cache._vset.image_shape
-        raise NotImplementedError()
-
-    def __len__(self):
-        raise NotImplementedError()
-    # '''Denotes the number of batches per epoch'''
-    #     return int(np.floor(self.allocated)/self.batch_size)
-
-    def build_batch(self):
-        raise NotImplementedError()
