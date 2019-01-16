@@ -60,7 +60,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
                               dtype=None, description='',
                               mltype="classification", public=False,
                               partition=[100,0,0], sensors=[],
-                              url="{}/data".format(cfg.host), **kwargs):
+                              **kwargs):
     """
         Loads a geojson file into the collection
 
@@ -116,7 +116,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
         'graph': image.rda_id,
         'node': rda_node,
     }
-    if 'mask' in kwargs:
+    if 'mask' in kwargs and kwargs.get('mask'):
         options['mask'] = shape(kwargs.get('mask')).wkt
 
     with open(geojson, 'r') as fh:
@@ -126,6 +126,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
             'file': (os.path.basename(geojson), mfile, 'application/text'),
             'options': (None, json.dumps(options), 'application/json')
         }
+        url = "{}/data".format(cfg.host)
         r = cfg.conn.post(url, files=body)
         if r.status_code <= 201:
             return r.json()
