@@ -87,14 +87,10 @@ class VedaStoreGenerator(BaseGenerator):
                 X[i, ] = x
             if self.mltype == 'classification':
                 y[i, ] = self.cache.labels[_id]
-
             if self.mltype == 'object_detection':
                 y.append(self.cache.labels[_id])
-            if self.mltype == 'object_detection':
-                 y.append(self.cache.labels[_id])
-
             if self.mltype == 'segmentation':
-                y[i, ] = y
+                y[i, ] = y[i, ] = self.cache.labels[_id]
         if self.mltype == 'object_detection':  # indent level?
             return X, np.array(y)
         else:
