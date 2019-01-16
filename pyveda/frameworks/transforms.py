@@ -14,7 +14,7 @@ def rescale_toa(arr, dtype=np.float32):
     arr_rs = np.divide(arr_trans, arr_trans.max(axis=(1, 2))[:, np.newaxis, np.newaxis])
     if dtype == np.uint8:
         arr_rs = np.array(arr_rs*255, dtype=np.uint8)
-    return arr_rs.T
+    return arr_rs
 
 # Augmentation Functions Definition- written by Bernardo Henz
 # https://github.com/bernardohenz/ExtendableImageDatagen/blob/master/util/extendable_datagen.py
