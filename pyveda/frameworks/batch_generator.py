@@ -1,8 +1,5 @@
 import numpy as np
 
-from random import randint
-from random import sample
-
 from pyveda.frameworks.transforms import *
 
 class BaseGenerator():
@@ -35,15 +32,6 @@ class BaseGenerator():
     def build_batch(self, index):
         raise NotImplemented
 
-    def _empty_batch(self, batch_size):
-        x = np.empty((self.batch_size, *self.shape))
-        if self.mltype == 'classification':
-            y = np.empty((self.batch_size), dtype=int)   # needs classes
-        if self.mltype == 'segmentation':
-            y = np.empty((self.batch_size, *self.shape[1:]))
-        if self.mltype == 'object_detection':
-            y = []
-        return x, y
 
     def __getitem__(self, index):
         return self.build_batch(index)
@@ -92,21 +80,18 @@ class VedaStoreGenerator(BaseGenerator):
         '''Generates data containing batch_size samples
         optionally pre-processes the data'''
 
-        x, y = self._empty_batch(self.batch_size)
+        # setup empty batch
+        x = np.empty((self.batch_size, *self.shape))
+        y = []
 
         for i, _id in enumerate(list_ids_temp):
-
             x_img = self.cache.images[_id]
-            if self.rescale:
-                x_img = rescale_toa(x_img)
+            y_img = self.cache.labels[_id]
+
             x[i, ] = x_img
-            if self.mltype == 'classification':
-                y[i, ] = self.cache.labels[_id]
-            if self.mltype == 'object_detection':
-                y.append(self.cache.labels[_id])
-            if self.mltype == 'segmentation':
-                y[i, ] = self.cache.labels[_id]
-        if self.mltype == 'object_detection':
-            return x, np.array(y)
-        else:
-            return x, y
+            y.append(y_img)
+
+        #rescale after entire bactch is collected
+        if self.rescale:
+            x /= x.max()
+        return x, np.array(y)
