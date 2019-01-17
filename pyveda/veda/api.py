@@ -83,7 +83,7 @@ class DataSampleClient(BaseClient):
         return self._datapoint_base_furl.format(host_url=self.host, datapoint_id=self.id)
 
     @property
-    def image_shape(self):
+    def images(self):
         return self._get_image(self.links['image']['href'])
 
     @property
