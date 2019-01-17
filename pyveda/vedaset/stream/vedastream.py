@@ -128,7 +128,8 @@ class BufferedSampleArray(BaseSampleArray):
 
     def clean(self):
         count = len(self)
-        labelizer.Labelizer(self, count).clean()
+        l = labelizer.Labelizer(count)
+        l.clean()
 
 
 

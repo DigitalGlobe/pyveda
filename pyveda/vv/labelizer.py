@@ -22,14 +22,15 @@ from shapely.geometry.geo import shape
 from shapely.geometry import *
 import numpy as np
 import requests
-
+from pyveda.vedaset.stream import vedastream
 from pyveda.auth import Auth
 from pyveda.veda import api
+
 gbdx = Auth()
 conn = gbdx.gbdx_connection
 
 class Labelizer():
-    def __init__(self, vedaset, count):
+    def __init__(self, count):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
@@ -44,14 +45,14 @@ class Labelizer():
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
         # self.ids = ids #not sure if we need or not yet.
-        self.vedaset = vedaset
+        # self.vedaset = vedaset
         self.count = count
         # self.imshape = imshape
         # self.dtype = dtype
         # self.mltype = mltype
-        self.index = 0
-        self.dp = self.vedaset.get_next()
-        self.flagged_tiles = []
+        # self.index = 0
+        # self.dp = self.vedaset.get_next()
+        # self.flagged_tiles = []
 
         def get_next(self):
             """
