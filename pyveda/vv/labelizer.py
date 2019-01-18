@@ -47,12 +47,10 @@ class Labelizer():
         # self.ids = ids #not sure if we need or not yet.
         self.vedaset = vedaset
         self.count = count
-        # self.imshape = imshape
         self.dtype = next(self.vedaset)[0]['properties']['dtype']
         self.mltype = next(self.vedaset)[0]['properties']['mltype']
         self.index = 0
         self.props, self.image = next(self.vedaset)
-        # self.props = next(self.vedaset)[0]
         self.flagged_tiles = []
 
     def _create_buttons(self):
@@ -74,13 +72,11 @@ class Labelizer():
         """
         if b.description == 'Yes':
             self.index += 1
-            self.image = next(self.vedaset)[1]
-            self.props = next(self.vedaset)[0]
+            self.props, self.image = next(self.vedaset)
         elif b.description == 'No':
             # self.flagged_tiles.append(self.dp)
             self.index += 1
-            self.image = next(self.vedaset)[1]
-            self.props = next(self.vedaset)[0]
+            self.props, self.image = next(self.vedaset)
         elif b.description == 'Exit':
             self.index = self.count
         self.clean()
@@ -120,10 +116,6 @@ class Labelizer():
                             (pxb[3]-pxb[1]),edgecolor=edge_color,
                             fill=False, lw=2))
 
-    def clean(self):
-        self._display_image()
-        self._display_obj_detection()
-        # return(a)
 
     def clean(self):
         """
@@ -144,15 +136,3 @@ class Labelizer():
             self._display_image()
             if self.mltype == 'object_detection':
                 self._display_obj_detection()
-            # if self.dp.mltype == 'classification':
-            #     self._display_classification(self.dp)
-            # if self.dp.mltype == 'segmentation':
-            #     self._display_segmentation(self.dp)
-        # else:
-        #     try:
-        #         print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
-        #         self.flagged_tiles = iter(self.flagged_tiles)
-        #         self.dp = next(self.flagged_tiles)
-        #         self.clean_flags()
-        #     except StopIteration:
-        #         print("All tiles have been cleaned.")
