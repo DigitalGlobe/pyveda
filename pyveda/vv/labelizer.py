@@ -46,40 +46,52 @@ class Labelizer():
 
         # self.ids = ids #not sure if we need or not yet.
         self.vedaset = vedaset
-        self.count = count
+        # self.count = count
         # self.imshape = imshape
-        # self.dtype = dtype
-        # self.mltype = mltype
-        # self.index = 0
-        self.dp = None
-        self.image = None
+        self.dtype = next(self.vedaset)[0]['properties']['dtype']
+        self.mltype = next(self.vedaset)[0]['properties']['mltype']
+        self.index = 0
+        self.image = next(self.vedaset)[1]
+        self.props = next(self.vedaset)[0]
         # self.flagged_tiles = []
 
-    def get_next(self):
-        """
-        Fetches the next DataPoint object from VedaCollection ids.
-        """
-        self.dp = self.vedaset.__next__()
 
-        return self.dp ##returns image and label urls
-
-    def _display_image(self, dp):
+    def _display_image(self):
         """
         Displays image tile for a given DataPoint object.
-        Params:
-           dp: A DataPoint object for the VedaCollection.
         """
-        self.image = self.dp[0]
+        img = self.image
         plt.figure(figsize = (7, 7))
         ax = plt.subplot()
         ax.axis("off")
-        img = self.image
-        try:
-            img /= img.max()
-        except TypeError:
-            img = img
-        ax.imshow(img)
+        ax.imshow(np.moveaxis(img, 0, -1))
+        return(img)
+
+    def _display_obj_detection(self):
+        """
+        Adds DataPoint object detection label geometries to the image tile plot.
+        Params:
+        dp: A DataPoint object for the VedaCollection.
+        """
+        label = self.props['properties']['label'].items()
+        label_shp = [l[1] for l in label]
+        label_type = [l[0] for l in label]
+        legend_elements = []
+        ax = plt.subplot()
+        plt.title('Is this tile correct?', fontsize=14)
+        for i,shp in enumerate(label_shp):
+            if len(shp) is not 0:
+                edge_color = np.random.rand(3,)
+                handle = patches.Patch(edgecolor=edge_color, fill=False, label = label_type[i])
+                legend_elements.append(handle)
+                ax.legend(handles=legend_elements, loc='lower center',
+                         bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
+                for pxb in shp:
+                    ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
+                            (pxb[3]-pxb[1]),edgecolor=edge_color,
+                            fill=False, lw=2))
 
     def clean(self):
-        self._display_image(self.dp)
-        return(a)
+        self._display_image()
+        self._display_obj_detection()
+        # return(a)

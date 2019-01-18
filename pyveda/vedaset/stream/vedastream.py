@@ -128,8 +128,9 @@ class BufferedSampleArray(BaseSampleArray):
 
     def clean(self):
         count = len(self)
-        l = Labelizer(self._vset._gen, count)
-        return(l.clean())
+        l = Labelizer(self, count)
+        # return(l.clean())
+        l.clean()
 
 
 
