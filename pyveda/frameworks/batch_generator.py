@@ -105,7 +105,6 @@ class VedaStreamGenerator(BaseGenerator):
         '''Generate one batch of data'''
         if index > len(self):
             raise IndexError("Index is invalid because batch generator is exhausted.")
-        #print(self._data_generation())
         x, y = self._data_generation()
         return x, y
 
@@ -115,18 +114,11 @@ class VedaStreamGenerator(BaseGenerator):
         x = np.empty((self.batch_size, *self.shape))
         y = []
 
-        i = 0
-
-        g_img = self.cache.images.__iter__()
-        g_lbl = self.cache.labels.__iter__()
-
-        while i < self.batch_size:
-            #yield g_img.__next__(), g_lbl.__next__()
-            x[i, ] = g_img.__next__()
-            y.append(g_lbl.__next__())
-            i +=1
+        while len(y) < self.batch_size:
+            y_img, x_img = next(self.cache)
+            x[len(y), ] = x_img
+            y.append(y_img)
 
         if self.rescale:
             x /= x.max()
-        #print(x, y)
         return x, np.array(y)
