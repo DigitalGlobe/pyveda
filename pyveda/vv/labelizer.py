@@ -30,7 +30,7 @@ gbdx = Auth()
 conn = gbdx.gbdx_connection
 
 class Labelizer():
-    def __init__(self, count):
+    def __init__(self, vedaset, count):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
@@ -45,24 +45,41 @@ class Labelizer():
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
         # self.ids = ids #not sure if we need or not yet.
-        # self.vedaset = vedaset
+        self.vedaset = vedaset
         self.count = count
         # self.imshape = imshape
         # self.dtype = dtype
         # self.mltype = mltype
         # self.index = 0
-        # self.dp = self.vedaset.get_next()
+        self.dp = None
+        self.image = None
         # self.flagged_tiles = []
 
-        def get_next(self):
-            """
-            Fetches the next DataPoint object from VedaCollection ids.
-            """
-            self.dp = self.vedaset.__next__()
-            print('this worked!')
-            return self
+    def get_next(self):
+        """
+        Fetches the next DataPoint object from VedaCollection ids.
+        """
+        self.dp = self.vedaset.__next__()
 
-        def clean(self):
-            a = self.get_next()
-            print('good')
-            return(a)
+        return self.dp ##returns image and label urls
+
+    def _display_image(self, dp):
+        """
+        Displays image tile for a given DataPoint object.
+        Params:
+           dp: A DataPoint object for the VedaCollection.
+        """
+        self.image = self.dp[0]
+        plt.figure(figsize = (7, 7))
+        ax = plt.subplot()
+        ax.axis("off")
+        img = self.image
+        try:
+            img /= img.max()
+        except TypeError:
+            img = img
+        ax.imshow(img)
+
+    def clean(self):
+        self._display_image(self.dp)
+        return(a)

@@ -8,7 +8,7 @@ from functools import partial
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
-from pyveda.vv import labelizer
+from pyveda.vv.labelizer import Labelizer
 
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):
@@ -128,8 +128,9 @@ class BufferedSampleArray(BaseSampleArray):
 
     def clean(self):
         count = len(self)
-        l = labelizer.Labelizer(count)
-        l.clean()
+        l = Labelizer(self._vset._gen, count)
+        return(l.clean())
+
 
 
 
