@@ -46,7 +46,7 @@ class Labelizer():
 
         # self.ids = ids #not sure if we need or not yet.
         self.vedaset = vedaset
-        # self.count = count
+        self.count = count
         # self.imshape = imshape
         self.dtype = next(self.vedaset)[0]['properties']['dtype']
         self.mltype = next(self.vedaset)[0]['properties']['mltype']
@@ -55,6 +55,33 @@ class Labelizer():
         self.props = next(self.vedaset)[0]
         # self.flagged_tiles = []
 
+    def _create_buttons(self):
+        """
+        Creates ipywidget widget buttons
+        Returns:
+            buttons: A list of ipywidget Button() objects
+        """
+        buttons = []
+        actions = [('Yes', 'success'), ('No', 'danger'), ('Exit', 'info' )]
+        for b in actions:
+            btn = Button(description=b[0], button_style=b[1])
+            buttons.append(btn)
+        return buttons
+
+    def _handle_buttons(self, b):
+        """
+        Callback and handling of widget buttons.
+        """
+        if b.description == 'Yes':
+            self.index += 1
+            self.dp = self.get_next()
+        elif b.description == 'No':
+            self.flagged_tiles.append(self.dp)
+            self.index += 1
+            self.dp = self.get_next()
+        elif b.description == 'Exit':
+            self.index = self.count
+        self.clean()
 
     def _display_image(self):
         """
@@ -95,3 +122,35 @@ class Labelizer():
         self._display_image()
         self._display_obj_detection()
         # return(a)
+
+    def clean(self):
+        """
+        Method for verifying each DataPoint as image data with associated polygons.
+        Displays a polygon overlayed on image chip with associated ipywidget
+        buttons. Allows user to click through each DataPoint object and decide
+        whether to keep or remove the object.
+        """
+
+        clear_output()
+        buttons = self._create_buttons()
+        for b in buttons:
+            b.on_click(self._handle_buttons)
+        if self.image is not None and self.index != self.count:
+            print("%0.f tiles out of %0.f tiles have been cleaned" %
+                 (self.index, self.count))
+            display(HBox(buttons))
+            self._display_image()
+            if self.mltype == 'object_detection':
+                self._display_obj_detection()
+            # if self.dp.mltype == 'classification':
+            #     self._display_classification(self.dp)
+            # if self.dp.mltype == 'segmentation':
+            #     self._display_segmentation(self.dp)
+        # else:
+        #     try:
+        #         print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
+        #         self.flagged_tiles = iter(self.flagged_tiles)
+        #         self.dp = next(self.flagged_tiles)
+        #         self.clean_flags()
+        #     except StopIteration:
+        #         print("All tiles have been cleaned.")
