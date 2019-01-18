@@ -51,9 +51,9 @@ class Labelizer():
         self.dtype = next(self.vedaset)[0]['properties']['dtype']
         self.mltype = next(self.vedaset)[0]['properties']['mltype']
         self.index = 0
-        self.image = next(self.vedaset)[1]
-        self.props = next(self.vedaset)[0]
-        # self.flagged_tiles = []
+        self.props, self.image = next(self.vedaset)
+        # self.props = next(self.vedaset)[0]
+        self.flagged_tiles = []
 
     def _create_buttons(self):
         """
@@ -74,11 +74,13 @@ class Labelizer():
         """
         if b.description == 'Yes':
             self.index += 1
-            self.dp = self.get_next()
+            self.image = next(self.vedaset)[1]
+            self.props = next(self.vedaset)[0]
         elif b.description == 'No':
-            self.flagged_tiles.append(self.dp)
+            # self.flagged_tiles.append(self.dp)
             self.index += 1
-            self.dp = self.get_next()
+            self.image = next(self.vedaset)[1]
+            self.props = next(self.vedaset)[0]
         elif b.description == 'Exit':
             self.index = self.count
         self.clean()
