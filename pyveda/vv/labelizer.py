@@ -30,7 +30,7 @@ gbdx = Auth()
 conn = gbdx.gbdx_connection
 
 class Labelizer():
-    def __init__(self, vedaset, count):
+    def __init__(self, vedaset):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
@@ -44,9 +44,9 @@ class Labelizer():
         assert has_ipy, 'Labelizer requires ipython to be installed'
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
-        # self.ids = ids #not sure if we need or not yet.
         self.vedaset = vedaset
-        self.count = count
+        self.ids = next(self.vedaset)[0]['properties']['id']
+        self.count = len(self.vedaset)
         self.dtype = next(self.vedaset)[0]['properties']['dtype']
         self.mltype = next(self.vedaset)[0]['properties']['mltype']
         self.index = 0
@@ -74,7 +74,7 @@ class Labelizer():
             self.index += 1
             self.props, self.image = next(self.vedaset)
         elif b.description == 'No':
-            # self.flagged_tiles.append(self.dp)
+            self.flagged_tiles.append(self.ids)
             self.index += 1
             self.props, self.image = next(self.vedaset)
         elif b.description == 'Exit':
@@ -173,7 +173,9 @@ class Labelizer():
             self._display_image()
             if self.mltype == 'object_detection':
                 self._display_obj_detection()
-            if self.dp.mltype == 'classification':
+            if self.mltype == 'classification':
                 self._display_classification()
-            if self.dp.mltype == 'segmentation':
+            if self.mltype == 'segmentation':
                 self._display_segmentation()
+        else:
+            print("All tiles have been cleaned.")

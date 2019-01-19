@@ -127,10 +127,7 @@ class BufferedSampleArray(BaseSampleArray):
         return BufferedVariableArray(lbls)
 
     def clean(self):
-        count = len(self)
-        l = Labelizer(self, count)
-        # return(l.clean())
-        l.clean()
+        Labelizer(self).clean()
 
 
 
