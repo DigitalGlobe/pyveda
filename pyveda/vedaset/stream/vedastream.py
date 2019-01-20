@@ -4,9 +4,7 @@ import queue
 import threading
 import time
 from functools import partial
-
 import numpy as np
-
 
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
@@ -127,6 +125,7 @@ class BufferedSampleArray(BaseSampleArray):
         except ValueError:
             lbls = []
         return BufferedVariableArray(np.array(lbls))
+
 
 class BufferedDataStream(BaseDataSet):
     _lbl_handler_map = {"classification": ClassificationHandler,
@@ -277,5 +276,3 @@ class BufferedDataStream(BaseDataSet):
     def __exit__(self, *args):
         self._stop_consumer()
 
-    def __getitem__(self, slc):
-        raise NotImplementedError
