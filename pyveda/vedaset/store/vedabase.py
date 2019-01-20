@@ -7,7 +7,7 @@ from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, NDImageArray
 from pyveda.vedaset.abstract import BaseSampleArray, BaseDataSet
-from pyveda.frameworks.augmentation_generator import BatchGenerator
+from pyveda.frameworks.batch_generator import VedaStoreGenerator
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
@@ -25,23 +25,29 @@ ignore_NaturalNameWarning = partial(ignore_warnings, _warning=tables.NaturalName
 class WrappedDataNode(object):
     def __init__(self, node, trainer):
         self._node = node
-        self._trainer = trainer
+        self._vset = trainer
 
     @property
     def images(self):
-        return self._trainer._image_array_factory(self._node.images, self._trainer,
+        return self._vset._image_array_factory(self._node.images, self._vset,
                                                   output_transform=self._trainer._fw_loader)
-
-    @property
-    def labels(self):
-        return self._trainer._label_array_factory(self._node.hit_table, self._node.labels, self._trainer)
 
     @property
     def id_table(self):
         return self._node.id_table
 
-    def batch_generator(self, batch_size, **kwargs):
-        return BatchGenerator(self, batch_size=batch_size, mltype=self._trainer.mltype, **kwargs)
+    @property
+    def labels(self):
+        return self._vset._label_array_factory(self._node.hit_table, self._node.labels,  self._vset)
+
+    def batch_generator(self, batch_size, shuffle, **kwargs):
+        """
+        Generatates Batch of Images/Lables on a VedaBase partition.
+        #Arguments
+            batch_size: int. batch size
+            shuffle: boolean.
+        """
+        return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle, **kwargs)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):
@@ -208,4 +214,3 @@ class H5DataBase(BaseDataSet):
     #@classmethod
     #def from_vc(cls, vc, **kwargs):
     #    # Load an empty H5DataBase from a VC
-
