@@ -260,10 +260,12 @@ class VedaStreamFetcher(BaseVedaSetFetcher):
         await asyncio.sleep(0.0)
         while True:
             try:
-                item = await self._qwrite.get()
-                self.streamer._buf.append(item)
+                dataload = await self._qwrite.get()
+                self.streamer._buf.append(dataload)
                 async with self._write_lock:
-                    self.streamer._q.put_nowait(item)
+                    self.streamer._q.put_nowait(dataload)
+                    if self.streamer.write_vb:
+                        await self.loop.run_in_executor(self._write_executor, self.write_fn, dataload)
                 self._qreq.task_done()
                 self._qwrite.task_done()
             except CancelledError:
