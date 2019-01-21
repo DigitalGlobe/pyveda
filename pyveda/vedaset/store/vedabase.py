@@ -32,10 +32,6 @@ class WrappedDataNode(object):
                                        output_transform=lambda x: x)
 
     @property
-    def id_table(self):
-        return self._node.id_table
-
-    @property
     def labels(self):
         return self._vset._label_klass(self._node.hit_table, self._node.labels,  self._vset)
 
@@ -72,17 +68,14 @@ class H5DataBase(BaseDataSet):
     An interface for consuming and reading local data intended to be used with machine learning training
     """
     def __init__(self, fname, mltype=None, klasses=None, image_shape=None,
-                 image_dtype=None, title="NoTitle", framework=None,
+                 image_dtype=None, title="SBWM", partition=[70, 20, 10],
                  overwrite=False, mode="a"):
-        self._framework = framework
-        self._fw_loader = lambda x: x
 
         if os.path.exists(fname):
-            # TODO need to figure how to deal with existing files.
             if overwrite:
                 os.remove(fname)
             else:
-                self._load_existing(fname, mode)
+                self._load_existing(fname, mode, partition)
                 return
 
         self._fileh = tables.open_file(fname, mode="a", title=title)
@@ -90,6 +83,7 @@ class H5DataBase(BaseDataSet):
         self._fileh.root._v_attrs.klasses = klasses
         self._fileh.root._v_attrs.image_shape = image_shape
         self._fileh.root._v_attrs.image_dtype = image_dtype
+        self._fileh.root._v_attrs.partition = partition
 
         self._configure_instance()
         self._build_filetree()
@@ -135,6 +129,9 @@ class H5DataBase(BaseDataSet):
                                      {"ids": tables.StringCol(36, pos=0)},
                                      "Datasample ID log", filters)
 
+    @property
+    def partition(self):
+        return self._fileh.root._v_attrs.partition
 
     @property
     def mltype(self):
