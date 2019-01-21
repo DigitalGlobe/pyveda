@@ -20,11 +20,60 @@ DATA_GROUPS = {"TRAIN": "Data designated for model training",
 
 ignore_NaturalNameWarning = partial(ignore_warnings, _warning=tables.NaturalNameWarning)
 
+class VirtualSubArray(object):
+    """
+    This wraps a pytables array with access determined
+    by a contiguous index range given by two integers
+    """
+    def __init__(self, arr, start, stop):
+        self._arr = arr
+        self._start = start
+        self._stop = stop
+        self._itr = None
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            spec = self._translate_idx(key)
+        if isinstance(key, slice):
+            spec = self._translate_slice(key)
+        return self._arr.__getitem__(spec)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        # The subtleties of the following line are important to understand:
+        # pytables Arrays return themselves in iter methods.
+        # The lib implementation of this effectively means that expected iter
+        # objs are the same obj, a singleton. That means usage of simulaneous
+        # multiple iterators on single array can result in unexpected behavior
+        # since there is always only one maintained instance of iter state. See
+        # issue https://github.com/PyTables/PyTables/issues/293
+        self._itr = self._arr.iterrows(self._start, self._stop)
+        return self._itr.__next()
+
+    def _translate_idx(self, idx):
+        return idx + self._start
+
+    def _translate_slice(self, sli):
+        start, stop, step = sli.start, sli.stop, sli.step
+        start = self._translate_idx(start)
+        stop = self._translate_idx(stop)
+        return slice(start, stop, step)
+
 
 class WrappedDataNode(object):
     def __init__(self, node, trainer):
         self._node = node
         self._vset = trainer
+
+    @property
+    def _start(self):
+        pass
+
+    @property
+    def _stop(self):
+        pass
 
     @property
     def images(self):
@@ -40,9 +89,7 @@ class WrappedDataNode(object):
         Generatates Batch of Images/Lables on a VedaBase partition.
         #Arguments
             batch_size: int. batch size
-            shuffle: boolean.
-        """
-        return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle, **kwargs)
+            shuffle: boolean.  """ return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle, **kwargs)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):
@@ -59,7 +106,7 @@ class WrappedDataNode(object):
             yield (gimg.__next__(), glbl.__next__())
 
     def __len__(self):
-        return len(self._node.images)
+        return len(range(self._start, self.stop))
 
 
 
@@ -132,6 +179,23 @@ class H5DataBase(BaseDataSet):
     @property
     def partition(self):
         return self._fileh.root._v_attrs.partition
+
+    @partition.setter
+    def partition(self, prt):
+        assert(isinstance(prt, list))
+        assert(len(prt)) == 3
+        assert(sum(prt) == 100)
+
+        self._fileh.root._v_attrs.partition = prt
+        self._update_vindex()
+
+    @property
+    def _img_arr(self):
+        return self._fileh.root.images
+
+    @property
+    def _lbl_arr(self):
+        return self._fileh.root.labels
 
     @property
     def mltype(self):
