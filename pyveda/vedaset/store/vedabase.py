@@ -123,21 +123,25 @@ class H5DataBase(BaseDataSet):
 
     @ignore_NaturalNameWarning
     def _create_arrays(self, data_klass, data_dtype=None):
-        for name, group in self._groups.items():
-            data_klass.create_array(self, group, data_dtype)
+        data_klass.create_array(self, self._fileh.root, data_dtype)
 
     @ignore_NaturalNameWarning
     def _create_tables(self, classifications, filters=tables.Filters(0)):
-        # Create index table separately (flat on root) for now
-        for name, group in self._groups.items():
-            self._fileh.create_table(group, "hit_table", classifications,
-                                     "Label Hit Record", filters)
-            # Create sep table for ids for now
-            self._fileh.create_table(group, "id_table", {"ids": tables.StringCol(36, pos=0)},
-                                     "Vedaset Sample Id Index", filters)
+        # Build main id index and feature tables on root
+        self._fileh.create_table(self._fileh.root, "sample_index",
+                                 {"ids": tables.StringCol(36, pos=0)},
+                                 "Constituent Datasample ID index", filters)
+        self._fileh.create_table(self._fileh.root, "feature_table",
+                                 classifications, "Datasample feature contexts",
+                                 filters)
 
-    def _build_label_tables(self, rebuild=True):
-        pass
+        # Build tables on groups that can be used for recording id logs during
+        # model experimentation
+        for name, group in self._groups.items():
+            self._fileh.create_table(group, "sample_log",
+                                     {"ids": tables.StringCol(36, pos=0)},
+                                     "Datasample ID log", filters)
+
 
     @property
     def mltype(self):
