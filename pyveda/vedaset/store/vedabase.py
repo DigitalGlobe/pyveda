@@ -9,7 +9,6 @@ from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, 
 from pyveda.vedaset.abstract import BaseSampleArray, BaseDataSet
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
 
-FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
 MLTYPE_MAP = {"classification": ClassificationArray,
               "segmentation": SegmentationArray,
@@ -29,8 +28,8 @@ class WrappedDataNode(object):
 
     @property
     def images(self):
-        return self._vset._image_array_factory(self._node.images, self._vset,
-                                                  output_transform=self._trainer._fw_loader)
+        return self._vset._image_klass(self._node.images, self._vset,
+                                       output_transform=lambda x: x)
 
     @property
     def id_table(self):
@@ -38,7 +37,7 @@ class WrappedDataNode(object):
 
     @property
     def labels(self):
-        return self._vset._label_array_factory(self._node.hit_table, self._node.labels,  self._vset)
+        return self._vset._label_klass(self._node.hit_table, self._node.labels,  self._vset)
 
     def batch_generator(self, batch_size, shuffle, **kwargs):
         """
@@ -115,12 +114,6 @@ class H5DataBase(BaseDataSet):
         self._create_arrays(self._image_klass, self.image_dtype)
         self._create_arrays(self._label_klass)
 
-    def _image_array_factory(self, *args, **kwargs):
-        return self._image_klass(*args, **kwargs)
-
-    def _label_array_factory(self, *args, **kwargs):
-        return self._label_klass(*args, **kwargs)
-
     @ignore_NaturalNameWarning
     def _create_arrays(self, data_klass, data_dtype=None):
         data_klass.create_array(self, self._fileh.root, data_dtype)
@@ -164,17 +157,6 @@ class H5DataBase(BaseDataSet):
         return {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
 
     @property
-    def framework(self):
-        return self._framework
-
-    @framework.setter
-    def framework(self, fw):
-        if fw and fw not in FRAMEWORKS:
-            raise FrameworkNotSupported("Image adaptor not supported for {}".format(fw))
-        self._framework = fw
-        self._fw_loader = lambda x: x # TODO: Custom loaders here
-
-    @property
     def train(self):
         return WrappedDataNode(self._fileh.root.train, self)
 
@@ -196,7 +178,7 @@ class H5DataBase(BaseDataSet):
         raise NotImplementedError
 
     def __len__(self):
-        return sum([len(self.train), len(self.test), len(self.validate)])
+        return len(self._fileh.root.images)
 
     def __enter__(self):
         return self
