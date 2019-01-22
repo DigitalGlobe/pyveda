@@ -79,10 +79,10 @@ class BaseGenerator():
                 if t_fn == np.fliplr:
                     #print(y)
                     y = flip_labels_horizontal(self.shape, y)
-                    print(y)
+                    print('horizontal flip y:', y)
                 if t_fn == np.flipud:
-                    print(y)
                     y = flip_labels_vertical(self.shape, y)
+                    print('vertical flip y:', y)
             return x, y
 
         if self.mltype == 'segmentation':
