@@ -1,5 +1,7 @@
 import numpy as np
 
+from random import randint, sample
+
 from pyveda.frameworks.transforms import *
 
 class BaseGenerator():
@@ -12,14 +14,17 @@ class BaseGenerator():
     Rescale: Boolean. Flag to indicate if data returned from the generator should be rescaled between 0 and 1.
     '''
 
-    def __init__(self, cache, batch_size=32, shuffle=True, rescale=False, flip_horizontal=False):
+    def __init__(self, cache, batch_size=32, shuffle=True, rescale=False, flip_horizontal=False,
+                 flip_vertical=False):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
         self.shuffle = shuffle
         self.rescale = rescale
         self.on_epoch_end()
-        self.flip_horiz = flip_horizontal
+        self.flip_h = flip_horizontal
+        self.flip_v = flip_vertical
+        self._applied_augs()
         self.list_ids = np.arange(0, len(self.cache))
 
     @property
@@ -30,21 +35,58 @@ class BaseGenerator():
     def shape(self):
         return self.cache._vset.image_shape
 
-    def apply_transform(self, x, y, fn, mltype):
-        """ 
+    def _applied_augs(self, self.flip_h, self.flip_v):
+        """
+        Returns randomly selected augmentation functions from a list of eligible augmentation functions
+        """
+        augmentation_list = []
+        if self.flip_h:
+            augmentation_list.append(np.fliplr)
+        if self.flip_v:
+            augmentation_list.append(np.flipud)
+
+        if len(augmentation_list) == 0:
+            return augmentation_list
+        else:
+            # randomly select augmentations to perform
+            randomly_selected_functions_lst = sample(augmentation_lst, k=randint(0, len(lst)))
+        return randomly_selected_functions_lst
+
+    def apply_transforms(self, x, y, fn, mltype):
+        """
             Applies a transform method, returns x/y augmentations
             Args:
               x: image array
-              y: label 
+              y: label
         """
-        # figure out which transform to apply randomly
-        transforms = self._figure_out_augs()
+        # Figure out which transform to apply randomly
+        transforms = self._applied_augs()
 
-        # Determine which augmentations to make
-        
-        for t_fn in transforms: # => []
-             x, y = t_fn(x, y, self.mltype)
-        return x, y
+        # User selects no augmentation functions
+        if len(transforms) == 0:
+            return x, y
+
+        # Make Augmentations
+        if self.mltype == 'classification':
+            for t_fn in transforms:
+                x = t_fn(x)
+            return x, y
+
+        if self.mltype == 'object_detection':
+            for t_fn in transforms:
+                x = t_fn(x)
+                if t_fn == np.fliplr:
+                    y = flip_labels_horizontal(y)
+                if t_fn == np.flipup:
+                    y = flip_labels_vertical(y)
+            return x, y
+
+        if self.mltype == 'segmentation':
+            for t_fn in transforms:
+                x = t_fn(x)
+                y = t_fn(y)
+            return x, y
+
 
     def build_batch(self, index):
         raise NotImplemented
