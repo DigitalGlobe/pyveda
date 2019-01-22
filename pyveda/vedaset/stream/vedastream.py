@@ -132,15 +132,11 @@ class BufferedDataStream(BaseDataSet):
                        "segmentation": SegmentationHandler,
                        "object_detection": ObjDetectionHandler}
 
-    def __init__(self, mltype, classes, _count, gen, image_shape,
-                 partition=[70, 20, 10], bufsize=100, cachetype=collections.deque,
-                 auto_startup=False, auto_shutdown=False, fetcher=None, loop=None, **kwargs):
-        self.partition = partition
-        self.count = _count
-        self.image_shape = image_shape
-        self._mltype = mltype
-        self._classes = classes
-        self._gen = VSGenWrapper(self, gen)
+    def __init__(self, source, bufsize=100, auto_startup=False,
+                 auto_shutdown=False, write_index=True, write_h5=False,
+                 *args, **kwargs):
+        super(BufferedDataStream, self).__init__(*args, **kwargs)
+        self._gen = VSGenWrapper(self, source)
         self._auto_startup = auto_startup
         self._auto_shutdown = auto_shutdown
         self._exhausted = False
@@ -149,18 +145,20 @@ class BufferedDataStream(BaseDataSet):
         self._validate = None
         self._bufsize = bufsize if bufsize < self.count else self.count
 
-        self._fetcher = fetcher
-        self._loop = loop
+        self._fetcher = None
+        self._loop = None
         self._q = queue.Queue()
-        self._buf = cachetype(maxlen=bufsize)
+        self._buf = collections.deque(maxlen=bufsize)
         self._thread = None
 
-        self._img_handler_class = NDImageHandler
-        self._lbl_handler_class = self._lbl_handler_map[self._mltype]
+        self._write_index = write_index
+        self._write_h5 = write_h5
 
         if auto_startup:
             self._start_consumer()
 
+    def _configure(self):
+        pass
 
     def __len__(self):
         return self.count
