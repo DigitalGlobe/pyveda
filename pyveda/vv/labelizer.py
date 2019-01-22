@@ -192,6 +192,7 @@ class Labelizer():
         """
         Method for verifying DataPoints that were flagged with clean()
         """
+        clear_output()
         buttons = self._create_flag_buttons()
         for b in buttons:
             b.on_click(self._handle_flag_buttons)
