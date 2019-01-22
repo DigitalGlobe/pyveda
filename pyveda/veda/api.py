@@ -429,6 +429,43 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             limit = (stop-1) - start
         return self.fetch_samples_from_slice(start, num_points=limit)
 
+
+    def __repr__(self):
+        desc = 'VedaCollectionProxy of {} ({})'.format(
+            self.name,
+            self.id
+        )
+        return desc
+
+    def __str__(self):
+        desc = '{} ({})\n'.format(
+            self.name,
+            self.id
+        )
+        desc +='- Bounds: {}\n'.format(
+            self.bounds,
+        )         
+        desc +='- Count: {} samples, {}% cached\n'.format(
+            self.count,
+            self.percent_cached
+        ) 
+        desc += '- Chips: {}x{}, {} bands {}\n'.format(
+            self.imshape[1],
+            self.imshape[2], 
+            self.imshape[0],
+            self.dtype
+        ) 
+        plural = 'es'
+        if len(self.classes) == 1:
+            plural = ''
+        desc += '- Labels: {} type, {} class{}'.format(
+            self.mltype.replace('_',' '),
+            len(self.classes),
+            plural 
+        ) 
+        return desc
+
+
     @property
     def __geo_interface__(self):
         return box(*self.bounds).__geo_interface__
