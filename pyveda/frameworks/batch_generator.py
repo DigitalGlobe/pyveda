@@ -14,8 +14,8 @@ class BaseGenerator():
     Rescale: Boolean. Flag to indicate if data returned from the generator should be rescaled between 0 and 1.
     '''
 
-    def __init__(self, cache, batch_size=32, shuffle=True, rescale=False, flip_horizontal=False,
-                 flip_vertical=False):
+    def __init__(self, cache, batch_size=32, shuffle=True, rescale=False,
+                    flip_horizontal=False, flip_vertical=False):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
@@ -24,7 +24,7 @@ class BaseGenerator():
         self.on_epoch_end()
         self.flip_h = flip_horizontal
         self.flip_v = flip_vertical
-        self._applied_augs()
+        self._applied_augs(self.flip_h, self.flip_v)
         self.list_ids = np.arange(0, len(self.cache))
 
     @property
@@ -35,7 +35,7 @@ class BaseGenerator():
     def shape(self):
         return self.cache._vset.image_shape
 
-    def _applied_augs(self, self.flip_h, self.flip_v):
+    def _applied_augs(self, flip_h, flip_v):
         """
         Returns randomly selected augmentation functions from a list of eligible augmentation functions
         """
@@ -49,10 +49,10 @@ class BaseGenerator():
             return augmentation_list
         else:
             # randomly select augmentations to perform
-            randomly_selected_functions_lst = sample(augmentation_lst, k=randint(0, len(lst)))
+            randomly_selected_functions_lst = sample(augmentation_list, k=randint(0, len(augmentation_list)))
         return randomly_selected_functions_lst
 
-    def apply_transforms(self, x, y, fn, mltype):
+    def apply_transforms(self, x, y):
         """
             Applies a transform method, returns x/y augmentations
             Args:
@@ -60,7 +60,7 @@ class BaseGenerator():
               y: label
         """
         # Figure out which transform to apply randomly
-        transforms = self._applied_augs()
+        transforms = self._applied_augs(self.flip_h, self.flip_v)
 
         # User selects no augmentation functions
         if len(transforms) == 0:
