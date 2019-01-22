@@ -102,7 +102,7 @@ class BufferedSampleArray(BaseSampleArray):
                 batch.append(self.__next__())
             yield batch
 
-    def batch_generator(self, batch_size, shuffle, **kwargs):
+    def batch_generator(self, batch_size, shuffle=True, **kwargs):
         """
         Generatates Batch of Images/Lables on a VedaStream partition.
         #Arguments
