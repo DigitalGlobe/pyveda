@@ -8,7 +8,10 @@ LOCAL = "http://host.docker.internal:3002"
 class _Config:
     def __init__(self, defhost=PROD):
         self._HOST = os.environ.get("SANDMAN_API", defhost)
-        self._CONN = Auth().gbdx_connection
+        try:
+            self._CONN = Auth().gbdx_connection
+        except:
+            pass
 
     @property
     def HOST(self):

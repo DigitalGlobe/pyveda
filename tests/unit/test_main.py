@@ -3,13 +3,15 @@
 import os, sys
 from auth_mock import conn, my_vcr
 
-import pyveda as pv
-pv.config.set_dev()
-pv.config.set_conn(conn)
 
 from pyveda.veda.api import VedaCollectionProxy
 from pyveda.vedaset import VedaStream
 from pyveda.vedaset import VedaBase
+
+import pyveda as pv
+pv.config.set_dev()
+pv.config.set_conn(conn)
+
 import unittest
 from requests.exceptions import HTTPError
 
