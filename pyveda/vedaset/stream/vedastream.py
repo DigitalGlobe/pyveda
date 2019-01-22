@@ -10,34 +10,6 @@ from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
 
-class VSGenWrapper(object):
-    def __init__(self, vs, _iter):
-        self.vs = vs
-        self.source = _iter
-        self.stored = False
-        self._n = 0
-
-    def __iter__(self):
-        return self
-
-    def __nonzero__(self):
-        if self.stored:
-            return True
-        try:
-            self.value = next(self.source)
-            self.stored = True
-        except StopIteration:
-            return False
-        return True
-
-    def __next__(self):
-        if self.stored:
-            self.stored = False
-            return self.value
-        val =  next(self.source)
-        self._n += 1
-        return val
-
 
 class BufferedVariableArray(BaseVariableArray):
     def __init__(self, buf):
@@ -136,7 +108,7 @@ class BufferedDataStream(BaseDataSet):
                  auto_shutdown=False, write_index=True, write_h5=False,
                  *args, **kwargs):
         super(BufferedDataStream, self).__init__(*args, **kwargs)
-        self._gen = VSGenWrapper(self, source)
+        self._gen = source
         self._auto_startup = auto_startup
         self._auto_shutdown = auto_shutdown
         self._exhausted = False
