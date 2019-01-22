@@ -11,3 +11,4 @@ pycurl
 affine
 pytest
 vcrpy
+aiohttp
