@@ -95,3 +95,30 @@ class VedaStoreGenerator(BaseGenerator):
         if self.rescale:
             x /= x.max()
         return x, np.array(y)
+
+class VedaStreamGenerator(BaseGenerator):
+    '''
+    Generator for VedaStream parition, either train, test, or validate.
+    '''
+
+    def build_batch(self, index):
+        '''Generate one batch of data'''
+        if index > len(self):
+            raise IndexError("Index is invalid because batch generator is exhausted.")
+        x, y = self._data_generation()
+        return x, y
+
+    def _data_generation(self):
+        '''Generates data containing batch_size samples
+        optionally pre-processes the data'''
+        x = np.empty((self.batch_size, *self.shape))
+        y = []
+
+        while len(y) < self.batch_size:
+            y_img, x_img = next(self.cache)
+            x[len(y), ] = x_img
+            y.append(y_img)
+
+        if self.rescale:
+            x /= x.max()
+        return x, np.array(y)
