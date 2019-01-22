@@ -85,8 +85,8 @@ class VedaStoreGenerator(BaseGenerator):
         y = []
 
         for i, _id in enumerate(list_ids_temp):
-            x_img = self.cache.images[_id]
-            y_img = self.cache.labels[_id]
+            x_img = self.cache.images[int(_id)]
+            y_img = self.cache.labels[int(_id)]
 
             x[i, ] = x_img
             y.append(y_img)
