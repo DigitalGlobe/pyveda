@@ -2,61 +2,55 @@
 Tests for DataPoint that don't rely on the server
 '''
 import os, sys
-os.environ["SANDMAN_API"] = "https://veda-api-development.geobigdata.io"
+from auth_mock import conn, my_vcr
+import pyveda as pv
+pv.config.set_dev()
+pv.config.set_conn(conn)
 
-from pyveda import DataPoint, VedaCollection
+from pyveda.veda.api import DataSampleClient
 import json
 from shapely.geometry import shape
 from shapely.geometry.polygon import Polygon
-from auth_mock import gbdx
-import vcr
+
 import unittest
 
 test_dir = os.path.dirname(__file__)
 test_json = os.path.join(test_dir, 'responses', 'datapoint.json')
 
-def force(r1, r2):
-    return True
 
-my_vcr = vcr.VCR()
-my_vcr.register_matcher('force', force)
-my_vcr.match_on = ['force']
-
-
-class DataPointTest(unittest.TestCase):
-    def setUp(self):
+class DataSampleTest(unittest.TestCase):
+    @classmethod 
+    def setUpClass(self):
         with open(test_json) as source:
             self.json = json.load(source)
 
     def test_datapoint(self):
-        dp = DataPoint(self.json)
-        self.assertTrue(isinstance(dp, DataPoint))
+        dp = DataSampleClient(self.json)
+        self.assertTrue(isinstance(dp, DataSampleClient))
         self.assertEqual(dp.id, 'ae91f7df-ae37-4d31-9506-d9176f50403c')
         self.assertEqual(dp.mltype, 'classification')
-        self.assertEqual(dp.dtype, 'uint8') # based on init logic and sample json
         self.assertEqual(dp.label, {"building": 0})
         self.assertEqual(type(shape(dp)), Polygon)
         self.assertEqual(dp.dataset_id, 'e91fb673-4a31-4221-a8ef-01706b6d9b63')
 
     @my_vcr.use_cassette('tests/unit/cassettes/test_datapoint_fetch.yaml', filter_headers=['authorization'])
     def test_datapoint_fetch(self):
-        vc_id = '82553d2f-9c9c-46f0-ad9f-1a27a8673637'
-        dp_id = 'c5942231-dd6d-4ab8-9fce-04d28aa560d8'
-        vc = VedaCollection.from_id(vc_id)
-        dp = vc.fetch(dp_id)
-        self.assertTrue(isinstance(dp, DataPoint))
+        vc_id = '67a16de1-7baf-44bf-a779-2bf97a37c3bd'
+        dp_id = '7f30b1ef-1622-41ca-ab21-9b66d23d87fc'
+        vc = pv.from_id(vc_id)
+        dp = vc.fetch_sample_from_id(dp_id)
+        self.assertTrue(isinstance(dp, DataSampleClient))
         # public properties
         self.assertEqual(vc.id, vc_id)
         self.assertEqual(dp.mltype, vc.mltype)
         self.assertEqual(dp.dtype, vc.dtype) # should inherit
         self.assertEqual(dp.dataset_id, vc_id)
-        self.assertEqual(dp.imshape, vc.imshape)
-        self.assertEqual(dp.tile_coords, [964, 181])
+        self.assertEqual(dp.tile_coords, [965, 167])
         # geo interface
         self.assertEqual(dp.bounds, [
-            -97.73952555740927,
-            30.26895151662954,
-            -97.73875286606899,
-            30.26972420796982
+            -97.7503432361732, 
+            30.268178825289258, 
+            -97.74957054483292, 
+            30.26895151662954
         ])
         self.assertTrue(isinstance(shape(vc), Polygon))

@@ -30,7 +30,7 @@
         ]
     },
     "properties": {
-        "mlType": "classification",
+        "mltype": "classification",
         "image_refs": [
             {
                 "template": "adcee8c20924d34327129b7bbca94023830d9092ea73f0ec8f8261608802993e",

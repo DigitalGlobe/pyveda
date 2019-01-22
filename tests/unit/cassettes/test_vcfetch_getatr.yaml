@@ -5,32 +5,29 @@ interactions:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
-      User-Agent: [python-requests/2.20.1]
+      User-Agent: [python-requests/2.18.4]
     method: GET
-    uri: https://veda-api-development.geobigdata.io/data/82553d2f-9c9c-46f0-ad9f-1a27a8673637/datapoints?limit=1&includeLinks=True&offset=0&classes=building
+    uri: https://veda-api-development.geobigdata.io/data/67a16de1-7baf-44bf-a779-2bf97a37c3bd/datapoints?includeLinks=True&classes=building&offset=0&limit=1
   response:
     body:
       string: !!binary |
-        H4sIAAAAAAAAA8VUTU/cMBT8Lzknu/5+9p5LT63EgZ4QQv7cdZvdpImDhBD/vS8ppaJqRZAo+PIi
-        e+IZz7Pn8q4qt32sdtXHaMs0xKqu9rE7xjLcVrvHxc9TW/J5197uuxMifNcNIZ9siWO1u8TRGNiA
-        UAIMgBFAdc3JhgERRmljOCXEqKv6XzDKlJGGKEk4wCNMAgGiNeVU0pfhVtI+heG4r6t+6Po4lDwf
-        7K46tg/n960dx5yytyX/dMD6Qwy4UoZp9izYYsdYrvM8p5mUPLDUGG98I1QijQ0mNdQysFoBVxzw
-        H9dNpzAbuEZfvdKUKjxIzqeikaTkNl4v/ZqZjGI1BYaw8WARlLRSjkVPUtJBM0WN8p44kF45Appp
-        L7hW2iZneSCECee8AWlU9NoFQ5Dg+xSnme9rOmag5HTwHmeHYK9LPPYt3hFclJp4Fkj0TAUdpEle
-        coh4ZO4sOGSPRAlpmIwkBiMYOM2Z5YTFpGUSEndcnDUyhRQCb7SRvBEikEZr/PLKK2Yt50zN2Na6
-        2M4NdFNu8aLuqx3F5i5dXK7s7wW0os2nb0u7x9imuR6GiLU6lNKPu+32Jgbb2D43Id7EtuuP8VQ2
-        +Ehc3s9t3+RuO9e+Q8vH7SqJKCbENs7evAVdXeGDPnSzgx/OPp1dnM0Cpj7YdxBw/uViZs9Hu38b
-        8u1CtSk5Vfc46ldMPClBMoJFSiqX56g0BY3vn2m8zPpX9vwNZ/CTKsWMFI8wYcBwLRgVWr8Mtpb1
-        Ce69I+85gfU6V56LPFlTRR4jjxPjok8sAAMtDIEQJTLqBEitBOM04c4iYkqpgPKSo4Qrh+EKImmA
-        t448b5SwxIUmMGCNwChunLO+IQJzmBgq0+Lse0beKomvF3krHfl/kfdSAa8aeWvI/4i8qx93a2Ik
-        5gkAAA==
+        H4sIAAAAAAAAA8WTTW/cIBCG/wtnexeMzcCem55aKYf0FEURH+M1Kv6ojSNFUf57h22UqodK20vK
+        Bcnz4uflneH+heXnBdmJfUab9xVZxc44j5jXZ3Z6L37dU463c3o+zxMp/DyvIU4248ZO97RqAweQ
+        nVKN4Bw4aKgkPzTKQNM2HIwyunmo/iYD3hqljZH01ah3Xau1abmRCjr9T7orsX/KaL1WbFnnBdcc
+        y8Ve2Jje7u+T3bbYR29z/JWA9QMGquR1L5kFm+2G+TGWbwqsUAFFDc72ddu6vrYApm5cb8BK8NIF
+        OuPmfQolwGv8VVdmwsKb5T1OWRMlx4SPl4YVlFGyErrotsGSymCDrhetDGQZnAHRCCuk41oaQSRu
+        Vd9JST5I0DfgSaWN4IYrKzrfEODHjnsBAkDHEYZhXEoia7CPGccl0ZRQVYPulPNGd0jXwRZdF7gH
+        0C2A8Lp3nRBggxbat75H2WGH2mr6IeWAroAu2TojPB2RNXnCuhUdr03TYM1ND9aAFkIUerIOU2mh
+        22OiUT2zk6D2Xvp4GdrfBcoixen7peEbpr7sw4q0syHnZTsdj08YbG2XWAd8wjQvI075QM/ExXNp
+        /CHOx7IvM2W+Ha+ySGYCJizZfASuYvSkh7kk+Onmy83dTTGwL8H+BwO33+4KPY72/DHw4wV1yLEv
+        3Dzso5tsTB/JXmjQXmk9/AT+51GzcQUAAA==
     headers:
       Access-Control-Allow-Origin: ['*']
       Connection: [keep-alive]
       Content-Encoding: [gzip]
       Content-Type: [application/json; charset=utf-8]
-      Date: ['Tue, 27 Nov 2018 16:19:45 GMT']
-      ETag: [W/"9e6-T0VAjLoBHzadhcJsUvT1WR90ihA"]
+      Date: ['Tue, 22 Jan 2019 20:50:05 GMT']
+      ETag: [W/"571-7DZNumJoo/8shLKrbR3j7zqsUdM"]
       Vary: [Accept-Encoding]
       X-Powered-By: [Express]
       transfer-encoding: [chunked]
@@ -41,32 +38,32 @@ interactions:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate']
       Connection: [keep-alive]
-      User-Agent: [python-requests/2.20.1]
+      User-Agent: [python-requests/2.18.4]
     method: GET
-    uri: https://veda-api-development.geobigdata.io/data/82553d2f-9c9c-46f0-ad9f-1a27a8673637/datapoints?limit=1&includeLinks=True&offset=0&classes=building
+    uri: https://veda-api-development.geobigdata.io/data/67a16de1-7baf-44bf-a779-2bf97a37c3bd/datapoints?includeLinks=True&classes=building&offset=0&limit=2
   response:
     body:
       string: !!binary |
-        H4sIAAAAAAAAA8VUTU/cMBT8Lzknu/5+9p5LT63EgZ4QQv7cdZvdpImDhBD/vS8ppaJqRZAo+PIi
-        e+IZz7Pn8q4qt32sdtXHaMs0xKqu9rE7xjLcVrvHxc9TW/J5197uuxMifNcNIZ9siWO1u8TRGNiA
-        UAIMgBFAdc3JhgERRmljOCXEqKv6XzDKlJGGKEk4wCNMAgGiNeVU0pfhVtI+heG4r6t+6Po4lDwf
-        7K46tg/n960dx5yytyX/dMD6Qwy4UoZp9izYYsdYrvM8p5mUPLDUGG98I1QijQ0mNdQysFoBVxzw
-        H9dNpzAbuEZfvdKUKjxIzqeikaTkNl4v/ZqZjGI1BYaw8WARlLRSjkVPUtJBM0WN8p44kF45Appp
-        L7hW2iZneSCECee8AWlU9NoFQ5Dg+xSnme9rOmag5HTwHmeHYK9LPPYt3hFclJp4Fkj0TAUdpEle
-        coh4ZO4sOGSPRAlpmIwkBiMYOM2Z5YTFpGUSEndcnDUyhRQCb7SRvBEikEZr/PLKK2Yt50zN2Na6
-        2M4NdFNu8aLuqx3F5i5dXK7s7wW0os2nb0u7x9imuR6GiLU6lNKPu+32Jgbb2D43Id7EtuuP8VQ2
-        +Ehc3s9t3+RuO9e+Q8vH7SqJKCbENs7evAVdXeGDPnSzgx/OPp1dnM0Cpj7YdxBw/uViZs9Hu38b
-        8u1CtSk5Vfc46ldMPClBMoJFSiqX56g0BY3vn2m8zPpX9vwNZ/CTKsWMFI8wYcBwLRgVWr8Mtpb1
-        Ce69I+85gfU6V56LPFlTRR4jjxPjok8sAAMtDIEQJTLqBEitBOM04c4iYkqpgPKSo4Qrh+EKImmA
-        t448b5SwxIUmMGCNwChunLO+IQJzmBgq0+Lse0beKomvF3krHfl/kfdSAa8aeWvI/4i8qx93a2Ik
-        5gkAAA==
+        H4sIAAAAAAAAA8VVy27bMBD8F50lmxQfS/rc9NQCPbSnIAj4WNpEZUu1qQJBkX/v0k1fQIvIQB68
+        ENAOOcNZcnT9rSl3Ezab5i26Mh+xaZstjnssx7tm86v4fh5K/jAOd9vxQIgwjseYD67gqdlc0+gs
+        rEBrpS0oKbhlphVs1QOTVhtrBWfM6pv2vzjea6ss04oJgF84BRaY7i2Yy2BLWf/G0bhvm+k4Tngs
+        uZ7sW7MfHgwIgzudcsrBlfzDAhd2GKlSjnM1LbriTlhuc/2mwXEdkXfgXeqk9KlzALbrfbLgBATh
+        I63x43yI1cFFAttlpjTxQfKcD8UQS8kD3p47Vqms7lsuyZXmtHOEss55bY33iCwpUAx1L9GxPkVP
+        kkXiJgQQ0nKlhVIuavDMMxZST9pMPfqXGedKCFCXw263n+rnY3S3BffTQNeEqgaM0j5Yo5D4UKJX
+        kQUAIwF4MMkrzsFFQ3wyJBQKFRpnaEM6H/qedjx76+msgJx3linspFK6s1axDvoE6CJ6kyr74DwO
+        tYV+zgPd1W2z4dTecx/Pt/Z3gbwY8uHzueEnHFKdd0ekudmVMp026/VXjK5zU+4ifsVhnPZ4KCt6
+        Jz5va+NXeVzXeRrJ89N6kUQSE3HA6s1L0LUNvendWB18c/Xu6uNVFTBP0b2CgA+fPlb2vHfblyFf
+        n6lWJafKW3bz3h9cHl6Se6KLdk+jfcLAldIKKawGy3t5DgOttRBS9poZypKf0fcPHEimuRBWGgt/
+        4LjmwJRUzKrLcEt5/8a9duQ+JrBdaMujmQstB/k7cz23FHPgkkYmUAYpKXuDYI6CPMWektUybhwy
+        1vuAvPeGdFqppfAuxPTimRstyGAc74SE2EkvofP0H+gMuSp58IHceuXMXSTx6TJ3oSPPl7mXCnjS
+        zF1C/lyZewH3z8y9+Q4TN0405goAAA==
     headers:
       Access-Control-Allow-Origin: ['*']
       Connection: [keep-alive]
       Content-Encoding: [gzip]
       Content-Type: [application/json; charset=utf-8]
-      Date: ['Tue, 27 Nov 2018 16:19:45 GMT']
-      ETag: [W/"9e6-T0VAjLoBHzadhcJsUvT1WR90ihA"]
+      Date: ['Tue, 22 Jan 2019 20:50:05 GMT']
+      ETag: [W/"ae6-K2sKivTorApV73/uIS2KhbYumCc"]
       Vary: [Accept-Encoding]
       X-Powered-By: [Express]
       transfer-encoding: [chunked]

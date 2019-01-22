@@ -16,11 +16,11 @@ class VedaBaseLabelTest(unittest.TestCase):
         from sampledata import segmentation_item
         label = SegmentationHandler._payload_handler(segmentation_item, klasses=['building'], out_shape = [256,256])
         # Point inside is classified
-        self.assertIs(label[1][80], 1)
+        self.assertEqual(label[1][80], 0.0)
         # Point on vertex is classified
-        self.assertIs(label[52][84], 1)
+        self.assertEqual(label[52][84], 0.0)
         # Point outside is background value
-        self.assertIs(label[256][256], 0)
+        self.assertEqual(label[255][255], 0.0)
 
 
     def test_object_detection(self):
