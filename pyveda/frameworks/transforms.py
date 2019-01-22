@@ -69,15 +69,8 @@ def flip_labels_horizontal(shp, bbox_lst):
     """
     bbox_flipped_h = []
     shp_center = (np.array(shp[1:])/2)[0]
-    # print(bbox_lst[0])
-    # print(bbox_lst[0][0])
-    # print(shp_center)
     for x in bbox_lst[0]:
-        #print('x pre-h_flip', x)
-        #print(x[0])
-        #if (shp_center - x[0]) < 0:
-        vertice = x[0]
-        if (shp_center - vertice) < 0:
+        if (shp_center - x[0]) < 0:
             xmin_new = shp_center + (shp_center - x[0])
         else:
             xmin_new = shp_center - (shp_center - x[0])
@@ -86,7 +79,6 @@ def flip_labels_horizontal(shp, bbox_lst):
         else:
             xmax_new = shp_center - (shp_center - x[2])
         bbox_flipped_h.append([int(xmin_new), x[1], int(xmax_new), x[3]])
-    #print('h flipped', bbox_flipped_h)
     return bbox_flipped_h
 
 def flip_labels_vertical(shp, bbox_lst):
@@ -95,12 +87,7 @@ def flip_labels_vertical(shp, bbox_lst):
     """
     bbox_flipped_v = []
     shp_center = (np.array(shp[1:])/2)[0]
-    #print('bbox_lst[0] v', bbox_lst[0])
-    #print('bbox_lst[0][1] v', bbox_lst[0][1])
-    #print(shp_center)
     for x in bbox_lst[0]:
-        print('x pre v flip:', x)
-        #vertice = x[1]
         if (shp_center - x[1]) < 0:
             ymin_new = shp_center + (shp_center - x[1])
         else:
@@ -110,5 +97,4 @@ def flip_labels_vertical(shp, bbox_lst):
         else:
             ymax_new = shp_center - (shp_center - x[3])
         bbox_flipped_v.append([x[0], int(ymin_new), x[2], int(ymax_new)])
-    #print('v flipped', bbox_flipped_v)
     return bbox_flipped_v

@@ -77,11 +77,10 @@ class BaseGenerator():
             for t_fn in transforms:
                 x = t_fn(x)
                 if t_fn == np.fliplr:
-                    #print(y)
-                    y = flip_labels_horizontal(self.shape, y)
+                    y = [flip_labels_horizontal(self.shape, y)]
                     print('horizontal flip y:', y)
                 if t_fn == np.flipud:
-                    y = flip_labels_vertical(self.shape, y)
+                    y = [flip_labels_vertical(self.shape, y)]
                     print('vertical flip y:', y)
             return x, y
 
