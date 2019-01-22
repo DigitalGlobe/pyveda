@@ -9,3 +9,5 @@ numpy
 scikit-image
 pycurl
 affine
+pytest
+vcrpy
