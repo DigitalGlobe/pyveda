@@ -12,13 +12,14 @@ class BaseGenerator():
     Rescale: Boolean. Flag to indicate if data returned from the generator should be rescaled between 0 and 1.
     '''
 
-    def __init__(self, cache, batch_size=32, shuffle=True, rescale=False):
+    def __init__(self, cache, batch_size=32, shuffle=True, rescale=False, flip_horizontal=False):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
         self.shuffle = shuffle
         self.rescale = rescale
         self.on_epoch_end()
+        self.flip_horiz = flip_horizontal
         self.list_ids = np.arange(0, len(self.cache))
 
     @property
@@ -28,6 +29,22 @@ class BaseGenerator():
     @property
     def shape(self):
         return self.cache._vset.image_shape
+
+    def apply_transform(self, x, y, fn, mltype):
+        """ 
+            Applies a transform method, returns x/y augmentations
+            Args:
+              x: image array
+              y: label 
+        """
+        # figure out which transform to apply randomly
+        transforms = self._figure_out_augs()
+
+        # Determine which augmentations to make
+        
+        for t_fn in transforms: # => []
+             x, y = t_fn(x, y, self.mltype)
+        return x, y
 
     def build_batch(self, index):
         raise NotImplemented
@@ -87,6 +104,7 @@ class VedaStoreGenerator(BaseGenerator):
         for i, _id in enumerate(list_ids_temp):
             x_img = self.cache.images[_id]
             y_img = self.cache.labels[_id]
+            x_img, y_img = self.apply_transforms(x_img, y_img)
 
             x[i, ] = x_img
             y.append(y_img)
@@ -116,6 +134,7 @@ class VedaStreamGenerator(BaseGenerator):
 
         while len(y) < self.batch_size:
             y_img, x_img = next(self.cache)
+            x_img, y_img = self.apply_transforms(x_img, y_img)
             x[len(y), ] = x_img
             y.append(y_img)
 
