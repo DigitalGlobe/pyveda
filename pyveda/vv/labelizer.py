@@ -45,12 +45,13 @@ class Labelizer():
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
         self.vedaset = vedaset
-        self.ids = next(self.vedaset)[0]['properties']['id']
+        # self.ids = next(self.vedaset)[0]['properties']['id']
         self.count = len(self.vedaset)
         self.dtype = next(self.vedaset)[0]['properties']['dtype']
         self.mltype = next(self.vedaset)[0]['properties']['mltype']
         self.index = 0
-        self.props, self.image = next(self.vedaset)
+        self.datapoint = next(self.vedaset)
+        self.props, self.image = self.datapoint[0], self.datapoint[1]
         self.flagged_tiles = []
 
     def _create_buttons(self):
@@ -74,7 +75,7 @@ class Labelizer():
             self.index += 1
             self.props, self.image = next(self.vedaset)
         elif b.description == 'No':
-            self.flagged_tiles.append(self.ids)
+            self.flagged_tiles.append(self.datapoint)
             self.index += 1
             self.props, self.image = next(self.vedaset)
         elif b.description == 'Exit':
