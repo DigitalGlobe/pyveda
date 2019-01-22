@@ -45,7 +45,7 @@ class Labelizer():
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
         self.vedaset = vedaset
-        # self.ids = next(self.vedaset)[0]['properties']['id']
+        self.id = next(self.vedaset)[0]['properties']['id']
         self.count = len(self.vedaset)
         self.dtype = next(self.vedaset)[0]['properties']['dtype']
         self.mltype = next(self.vedaset)[0]['properties']['mltype']
@@ -67,20 +67,53 @@ class Labelizer():
             buttons.append(btn)
         return buttons
 
+    def _create_flag_buttons(self):
+        """
+        Creates ipywidget widget buttons for tiles that have been flagged for review.
+        Returns:
+            buttons: A list of ipywidget Button() objects
+        """
+        buttons = []
+        actions = [('Keep', 'success'), ('Remove', 'danger')]
+        for b in actions:
+            btn = Button(description=b[0], button_style=b[1])
+            buttons.append(btn)
+        return buttons
+
     def _handle_buttons(self, b):
         """
         Callback and handling of widget buttons.
         """
         if b.description == 'Yes':
             self.index += 1
-            self.props, self.image = next(self.vedaset)
+            self.datapoint = next(self.vedaset)
+            self.props, self.image = self.datapoint[0], self.datapoint[1]
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
             self.index += 1
-            self.props, self.image = next(self.vedaset)
+            self.datapoint = next(self.vedaset)
+            self.props, self.image = self.datapoint[0], self.datapoint[1]
         elif b.description == 'Exit':
             self.index = self.count
         self.clean()
+
+    def _handle_flag_buttons(self, b):
+        """
+        Callback and handling of widget buttons for flagged tiles.
+        """
+        try:
+            if b.description == 'Keep':
+                print('dp %s has been stored' %self.id)
+                self.datapoint = next(self.flagged_tiles)
+                self.props, self.image = self.datapoint[0], self.datapoint[1]
+            elif b.description == 'Remove':
+                #TODO: add actual removal of point!
+                print('dp %s has been removed' %self.id)
+                self.datapoint = next(self.flagged_tiles)
+                self.props, self.image = self.datapoint[0], self.datapoint[1]
+            self.clean_flags()
+        except StopIteration:
+            print("All flagged tiles have been cleaned.")
 
     def _display_image(self):
         """
@@ -155,6 +188,24 @@ class Labelizer():
                     ax.fill(x,y, color=face_color, alpha=0.4)
                     ax.plot(x,y, lw=3, color=face_color)
 
+    def clean_flags(self):
+        """
+        Method for verifying DataPoints that were flagged with clean()
+        """
+        buttons = self._create_flag_buttons()
+        for b in buttons:
+            b.on_click(self._handle_flag_buttons)
+        if self.datapoint is not None:
+            self._display_image()
+            if self.mltype == 'object_detection':
+                self._display_obj_detection()
+            if self.mltype == 'classification':
+                self._display_classification()
+            if self.mltype == 'segmentation':
+                self._display_segmentation()
+            print('Do you want to remove this tile?')
+            display(HBox(buttons))
+
     def clean(self):
         """
         Method for verifying each DataPoint as image data with associated polygons.
@@ -162,7 +213,6 @@ class Labelizer():
         buttons. Allows user to click through each DataPoint object and decide
         whether to keep or remove the object.
         """
-
         clear_output()
         buttons = self._create_buttons()
         for b in buttons:
@@ -179,4 +229,10 @@ class Labelizer():
             if self.mltype == 'segmentation':
                 self._display_segmentation()
         else:
-            print("All tiles have been cleaned.")
+            try:
+                print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
+                self.flagged_tiles = iter(self.flagged_tiles)
+                self.datapoint = next(self.flagged_tiles)
+                self.clean_flags()
+            except StopIteration:
+                print("All tiles have been cleaned.")
