@@ -77,7 +77,7 @@ class VCFetchTest(unittest.TestCase):
 
     @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_getatr.yaml', filter_headers=['authorization'])
     def test_getitem(self):
-        dp = self.vc[0][0]
+        dp = self.vc[0]
         self.assertTrue(isinstance(dp, DataSampleClient))
         dps = self.vc[0:3]
         self.assertTrue(isinstance(dps[0], DataSampleClient))

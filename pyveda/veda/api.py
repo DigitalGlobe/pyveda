@@ -276,6 +276,8 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         resp = self.conn.get(self._datapoint_search_furl.format(base_url=self._base_url, qs=qs))
         resp.raise_for_status()
         dps = [self._to_dp(p, dtype=self.dtype, **kwargs) for p in resp.json()]
+        if len(dps) == 1:
+            return dps[0]
         return dps
 
     def fetch_sample_from_id(self, dp_id, include_links=True, **kwargs):
@@ -291,7 +293,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         return [self.fetch_sample_from_id(dp_id) for dp_id in dp_ids]
 
     def fetch_sample_from_index(self, idx, **kwargs):
-        return self.fetch_samples_from_slice(idx, **kwargs).pop()
+        return self.fetch_samples_from_slice(idx, **kwargs)
 
     def gen_sample_ids(self, count=None, page_size=100, get_urls=True, **kwargs):
         """ Creates a generator of Datapoint IDs or URLs for every datapoint in the VedaCollection
