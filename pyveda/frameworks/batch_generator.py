@@ -76,9 +76,10 @@ class BaseGenerator():
             for t_fn in transforms:
                 x = t_fn(x)
                 if t_fn == np.fliplr:
-                    y = flip_labels_horizontal(y)
-                if t_fn == np.flipup:
-                    y = flip_labels_vertical(y)
+                    #print(y)
+                    y = flip_labels_horizontal(self.shape, y)
+                if t_fn == np.flipud:
+                    y = flip_labels_vertical(self.shape, y)
             return x, y
 
         if self.mltype == 'segmentation':
@@ -144,8 +145,10 @@ class VedaStoreGenerator(BaseGenerator):
         y = []
 
         for i, _id in enumerate(list_ids_temp):
-            x_img = self.cache.images[_id]
-            y_img = self.cache.labels[_id]
+            x_img = self.cache.images[int(_id)]
+            y_img = self.cache.labels[int(_id)]
+            #print(type(_id), _id, y_img)
+
             x_img, y_img = self.apply_transforms(x_img, y_img)
 
             x[i, ] = x_img
