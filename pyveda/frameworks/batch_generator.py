@@ -61,6 +61,7 @@ class BaseGenerator():
         """
         # Figure out which transform to apply randomly
         transforms = self._applied_augs(self.flip_h, self.flip_v)
+        print(transforms)
 
         # User selects no augmentation functions
         if len(transforms) == 0:
@@ -78,7 +79,9 @@ class BaseGenerator():
                 if t_fn == np.fliplr:
                     #print(y)
                     y = flip_labels_horizontal(self.shape, y)
+                    print(y)
                 if t_fn == np.flipud:
+                    print(y)
                     y = flip_labels_vertical(self.shape, y)
             return x, y
 
