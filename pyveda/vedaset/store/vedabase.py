@@ -6,7 +6,7 @@ import tables
 from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, NDImageArray
-from pyveda.vedaset.abstract import BaseSampleArray, BaseDataSet
+from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
 
 
@@ -14,22 +14,30 @@ MLTYPE_MAP = {"classification": ClassificationArray,
               "segmentation": SegmentationArray,
               "object_detection": ObjDetectionArray}
 
-DATA_GROUPS = {"TRAIN": "Data designated for model training",
-               "TEST": "Data designated for model testing",
-               "VALIDATE": "Data designated for model validation"}
-
 ignore_NaturalNameWarning = partial(ignore_warnings, _warning=tables.NaturalNameWarning)
 
-class VirtualSubArray(object):
+class VirtualSubArray(BaseVariableArray):
     """
     This wraps a pytables array with access determined
     by a contiguous index range given by two integers
     """
-    def __init__(self, arr, start, stop):
-        self._arr = arr
-        self._start = start
-        self._stop = stop
+    def __init__(self, vset, arr):
+        super(VirtualSubArray, self).__init__(vset, arr)
+        self._start_ = None
+        self._stop_ = None
         self._itr = None
+
+    @property
+    def _start(self):
+        if self._start_ is None:
+            self._start_ = self._vset._update_vindex(self)
+        return self._start_
+
+    @property
+    def _stop(self):
+        if self._stop_ is None:
+            self._stop_ = self._vset._update_vindex(self)
+        return self._stop_
 
     def __getitem__(self, key):
         if isinstance(key, int):
@@ -50,46 +58,36 @@ class VirtualSubArray(object):
         # since there is always only one maintained instance of iter state. See
         # issue https://github.com/PyTables/PyTables/issues/293
         self._itr = self._arr.iterrows(self._start, self._stop)
-        return self._itr.__next()
+        return self._itr.__next__()
 
-    def _translate_idx(self, idx):
-        return idx + self._start
+    def _translate_idx(self, vidx):
+        if vidx is None: # Bounce back None slice parts
+            return vidx
+        idx = vidx + self._start
+        if idx > self._stop:
+            raise IndexError("Index out of data range")
+        return idx
 
     def _translate_slice(self, sli):
         start, stop, step = sli.start, sli.stop, sli.step
         start = self._translate_idx(start)
         stop = self._translate_idx(stop)
+        # None means default to edges
+        if start is None:
+            start = self._start
+        if stop is None:
+            stop = self._stop
         return slice(start, stop, step)
 
 
-class WrappedDataNode(object):
-    def __init__(self, node, trainer):
-        self._node = node
-        self._vset = trainer
-
-    @property
-    def _start(self):
-        pass
-
-    @property
-    def _stop(self):
-        pass
-
-    @property
-    def images(self):
-        return self._vset._image_klass(self._node.images, self._vset,
-                                       output_transform=lambda x: x)
-
-    @property
-    def labels(self):
-        return self._vset._label_klass(self._node.hit_table, self._node.labels,  self._vset)
-
+class WrappedSampleNode(BaseSampleArray):
     def batch_generator(self, batch_size, shuffle, **kwargs):
         """
         Generatates Batch of Images/Lables on a VedaBase partition.
         #Arguments
             batch_size: int. batch size
-            shuffle: boolean.  """ return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle, **kwargs)
+            shuffle: boolean.  """
+        return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle, **kwargs)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):
@@ -104,10 +102,6 @@ class WrappedDataNode(object):
         glbl = self.labels.__iter__(spec)
         while True:
             yield (gimg.__next__(), glbl.__next__())
-
-    def __len__(self):
-        return len(range(self._start, self.stop))
-
 
 
 class H5DataBase(BaseDataSet):
@@ -132,26 +126,20 @@ class H5DataBase(BaseDataSet):
         self._fileh.root._v_attrs.image_dtype = image_dtype
         self._fileh.root._v_attrs.partition = partition
 
-        self._configure_instance()
         self._build_filetree()
 
     def _load_existing(self, fname, mode="a"):
         if mode == "w":
             raise ValueError("Opening the file in write mode will overwrite the file")
         self._fileh = tables.open_file(fname, mode=mode)
-        self._configure_instance()
 
-    def _configure_instance(self, *args, **kwargs):
-        self._image_klass = NDImageArray
-        self._label_klass = MLTYPE_MAP[self.mltype]
-        self._classifications = dict([(klass, tables.UInt8Col(pos=idx + 1)) for idx, klass in enumerate(self.classes)])
-
-    def _build_filetree(self, dg=DATA_GROUPS):
+    def _build_filetree(self, dg=["train", "test", "validate"]):
         # Build group nodes
-        for name, desc in dg.items():
-            self._fileh.create_group("/", name.lower(), desc)
+        for name in dg:
+            self._fileh.create_group("/", name.lower(),
+                                     "Records of ML experimentation phases")
         # Build table, array leaves
-        self._create_tables(self._classifications, filters=tables.Filters(0))
+        self._create_tables(filters=tables.Filters(0))
         self._create_arrays(self._image_klass, self.image_dtype)
         self._create_arrays(self._label_klass)
 
@@ -160,20 +148,22 @@ class H5DataBase(BaseDataSet):
         data_klass.create_array(self, self._fileh.root, data_dtype)
 
     @ignore_NaturalNameWarning
-    def _create_tables(self, classifications, filters=tables.Filters(0)):
+    def _create_tables(self, filters=tables.Filters(0)):
+        # Table col specs in the structure pytables wants
+        idx_cols = {"ids": tables.StringCol(36)}
+        feature_cols = dict([(klass, tables.UInt8Col(pos=idx + 1))
+                             for idx, klass in enumerate(self.classes)])
+
         # Build main id index and feature tables on root
-        self._fileh.create_table(self._fileh.root, "sample_index",
-                                 {"ids": tables.StringCol(36, pos=0)},
+        self._fileh.create_table(self._fileh.root, "sample_index", idx_cols,
                                  "Constituent Datasample ID index", filters)
-        self._fileh.create_table(self._fileh.root, "feature_table",
-                                 classifications, "Datasample feature contexts",
-                                 filters)
+        self._fileh.create_table(self._fileh.root, "feature_table" feature_cols,
+                                 "Datasample feature contexts", filters)
 
         # Build tables on groups that can be used for recording id logs during
         # model experimentation
         for name, group in self._groups.items():
-            self._fileh.create_table(group, "sample_log",
-                                     {"ids": tables.StringCol(36, pos=0)},
+            self._fileh.create_table(group, "sample_log", idx_cols,
                                      "Datasample ID log", filters)
 
     @property
@@ -219,15 +209,15 @@ class H5DataBase(BaseDataSet):
 
     @property
     def train(self):
-        return WrappedDataNode(self._fileh.root.train, self)
+        return WrappedSampleNode(self)
 
     @property
     def test(self):
-        return WrappedDataNode(self._fileh.root.test, self)
+        return WrappedSampleNode(self._fileh.root.test, self)
 
     @property
     def validate(self):
-        return WrappedDataNode(self._fileh.root.validate, self)
+        return WrappedSampleNode(self._fileh.root.validate, self)
 
     def flush(self):
         self._fileh.flush()
