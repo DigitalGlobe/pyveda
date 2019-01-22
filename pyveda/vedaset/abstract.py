@@ -104,19 +104,5 @@ class ABCMetaProps(ABC):
         raise NotImplementedError
 
 
-class BaseVariableArray(ABCVariableIterator):
-
-    _vtype = "BaseVariableArray"
-
-
-class BaseSampleArray(ABCSampleIterator):
-
-    _vtyp = "BaseSampleArray"
-
-
-class BaseDataSet(ABCDataSet, ABCMetaProps):
-
-    _vtyp = "BaseDataSet"
-
 
 
