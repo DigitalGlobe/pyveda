@@ -34,11 +34,7 @@ class Labelizer():
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
-            ids (generator): A Url generator for datapoints to be viewed
-            count (int): the number of datapoints to process
-            imshape (tuple): shape of each incoming image
-            dtype (str): the datatype of the images
-            mltype (str): the mltype of the veda collection
+            vedaset: The data to be cleaned
         """
         assert has_ipywidgets, 'Labelizer requires ipywidgets to be installed'
         assert has_ipy, 'Labelizer requires ipython to be installed'
@@ -117,10 +113,10 @@ class Labelizer():
 
     def _display_image(self):
         """
-        Displays image tile for a given DataPoint object.
+        Displays image tile for a given vedaset object.
         """
         img = self.image
-        plt.figure(figsize = (7, 7))
+        plt.figure(figsize = (10, 10))
         ax = plt.subplot()
         ax.axis("off")
         ax.imshow(np.moveaxis(img, 0, -1))
@@ -128,9 +124,7 @@ class Labelizer():
 
     def _display_obj_detection(self):
         """
-        Adds DataPoint object detection label geometries to the image tile plot.
-        Params:
-        dp: A DataPoint object for the VedaCollection.
+        Adds vedaset object detection label geometries to the image tile plot.
         """
         label = self.props['properties']['label'].items()
         label_shp = [l[1] for l in label]
@@ -153,7 +147,7 @@ class Labelizer():
 
     def _display_classification(self):
         """
-        Adds DataPoint classification labels to the image plot.
+        Adds vedaset classification labels to the image plot.
         """
         label = self.props['properties']['label'].items()
         label_class = [l[1] for l in label]
@@ -164,9 +158,9 @@ class Labelizer():
                 positive_classes.append(label_type[i])
         plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
 
-    def _display_segmentation(self, dp):
+    def _display_segmentation(self):
         """
-        Adds DataPoint classification labels to the image plot.
+        Adds vedaset classification labels to the image plot.
         """
         label = self.props['properties']['label'].items()
         label_shp = [l[1] for l in label]
@@ -209,9 +203,9 @@ class Labelizer():
 
     def clean(self):
         """
-        Method for verifying each DataPoint as image data with associated polygons.
+        Method for verifying each vedaset object as image data with associated polygons.
         Displays a polygon overlayed on image chip with associated ipywidget
-        buttons. Allows user to click through each DataPoint object and decide
+        buttons. Allows user to click through each vedaset object and decide
         whether to keep or remove the object.
         """
         clear_output()
