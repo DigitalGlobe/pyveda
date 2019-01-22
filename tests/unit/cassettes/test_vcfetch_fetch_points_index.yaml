@@ -1,0 +1,59 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.20.1]
+    method: GET
+    uri: https://veda-api-development.geobigdata.io/data/82553d2f-9c9c-46f0-ad9f-1a27a8673637/datapoints?limit=10&includeLinks=True&offset=5&classes=building
+  response:
+    body:
+      string: !!binary |
+        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
+        4v36P8JTtC94NgAA
+    headers:
+      Access-Control-Allow-Origin: ['*']
+      Connection: [keep-alive]
+      Content-Encoding: [gzip]
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Tue, 27 Nov 2018 16:19:45 GMT']
+      ETag: [W/"3678-HXV5w2t8IdANyiOiDJLS/Qy6/pQ"]
+      Vary: [Accept-Encoding]
+      X-Powered-By: [Express]
+      transfer-encoding: [chunked]
+    status: {code: 200, message: OK}
+version: 1

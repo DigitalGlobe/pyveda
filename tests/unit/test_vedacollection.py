@@ -5,6 +5,7 @@ import os, sys
 os.environ["SANDMAN_API"] = "https://veda-api-development.geobigdata.io"
 
 from pyveda import DataPoint, VedaCollection, search
+from auth_mock import gbdx
 import json
 from shapely.geometry import shape, box
 from shapely.geometry.polygon import Polygon
@@ -49,15 +50,6 @@ my_vcr = vcr.VCR()
 my_vcr.register_matcher('force', force)
 my_vcr.match_on = ['force']
 
-# How to use the mock_gbdx_session and vcr to create unit tests:
-# 1. Add a new test that is dependent upon actually hitting GBDX APIs.
-# 2. Decorate the test with @vcr appropriately
-# 3. Replace "dummytoken" with a real gbdx token
-# 4. Run the tests (existing test shouldn't be affected by use of a real token).  This will record a "cassette".
-# 5. Replace the real gbdx token with "dummytoken" again
-# 6. Edit the cassette to remove any possibly sensitive information (s3 creds for example)
-
-
 class VedaCollectionTest_vcr(unittest.TestCase):
     def test_vedacollection_new(self):
         vc = VedaCollection('name')
@@ -66,8 +58,8 @@ class VedaCollectionTest_vcr(unittest.TestCase):
         self.assertEqual(vc.mltype, 'classification')
         self.assertEqual(vc.bounds, None)
         self.assertEqual(vc.count, 0)
-
-    #@my_vcr.use_cassette('tests/unit/cassettes/test_vc_search.yaml', filter_headers=['authorization'])
+      
+    @my_vcr.use_cassette('tests/unit/cassettes/test_vc_search.yaml', filter_headers=['authorization'])
     def test_vc_search(self):
         results = search()
         vc = results[0]
@@ -76,7 +68,7 @@ class VedaCollectionTest_vcr(unittest.TestCase):
         self.assertEqual(type(shape(vc)), Polygon)
         self.assertEqual(vc.__geo_interface__, box(*vc.bounds).__geo_interface__)
 
-    #@my_vcr.use_cassette('tests/unit/cassettes/test_vedacollection_id.yaml', filter_headers=['authorization'])
+    @my_vcr.use_cassette('tests/unit/cassettes/test_vedacollection_id.yaml', filter_headers=['authorization'])
     def test_vedacollection_id(self):
         vc = VedaCollection.from_id(VC_ID)
         self.assertEqual(vc.id, VC_ID)
@@ -86,35 +78,35 @@ class VedaCollectionTest_vcr(unittest.TestCase):
 
 class VCFetchTest(unittest.TestCase):
 
-    #@my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch.yaml', filter_headers=['authorization'])
+    @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch.yaml', filter_headers=['authorization'])
     def setUp(self):
         self.vc = VedaCollection.from_id(VC_ID)
 
 
-    #@my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_fetch_index.yaml', filter_headers=['authorization'])
+    @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_fetch_index.yaml', filter_headers=['authorization'])
     def test_fetch_index(self):
         dp = self.vc.fetch_index(0)
         self.assertTrue(isinstance(dp, DataPoint))
 
 
-    #@my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_fetch_points.yaml', filter_headers=['authorization'])
+    @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_fetch_points.yaml', filter_headers=['authorization'])
     def test_fetch_points(self):
         dps = self.vc.fetch_points(5)
         self.assertEqual(len(dps), 5)
 
 
-    #@my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_fetch_points_index.yaml', filter_headers=['authorization'])
+    @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_fetch_points_index.yaml', filter_headers=['authorization'])
     def test_fetch_points_offset(self):
         dps = self.vc.fetch_points(10,5)
         self.assertEqual(len(dps), 10)
 
 
-    #@my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_fetch_ids.yaml', filter_headers=['authorization'])
+    @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_fetch_ids.yaml', filter_headers=['authorization'])
     def test_fetch_ids(self):
         ids = self.vc.fetch_ids(page_size=50)
         self.assertEqual(len(ids[0]), 50)
 
-    #@my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_ids.yaml', filter_headers=['authorization'])
+    @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_ids.yaml', filter_headers=['authorization'])
     def test_ids(self):
         ids = self.vc.ids(size=50, get_urls=False)
         nid = next(ids)
@@ -123,13 +115,14 @@ class VCFetchTest(unittest.TestCase):
         self.assertEqual(len(list(ids)), 49)
 
 
-    #@my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_ids_urls.yaml', filter_headers=['authorization'])
+    @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_ids_urls.yaml', filter_headers=['authorization'])
     def test_ids_urls(self):
         ids = self.vc.ids(size=50, get_urls=True)
         nid = next(ids)
         self.assertTrue(isinstance(nid, list))
         self.assertEqual(len(nid), 2)
         self.assertEqual(nid[0][:5], 'https')
+
 
     #@my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_getatr.yaml', filter_headers=['authorization'])
     def test_getitem(self):
@@ -138,3 +131,4 @@ class VCFetchTest(unittest.TestCase):
         dps = self.vc[0:2]
         self.assertTrue(isinstance(dps[0], DataPoint))
         self.assertEqual(len(dps), 2)
+

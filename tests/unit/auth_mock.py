@@ -1,11 +1,10 @@
 """
-This function returns a mock gbdx-auth requests session with a dummy token.  You can optionally pass in a real token
+This function returns a mock gbdx-auth requests session with a dummy token.  You can optionally pass in a real token 
 if you want to actually make requests.
 """
 
 
 import os
-import json
 from oauthlib.oauth2 import LegacyApplicationClient
 from requests_oauthlib import OAuth2Session
 from gbdx_auth import gbdx_auth

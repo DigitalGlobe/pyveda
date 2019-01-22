@@ -8,10 +8,19 @@ from pyveda import DataPoint, VedaCollection
 import json
 from shapely.geometry import shape
 from shapely.geometry.polygon import Polygon
+from auth_mock import gbdx
+import vcr
 import unittest
 
 test_dir = os.path.dirname(__file__)
 test_json = os.path.join(test_dir, 'responses', 'datapoint.json')
+
+def force(r1, r2):
+    return True
+
+my_vcr = vcr.VCR()
+my_vcr.register_matcher('force', force)
+my_vcr.match_on = ['force']
 
 
 class DataPointTest(unittest.TestCase):
@@ -21,9 +30,6 @@ class DataPointTest(unittest.TestCase):
 
     def test_datapoint(self):
         dp = DataPoint(self.json)
-        print(dp)
-        print(*dp.bounds)
-        print(dp.__geo_interface__)
         self.assertTrue(isinstance(dp, DataPoint))
         self.assertEqual(dp.id, 'ae91f7df-ae37-4d31-9506-d9176f50403c')
         self.assertEqual(dp.mltype, 'classification')
@@ -32,8 +38,8 @@ class DataPointTest(unittest.TestCase):
         self.assertEqual(type(shape(dp)), Polygon)
         self.assertEqual(dp.dataset_id, 'e91fb673-4a31-4221-a8ef-01706b6d9b63')
 
+    @my_vcr.use_cassette('tests/unit/cassettes/test_datapoint_fetch.yaml', filter_headers=['authorization'])
     def test_datapoint_fetch(self):
-        #vc = VedaCollection('fake')
         vc_id = '82553d2f-9c9c-46f0-ad9f-1a27a8673637'
         dp_id = 'c5942231-dd6d-4ab8-9fce-04d28aa560d8'
         vc = VedaCollection.from_id(vc_id)
