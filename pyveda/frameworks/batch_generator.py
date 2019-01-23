@@ -61,9 +61,11 @@ class BaseGenerator():
         """
         # Figure out which transform to apply randomly
         transforms = self._applied_augs(self.flip_h, self.flip_v)
-        print(transforms)
 
         # User selects no augmentation functions
+        if len(transforms) == 0 and self.mltype == 'object_detection':
+            return x, y[0]
+
         if len(transforms) == 0:
             return x, y
 
@@ -78,11 +80,9 @@ class BaseGenerator():
                 x = t_fn(x)
                 if t_fn == np.fliplr:
                     y = [flip_labels_horizontal(self.shape, y)]
-                    print('horizontal flip y:', y)
                 if t_fn == np.flipud:
                     y = [flip_labels_vertical(self.shape, y)]
-                    print('vertical flip y:', y)
-            return x, y
+            return x, y[0]
 
         if self.mltype == 'segmentation':
             for t_fn in transforms:
