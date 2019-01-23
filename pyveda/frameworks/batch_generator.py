@@ -64,8 +64,8 @@ class BaseGenerator():
         # User selects no augmentation functions
         if len(transforms) == 0:
                 if self.mltype == 'object_detection':
-                return x, y[0]
-            return x, y
+                    return x, y[0]
+                return x, y
 
         # Make Augmentations
         if self.mltype == 'classification':
