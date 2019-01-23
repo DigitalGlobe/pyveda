@@ -146,13 +146,22 @@ class VedaStoreGenerator(BaseGenerator):
         optionally pre-processes the data'''
 
         # setup empty batch
-        x = np.empty((self.batch_size, *self.shape))
+        if self.channels_last:
+            x = np.empty((self.batch_size, *self.shape[::-1]))
+            #print(x.shape)
+        else:
+            x = np.empty((self.batch_size, *self.shape))
         y = []
 
         for i, _id in enumerate(list_ids_temp):
             x_img = self.cache.images[int(_id)]
             y_img = self.cache.labels[int(_id)]
             x_img, y_img = self.apply_transforms(x_img, y_img)
+            if self.channels_last:
+                #print("transforming")
+                #print(x_img.shape)
+                x_img = x_img.T
+                #print('after .T', x_img.shape)
             x[i, ] = x_img
             if self.mltype == 'object_detection':
                 y_img = y_img[0]
@@ -161,8 +170,8 @@ class VedaStoreGenerator(BaseGenerator):
         #rescale after entire bactch is collected
         if self.rescale:
             x /= x.max()
-        if self.channels_last:
-            x = x.T
+        # if self.channels_last:
+        #     x = x.T
         return x, np.array(y)
 
 class VedaStreamGenerator(BaseGenerator):
@@ -180,12 +189,19 @@ class VedaStreamGenerator(BaseGenerator):
     def _data_generation(self):
         '''Generates data containing batch_size samples
         optionally pre-processes the data'''
-        x = np.empty((self.batch_size, *self.shape))
+
+        if self.channels_last:
+            x = np.empty((self.batch_size, *self.shape[::-1]))
+        else:
+            x = np.empty((self.batch_size, *self.shape))
         y = []
 
         while len(y) < self.batch_size:
             y_img, x_img = next(self.cache)
             x_img, y_img = self.apply_transforms(x_img, y_img)
+
+            if self.channels_last:
+                x_img = x_img.T
             x[len(y), ] = x_img
             if self.mltype == 'object_detection':
                 y_img = y_img[0]
@@ -193,6 +209,6 @@ class VedaStreamGenerator(BaseGenerator):
 
         if self.rescale:
             x /= x.max()
-        if self.channels_last:
-            x = x.T
+        # if self.channels_last:
+        #     x = x.T
         return x, np.array(y)
