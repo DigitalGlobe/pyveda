@@ -7,7 +7,7 @@ class BaseVariableArray(ABCVariableIterator):
 
     def __init__(self, vset, arr):
         self._vset = vset
-        self._arr = arr
+        self._arr = iter(arr)
 
     def __getitem__(self, key):
         item = self._arr.__getitem__(key)
