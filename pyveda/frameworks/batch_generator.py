@@ -89,6 +89,8 @@ class VedaStoreGenerator(BaseGenerator):
             y_img = self.cache.labels[int(_id)]
 
             x[i, ] = x_img
+            if self.mltype == 'object_detection':
+                y_img = y_img[0]
             y.append(y_img)
 
         #rescale after entire bactch is collected
@@ -117,6 +119,8 @@ class VedaStreamGenerator(BaseGenerator):
         while len(y) < self.batch_size:
             y_img, x_img = next(self.cache)
             x[len(y), ] = x_img
+            if self.mltype == 'object_detection':
+                y_img = y_img[0]
             y.append(y_img)
 
         if self.rescale:
