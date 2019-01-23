@@ -95,17 +95,13 @@ class Labelizer():
             self.index += 1
             self.datapoint = next(self.vedaset)
             self.image = self.datapoint[1]
-            label_items = self.datapoint[0]['properties']['label'].items()
-            labels = [l[1] for l in label]
-            classes = [l[0] for l in label]
+            self.labels = self.datapoint[0]
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
             self.index += 1
             self.datapoint = next(self.vedaset)
             self.image = self.datapoint[1]
-            label_items = self.datapoint[0]['properties']['label'].items()
-            labels = [l[1] for l in label]
-            classes = [l[0] for l in label]
+            self.labels = self.datapoint[0]
         elif b.description == 'Exit':
             self.index = self.count
         self.clean()
