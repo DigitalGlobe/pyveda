@@ -82,7 +82,6 @@ def from_name(dataset_name):
         Returns:
             VedaCollectionProxy: the dataset
         '''
-
         results = search(filters={"name": dataset_name})
         if results:
             return results[0]

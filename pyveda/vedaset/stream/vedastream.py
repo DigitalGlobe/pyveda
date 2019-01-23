@@ -9,6 +9,7 @@ import numpy as np
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
+from pyveda.frameworks.batch_generator import VedaStreamGenerator
 
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):
@@ -98,6 +99,15 @@ class BufferedSampleArray(BaseSampleArray):
             while len(batch) < batch_size:
                 batch.append(self.__next__())
             yield batch
+
+    def batch_generator(self, batch_size, shuffle=True, **kwargs):
+        """
+        Generatates Batch of Images/Lables on a VedaStream partition.
+        #Arguments
+            batch_size: int. batch size
+            shuffle: boolean.
+        """
+        return VedaStreamGenerator(self, batch_size=batch_size, shuffle=shuffle, **kwargs)
 
     @property
     def exhausted(self):
