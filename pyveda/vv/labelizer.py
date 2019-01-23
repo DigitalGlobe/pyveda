@@ -44,21 +44,20 @@ class Labelizer():
         self.count = len(self.vedaset)
         self.index = 0
         self.datapoint = next(self.vedaset)
-        self.image = self.datapoint[0]
+        self.image = self.datapoint[1]
         self.flagged_tiles = []
         self.dtype, self.mltype, self.labels, self.classes = self._get_properties()
 
     def _get_properties(self):
-        if type(self.datapoint[0]) == 'dict':
-             dtype = self.datapoint[0]['properties']['dtype']
-             mltype = self.datapoint[0]['properties']['mltype']
-             label_items = self.datapoint[0]['properties']['label'].items()
-             labels = [l[1] for l in label]
-             classes = [l[0] for l in label]
-
-        return(dtype, mltype, labels, classes)
-
-
+        try:
+            dtype = self.datapoint[0]['properties']['dtype']
+            mltype = self.datapoint[0]['properties']['mltype']
+            label_items = self.datapoint[0]['properties']['label'].items()
+            labels = [l[1] for l in label_items]
+            classes = [l[0] for l in label_items]
+            return (dtype, mltype, labels, classes)
+        except:
+            print('not dict')
 
     def _create_buttons(self):
         """
@@ -93,12 +92,18 @@ class Labelizer():
         if b.description == 'Yes':
             self.index += 1
             self.datapoint = next(self.vedaset)
-            self.props, self.image = self.datapoint[0], self.datapoint[1]
+            self.image = self.datapoint[1]
+            label_items = self.datapoint[0]['properties']['label'].items()
+            labels = [l[1] for l in label]
+            classes = [l[0] for l in label]
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
             self.index += 1
             self.datapoint = next(self.vedaset)
-            self.props, self.image = self.datapoint[0], self.datapoint[1]
+            self.image = self.datapoint[1]
+            label_items = self.datapoint[0]['properties']['label'].items()
+            labels = [l[1] for l in label]
+            classes = [l[0] for l in label]
         elif b.description == 'Exit':
             self.index = self.count
         self.clean()
@@ -134,9 +139,8 @@ class Labelizer():
         """
         Adds vedaset object detection label geometries to the image tile plot.
         """
-        label = self.props['properties']['label'].items()
-        label_shp = [l[1] for l in label]
-        label_type = [l[0] for l in label]
+        label_shp = self.labels
+        label_type = self.classes
         legend_elements = []
         ax = plt.subplot()
         plt.title('Is this tile correct?', fontsize=14)
@@ -157,9 +161,8 @@ class Labelizer():
         """
         Adds vedaset classification labels to the image plot.
         """
-        label = self.props['properties']['label'].items()
-        label_class = [l[1] for l in label]
-        label_type = [l[0] for l in label]
+        label_shp = self.labels
+        label_type = self.classes
         positive_classes = []
         for i, binary_class in enumerate(label_class):
             if binary_class != 0:
@@ -170,9 +173,8 @@ class Labelizer():
         """
         Adds vedaset classification labels to the image plot.
         """
-        label = self.props['properties']['label'].items()
-        label_shp = [l[1] for l in label]
-        label_type = [l[0] for l in label]
+        label_shp = self.labels
+        label_type = self.classes
         legend_elements = []
         ax = plt.subplot()
         plt.title('Is this tile correct?', fontsize=14)
