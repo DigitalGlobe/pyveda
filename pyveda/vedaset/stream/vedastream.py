@@ -9,16 +9,17 @@ import numpy as np
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
 
+
 class BufferedVariableArray(BaseVariableArray):
     pass
 
+
 class BufferedSampleArray(BaseSampleArray):
-    def __init__(self, vset, allocated):
+    def __init__(self, vset):
         super(BufferedSampleArray, self).__init__(vset)
-        self.allocated = allocated
         self._n_consumed = 0
         self._exhausted = False
-        if allocated == 0:
+        if self.allocated == 0:
             self.exhausted = True
 
     def __len__(self):
@@ -71,6 +72,10 @@ class BufferedSampleArray(BaseSampleArray):
 
 
 class BufferedDataStream(BaseDataSet):
+    _fetch_class = VedaStreamFetcher
+    _sample_class = BufferedSampleArray
+    _variable_class = BufferedVariableArray
+
     def __init__(self, source, bufsize=100, auto_startup=False,
                  auto_shutdown=False, write_index=True, write_h5=False,
                  *args, **kwargs):
@@ -93,32 +98,21 @@ class BufferedDataStream(BaseDataSet):
         if auto_startup:
             self._start_consumer()
 
-    def __len__(self):
-        return self.count
+    @property
+    def _img_arr(self):
+        try:
+            _, imgs = zip(*self._buf)
+        except ValueError:
+            imgs = []
+        return self._variable_class(self, imgs)
 
     @property
-    def train(self):
-        if self._train is None:
-#            self._train = BufferedSampleArray(round(self.count*self.partition[0]*0.01), self)
-            self._train = BufferedSampleArray(self)
-            setattr(self._train, "_dgroup", "train")
-        return self._train
-
-    @property
-    def test(self):
-        if self._test is None:
-#            self._test = BufferedSampleArray(round(self.count*self.partition[1]*0.01), self)
-            self._test = BufferedSampleArray(self)
-            setattr(self._test, "_dgroup", "test")
-        return self._test
-
-    @property
-    def validate(self):
-        if self._validate is None:
-#            self._validate = BufferedSampleArray(round(self.count*self.partition[2]*0.01), self)
-            self._validate = BufferedSampleArray(self)
-            setattr(self._validate, "_dgroup", "validate")
-        return self._validate
+    def _lbl_arr(self):
+        try:
+            lbls, _ = zip(*self._buf)
+        except ValueError:
+            lbls = []
+        return self._variable_class(self, lbls)
 
     @property
     def exhausted(self):
@@ -130,22 +124,6 @@ class BufferedDataStream(BaseDataSet):
         if val:
             self._on_exhausted()
         self._exhausted = val
-
-    @property
-    def _img_arr(self):
-        try:
-            _, imgs = zip(*self._buf)
-        except ValueError:
-            imgs = []
-        return BufferedVariableArray(self, imgs)
-
-    @property
-    def _lbl_arr(self):
-        try:
-            lbls, _ = zip(*self._buf)
-        except ValueError:
-            lbls = []
-        return BufferedVariableArray(self, lbls)
 
     def _on_group_exhausted(self):
         if all([self.train.exhausted, self.test.exhausted, self.validate.exhausted]):
@@ -192,7 +170,7 @@ class BufferedDataStream(BaseDataSet):
             self._configure_worker()
 
         self._thread.start()
-        time.sleep(0.5)
+        time.sleep(1.0)
         self._consumer_fut = asyncio.run_coroutine_threadsafe(self._fetcher.start_fetch(self._loop),
                                                               loop=self._loop)
         if init_buff:
@@ -220,4 +198,8 @@ class BufferedDataStream(BaseDataSet):
 
     def __exit__(self, *args):
         self._stop_consumer()
+
+    def __len__(self):
+        return self.count
+
 
