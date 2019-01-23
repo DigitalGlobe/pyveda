@@ -36,6 +36,8 @@ All training data sets consist of image/label pairs. The training images are fix
     - Segmentation data are expected to be arrays of geojson features in the same projected units as the image.
     - These features are converted to pixel locations when saving into Veda and are served back to clients are ndarrays of segmentation data.  
 
+See the :ref:`Label Formats` for more information and examples.
+
 .. warning:: This is not totally set up to use like a tutorial yet, sorry!
 
 Sample Data
@@ -77,11 +79,11 @@ There are other parameters to set like the size of the images, but to start we c
     image = MLImage(catID)
     vc = pv.create_from_geojson(gojson, image, name)
     
-It will take about 5 minutes for Veda to generate all the training data. You can check `vc.status` to track its progress. 
+It will take about 5 minutes for Veda to generate all the training data. You can check ``vc.status`` to track its progress. 
 
-The end result will be collection of 256x256 pixel image tiles extracted from catalog ID 123456. Each image will have a corresponding label of the class `turbine`. Because this analysis is classification, each label will be `1`.
+The end result will be collection of 256x256 pixel image tiles extracted from catalog ID 123456. Each image will have a corresponding label of the class `turbine`. Because this analysis is classification (the default type), each label will be `1`.
 
-(more stuff about VCs)
+(more stuff about creating VCs)
 
 
 Creating a Collection from a Compressed Archive
@@ -94,3 +96,10 @@ If you would like to import existing image and label data, you can have Veda dow
     pv.create_from_tarball('s3://path/to/tarball', 'Collection Name')
 
 The compressed archive needs to follow the pyveda Release format, as described in the :ref:`Releases for Importing` section. This will create a new collection in Veda and it can be accessed with the standard access methods of :meth:`pyveda.main.open` and :meth:`pyveda.main.store`.
+
+Adding Data to Existing Collections
+-------------------------------------
+
+
+Creating Samples from Scratch
+--------------------------------

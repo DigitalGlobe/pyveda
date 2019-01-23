@@ -232,3 +232,11 @@ For preliminary testing, or algorithms that only need to work with the datapoint
     with pv.open(dataset_id='84810fa8-87e2-4f22-9386-4406b4c3add0') as data:
         # do something with the data
 
+Creating Releases
+--------------------
+
+A Veda Release is a compressed archive of the images and labels stored as individual files. You can see more about the Release format and structure in the :ref:`Releases` section. To generate a release, run:
+
+.. code-block:: python
+
+     collection.release()
