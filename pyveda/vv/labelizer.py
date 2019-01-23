@@ -113,11 +113,11 @@ class Labelizer():
         try:
             if b.description == 'Keep':
                 self.datapoint = next(self.flagged_tiles)
-                self.props, self.image = self.datapoint[0], self.datapoint[1]
+                self.labels, self.image = self.datapoint[0], self.datapoint[1]
             elif b.description == 'Remove':
                 #TODO: add actual removal of point!
                 self.datapoint = next(self.flagged_tiles)
-                self.props, self.image = self.datapoint[0], self.datapoint[1]
+                self.labels, self.image = self.datapoint[0], self.datapoint[1]
             self.clean_flags()
         except StopIteration:
             print("All flagged tiles have been cleaned.")
@@ -240,7 +240,7 @@ class Labelizer():
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
                 self.flagged_tiles = iter(self.flagged_tiles)
                 self.datapoint = next(self.flagged_tiles)
-                self.props, self.image = self.datapoint[0], self.datapoint[1]
+                self.labels, self.image = self.datapoint[0], self.datapoint[1]
                 self.clean_flags()
             except StopIteration:
                 print("All tiles have been cleaned.")
