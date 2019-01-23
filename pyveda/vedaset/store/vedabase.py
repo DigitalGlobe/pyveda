@@ -7,7 +7,7 @@ from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.base import BaseVariableArray, BaseSampleArray, BaseDataSet
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
-from pyveda.vedaset.store.arrays import get_array_handler
+from pyveda.vedaset.store.arrays import get_array_handler, NDImageArray, VirtualSubArray
 
 
 ignore_NaturalNameWarning = partial(ignore_warnings, _warning=tables.NaturalNameWarning)
@@ -43,6 +43,9 @@ class H5DataBase(BaseDataSet):
     An interface for consuming and reading local data intended to be used with
     machine learning training
     """
+    _fetch_class = VedaStoreFetcher
+    _sample_class = WrappedSampleNode
+
     def __init__(self, fname, image_dtype=None, title="SBWM", overwrite=False,
                  mode="a", *args, **kwargs):
 
@@ -73,13 +76,13 @@ class H5DataBase(BaseDataSet):
             self._fileh.create_group("/", name.lower(),
                                      "Records of ML experimentation phases")
         # Build table, array leaves
-        self._create_tables(filters=tables.Filters(0))
-        self._create_arrays(self._image_klass, self.image_dtype)
-        self._create_arrays(self._label_klass)
+        self._create_tables()
+        self._create_arrays()
 
     @ignore_NaturalNameWarning
-    def _create_arrays(self, data_klass, data_dtype=None):
-        data_klass.create_array(self, self._fileh.root, data_dtype)
+    def _create_arrays(self):
+        self._img_arr.create_array(self, self._fileh.root, self.image_dtype)
+        self._lbl_arr.create_array(self, self._fileh.root)
 
     @ignore_NaturalNameWarning
     def _create_tables(self, filters=tables.Filters(0)):
@@ -99,16 +102,6 @@ class H5DataBase(BaseDataSet):
         for name, group in self._groups.items():
             self._fileh.create_table(group, "sample_log", idx_cols,
                                      "Datasample ID log", filters)
-
-    @property
-    def partition(self):
-        return self._fileh.root._v_attrs.partition
-
-    @partition.setter
-    def partition(self, prt):
-        self._fileh.root._v_attrs.partition = prt
-        self._partition = prt
-        self._update_vindex()
 
     @property
     def _lbl_arr_class(self):
@@ -134,35 +127,11 @@ class H5DataBase(BaseDataSet):
     def _groups(self):
         return {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
 
-    @property
-    def train(self):
-        if self._train is None:
-            self._train = WrappedSampleNode(self)
-            setattr(self._train, "_dgroup", "train")
-        return self._train
-
-    @property
-    def test(self):
-        if self._test is None:
-            self._test = WrappedSampleNode(self)
-            setattr(self._test, "_dgroup", "test")
-        return self._test
-
-    @property
-    def validate(self):
-        if self._validate is None:
-            self._validate = WrappedSampleNode(self)
-            setattr(self._validate, "_dgroup", "validate")
-        return self._validate
-
     def flush(self):
         self._fileh.flush()
 
     def close(self):
         self._fileh.close()
-
-    def remove(self):
-        raise NotImplementedError
 
     def __len__(self):
         return len(self._fileh.root.images)
