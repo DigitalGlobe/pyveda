@@ -7,29 +7,16 @@ from functools import partial
 import numpy as np
 
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
-from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
 
-
 class BufferedVariableArray(BaseVariableArray):
-    def __init__(self, buf):
-        self.buf = buf
-
-    def __len__(self):
-        return len(self.buf)
-
-    def __iter__(self):
-        return self.buf.__iter__()
-
-    def __getitem__(self, idx):
-        return self.buf[idx]
-
+    pass
 
 class BufferedSampleArray(BaseSampleArray):
-    def __init__(self, allocated, vset):
+    def __init__(self, vset, allocated):
+        super(BufferedSampleArray, self).__init__(vset)
         self.allocated = allocated
         self._n_consumed = 0
-        self._vset = vset
         self._exhausted = False
         if allocated == 0:
             self.exhausted = True
@@ -82,28 +69,8 @@ class BufferedSampleArray(BaseSampleArray):
         if val:
             self._vset._on_group_exhausted()
 
-    @property
-    def images(self):
-        try:
-            _, imgs = zip(*self._vset._buf)
-        except ValueError:
-            imgs = []
-        return BufferedVariableArray(imgs)
-
-    @property
-    def labels(self):
-        try:
-            lbls, _ = zip(*self._vset._buf)
-        except ValueError:
-            lbls = []
-        return BufferedVariableArray(np.array(lbls))
-
 
 class BufferedDataStream(BaseDataSet):
-    _lbl_handler_map = {"classification": ClassificationHandler,
-                       "segmentation": SegmentationHandler,
-                       "object_detection": ObjDetectionHandler}
-
     def __init__(self, source, bufsize=100, auto_startup=False,
                  auto_shutdown=False, write_index=True, write_h5=False,
                  *args, **kwargs):
@@ -112,9 +79,6 @@ class BufferedDataStream(BaseDataSet):
         self._auto_startup = auto_startup
         self._auto_shutdown = auto_shutdown
         self._exhausted = False
-        self._train = None
-        self._test = None
-        self._validate = None
         self._bufsize = bufsize if bufsize < self.count else self.count
 
         self._fetcher = None
@@ -129,36 +93,31 @@ class BufferedDataStream(BaseDataSet):
         if auto_startup:
             self._start_consumer()
 
-    def _configure(self):
-        pass
-
     def __len__(self):
         return self.count
 
     @property
-    def mltype(self):
-        return self._mltype
-
-    @property
-    def classes(self):
-        return self._classes
-
-    @property
     def train(self):
-        if not self._train:
-            self._train = BufferedSampleArray(round(self.count*self.partition[0]*0.01), self)
+        if self._train is None:
+#            self._train = BufferedSampleArray(round(self.count*self.partition[0]*0.01), self)
+            self._train = BufferedSampleArray(self)
+            setattr(self._train, "_dgroup", "train")
         return self._train
 
     @property
     def test(self):
-        if not self._test:
-            self._test = BufferedSampleArray(round(self.count*self.partition[1]*0.01), self)
+        if self._test is None:
+#            self._test = BufferedSampleArray(round(self.count*self.partition[1]*0.01), self)
+            self._test = BufferedSampleArray(self)
+            setattr(self._test, "_dgroup", "test")
         return self._test
 
     @property
     def validate(self):
-        if not self._validate:
-            self._validate = BufferedSampleArray(round(self.count*self.partition[2]*0.01), self)
+        if self._validate is None:
+#            self._validate = BufferedSampleArray(round(self.count*self.partition[2]*0.01), self)
+            self._validate = BufferedSampleArray(self)
+            setattr(self._validate, "_dgroup", "validate")
         return self._validate
 
     @property
@@ -171,6 +130,22 @@ class BufferedDataStream(BaseDataSet):
         if val:
             self._on_exhausted()
         self._exhausted = val
+
+    @property
+    def _img_arr(self):
+        try:
+            _, imgs = zip(*self._buf)
+        except ValueError:
+            imgs = []
+        return BufferedVariableArray(self, imgs)
+
+    @property
+    def _lbl_arr(self):
+        try:
+            lbls, _ = zip(*self._buf)
+        except ValueError:
+            lbls = []
+        return BufferedVariableArray(self, lbls)
 
     def _on_group_exhausted(self):
         if all([self.train.exhausted, self.test.exhausted, self.validate.exhausted]):
