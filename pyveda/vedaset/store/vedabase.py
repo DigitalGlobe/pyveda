@@ -35,17 +35,20 @@ class WrappedDataNode(object):
     def labels(self):
         return self._vset._label_array_factory(self._node.hit_table, self._node.labels,  self._vset)
 
-    def batch_generator(self, batch_size, shuffle=True, rescale=False, flip_horizontal=False, flip_vertical=False, **kwargs):
+    def batch_generator(self, batch_size, shuffle=True, channels_last=False, rescale=False, flip_horizontal=False, flip_vertical=False, **kwargs):
         """
         Generatates Batch of Images/Lables on a VedaBase partition.
         #Arguments
             batch_size: int. batch size
-            shuffle: boolean.
+            shuffle: Boolean.
+            channels_last: Boolean. To return image data as Height-Width-Depth, instead of the default Depth-Height-Width
             rescale: boolean. Rescale image values between 0 and 1.
-            flip_horizontal: boolean. Horizontally flip image and lables. 
-            flip_vertical: boolean. Vertically flip image and lables
+            flip_horizontal: Boolean. Horizontally flip image and lables.
+            flip_vertical: Boolean. Vertically flip image and lables
         """
-        return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle, **kwargs)
+        return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle,
+                                channels_last=channels_last, rescale=rescale,
+                                flip_horizontal=flip_horizontal, flip_vertical=flip_vertical, **kwargs)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):

@@ -11,15 +11,20 @@ class BaseGenerator():
     cache: Parition (train, test, or validate) of VedaBase or VedaStream.
     batch_size: int. Number of samples.
     shuffle: Boolean. To shuffle or not shuffle data between epochs.
+    channels_last: Boolean. To return image data as Height-Width-Depth, instead of the default Depth-Height-Width
     Rescale: Boolean. Flag to indicate if data returned from the generator should be rescaled between 0 and 1.
+    flip_horizontal: boolean. Horizontally flip image and lables.
+    flip_vertical: boolean. Vertically flip image and lables
+
     '''
 
-    def __init__(self, cache, batch_size=32, shuffle=True, rescale=False,
+    def __init__(self, cache, batch_size=32, shuffle=True, channels_last=False, rescale=False,
                     flip_horizontal=False, flip_vertical=False):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
         self.shuffle = shuffle
+        self.channels_last = channels_last
         self.rescale = rescale
         self.on_epoch_end()
         self.flip_h = flip_horizontal
@@ -154,6 +159,8 @@ class VedaStoreGenerator(BaseGenerator):
         #rescale after entire bactch is collected
         if self.rescale:
             x /= x.max()
+        if self.channels_last:
+            x = x.T
         return x, np.array(y)
 
 class VedaStreamGenerator(BaseGenerator):
@@ -182,4 +189,6 @@ class VedaStreamGenerator(BaseGenerator):
 
         if self.rescale:
             x /= x.max()
+        if self.channels_last:
+            x = x.T
         return x, np.array(y)
