@@ -11,6 +11,7 @@ from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, Segment
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
 from pyveda.frameworks.batch_generator import VedaStreamGenerator
 
+
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):
         self.vs = vs
@@ -86,9 +87,12 @@ class BufferedSampleArray(BaseSampleArray):
             # the thread running the asyncio loop to fetch more data while the
             # source generator is not yet exhausted
             dps = self._vset._q.get()
+            lbl, img, _id = dps
+            self._vset.current_dp = _id
 
             self._n_consumed += 1
-            return dps
+#            return dps
+            return [lbl, img]
 
         self.exhausted = True
         raise StopIteration
@@ -135,6 +139,7 @@ class BufferedSampleArray(BaseSampleArray):
         except ValueError:
             lbls = []
         return BufferedVariableArray(np.array(lbls))
+
 
 
 class BufferedDataStream(BaseDataSet):
@@ -285,4 +290,27 @@ class BufferedDataStream(BaseDataSet):
 
     def __exit__(self, *args):
         self._stop_consumer()
+
+
+class VedaStream(BufferedDataStream):
+    @classmethod
+    def from_vc(cls, vc, **kwargs):
+        inst = cls(vc.mltype, vc.classes, vc.count, vc.gen_sample_ids(**kwargs),
+                   vc.imshape, **kwargs)
+        setattr(inst, "prox", vc)
+        return inst
+
+    def remove_datapoint(self, dpid):
+        dpurl = self.prox._datapoint_base_furl.format(host_url=self.prox.host,
+                                                      datapoint_id=dpid)
+        r = self.prox.conn.delete(dpurl)
+        r.raise_for_status()
+        return r.status_code
+
+    def remove_current_datapoint(self):
+        if not hasattr(self, "current_dp"):
+            raise AttributeError("no dp is it running?")
+        cdp = self.current_dp
+        return self.remove_datapoint(cdp)
+
 
