@@ -21,7 +21,7 @@ import logging.handlers
 
 from pyveda.fetch.diagnostics import BatchFetchTracer
 from pyveda.utils import write_trace_profile
-from pyveda.auth import Auth
+from pyveda.config import VedaConfig
 
 has_tqdm = False
 try:
@@ -39,7 +39,7 @@ handler = logging.handlers.RotatingFileHandler(
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-gbdx = Auth()
+cfg = VedaConfig()
 
 class ThreadedAsyncioRunner(object):
     def __init__(self, run_method, call_method, loop=None):
@@ -109,7 +109,7 @@ class BaseVedaSetFetcher(BatchFetchTracer):
     @property
     def headers(self):
         if not self._token:
-            self._token = gbdx.gbdx_connection.access_token
+            self._token = cfg.conn.access_token
         return {"Authorization": "Bearer {}".format(self._token)}
 
     async def _payload_handler(self, payload, executor=None, fn=lambda x: x):

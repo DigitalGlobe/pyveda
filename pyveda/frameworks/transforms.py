@@ -81,20 +81,20 @@ def flip_labels_horizontal(shp, bbox_lst):
         bbox_flipped_h.append([int(xmin_new), x[1], int(xmax_new), x[3]])
     return bbox_flipped_h
 
-def flip_labels_vertical(shp, bbox):
+def flip_labels_vertical(shp, bbox_lst):
     """
     Adjust object detection image labels if the image is verically roated.
     """
     bbox_flipped_v = []
     shp_center = (np.array(shp[1:])/2)[0]
-    for x in bbox_lst[1]:
-        if (shp_center - x[0]) < 0:
-            ymin_new = shp_center + (shp_center - x[0])
+    for x in bbox_lst[0]:
+        if (shp_center - x[1]) < 0:
+            ymin_new = shp_center + (shp_center - x[1])
         else:
-            ymin_new = shp_center - (shp_center - x[0])
+            ymin_new = shp_center - (shp_center - x[1])
         if (shp_center - x[3]) < 0:
-            ymax_new = shp_center + (shp_center - x[2])
+            ymax_new = shp_center + (shp_center - x[3])
         else:
-            ymax_new = shp_center - (shp_center - x[2])
-        bbox_flipped_v.append([int(ymin_new), x[1], int(ymax_new), x[3]])
+            ymax_new = shp_center - (shp_center - x[3])
+        bbox_flipped_v.append([x[0], int(ymin_new), x[2], int(ymax_new)])
     return bbox_flipped_v

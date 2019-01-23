@@ -85,13 +85,44 @@ class VedaStoreGenerator(BaseGenerator):
         y = []
 
         for i, _id in enumerate(list_ids_temp):
-            x_img = self.cache.images[_id]
-            y_img = self.cache.labels[_id]
+            x_img = self.cache.images[int(_id)]
+            y_img = self.cache.labels[int(_id)]
 
             x[i, ] = x_img
+            if self.mltype == 'object_detection':
+                y_img = y_img[0]
             y.append(y_img)
 
         #rescale after entire bactch is collected
+        if self.rescale:
+            x /= x.max()
+        return x, np.array(y)
+
+class VedaStreamGenerator(BaseGenerator):
+    '''
+    Generator for VedaStream parition, either train, test, or validate.
+    '''
+
+    def build_batch(self, index):
+        '''Generate one batch of data'''
+        if index > len(self):
+            raise IndexError("Index is invalid because batch generator is exhausted.")
+        x, y = self._data_generation()
+        return x, y
+
+    def _data_generation(self):
+        '''Generates data containing batch_size samples
+        optionally pre-processes the data'''
+        x = np.empty((self.batch_size, *self.shape))
+        y = []
+
+        while len(y) < self.batch_size:
+            y_img, x_img = next(self.cache)
+            x[len(y), ] = x_img
+            if self.mltype == 'object_detection':
+                y_img = y_img[0]
+            y.append(y_img)
+
         if self.rescale:
             x /= x.max()
         return x, np.array(y)
