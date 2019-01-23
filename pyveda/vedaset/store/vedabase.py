@@ -29,7 +29,12 @@ class WrappedDataNode(object):
 
     @property
     def images(self):
-        return self._vset._image_array_factory(self._node.images, self._vset, output_transform = self._vset._fw_loader)
+        return self._vset._image_array_factory(self._node.images, self._vset,
+                                                  output_transform=self._trainer._fw_loader)
+
+    @property
+    def id_table(self):
+        return self._node.id_table
 
     @property
     def labels(self):
@@ -123,9 +128,13 @@ class H5DataBase(BaseDataSet):
 
     @ignore_NaturalNameWarning
     def _create_tables(self, classifications, filters=tables.Filters(0)):
+        # Create index table separately (flat on root) for now
         for name, group in self._groups.items():
             self._fileh.create_table(group, "hit_table", classifications,
                                      "Label Hit Record", filters)
+            # Create sep table for ids for now
+            self._fileh.create_table(group, "id_table", {"ids": tables.StringCol(36, pos=0)},
+                                     "Vedaset Sample Id Index", filters)
 
     def _build_label_tables(self, rebuild=True):
         pass

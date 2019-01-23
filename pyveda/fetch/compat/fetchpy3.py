@@ -5,23 +5,30 @@ from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, VedaBaseFetcher
 
 def vedabase_batch_write(data, database=None, partition=[70, 20, 10]):
     trainp, testp, valp = partition
-    images, labels = data
+    images, labels, ids = data
     batch_size = images.shape[0]
     ntrain = round(batch_size * (trainp * 0.01))
     ntest = round(batch_size * (testp * 0.01))
     nval = round(batch_size * (valp * 0.01))
 
-    # write training data
+    # write training data, record ids
     database.train.images.append_batch(images[:ntrain])
     database.train.labels.append_batch(labels[:ntrain])
+    database.train.id_table.append(ids[:ntrain])
+    database.train.id_table.flush()
 
-    # write testing data
+    # write testing data, record ids
     database.test.images.append_batch(images[ntrain:ntrain + ntest])
     database.test.labels.append_batch(labels[ntrain:ntrain + ntest])
+    database.test.id_table.append(ids[ntrain:ntrain + ntest])
+    database.test.id_table.flush()
 
-    # write validation data
+    # write validation data, record ids
     database.validate.images.append_batch(images[ntrain + ntest:])
     database.validate.labels.append_batch(labels[ntrain + ntest:])
+    database.validate.id_table.append(ids[ntrain + ntest:])
+    database.validate.id_table.flush()
+
 
 def build_vedabase(database, source, partition, total, token, label_threads=1, image_threads=10):
     abf = VedaBaseFetcher(source, total_count=total, token=token,

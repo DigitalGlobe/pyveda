@@ -322,7 +322,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         label_url = "{}/datapoints/{}?{}".format(self.host, _id, qs)
         image_url = "{}/datapoints/{}/image.tif".format(self.host, _id)
         #return (_id, [label_url, image_url])
-        return (label_url, image_url)
+        return (label_url, image_url, (_id,))
 
     def append_from_geojson(self, geojson, image, **kwargs):
         """
