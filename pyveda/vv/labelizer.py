@@ -50,17 +50,6 @@ class Labelizer():
         self.mltype = mltype
         self.labels = self.datapoint[0]
 
-    def _get_properties(self):
-        try:
-            dtype = self.datapoint[0]['properties']['dtype']
-            mltype = self.datapoint[0]['properties']['mltype']
-            label_items = self.datapoint[0]['properties']['label'].items()
-            labels = [l[1] for l in label_items]
-            classes = [l[0] for l in label_items]
-            return (dtype, mltype, labels, classes)
-        except:
-            print('not dict')
-
     def _create_buttons(self):
         """
         Creates ipywidget widget buttons
@@ -220,6 +209,9 @@ class Labelizer():
         buttons. Allows user to click through each vedaset object and decide
         whether to keep or remove the object.
         """
+        if self.mltype == 'segmentation':
+            print('segmentation not currently supported')
+            return
         clear_output()
         buttons = self._create_buttons()
         for b in buttons:
