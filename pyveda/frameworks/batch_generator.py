@@ -148,7 +148,6 @@ class VedaStoreGenerator(BaseGenerator):
         # setup empty batch
         if self.channels_last:
             x = np.empty((self.batch_size, *self.shape[::-1]))
-            #print(x.shape)
         else:
             x = np.empty((self.batch_size, *self.shape))
         y = []
@@ -158,10 +157,7 @@ class VedaStoreGenerator(BaseGenerator):
             y_img = self.cache.labels[int(_id)]
             x_img, y_img = self.apply_transforms(x_img, y_img)
             if self.channels_last:
-                #print("transforming")
-                #print(x_img.shape)
                 x_img = x_img.T
-                #print('after .T', x_img.shape)
             x[i, ] = x_img
             if self.mltype == 'object_detection':
                 y_img = y_img[0]
@@ -170,8 +166,6 @@ class VedaStoreGenerator(BaseGenerator):
         #rescale after entire bactch is collected
         if self.rescale:
             x /= x.max()
-        # if self.channels_last:
-        #     x = x.T
         return x, np.array(y)
 
 class VedaStreamGenerator(BaseGenerator):
@@ -209,6 +203,4 @@ class VedaStreamGenerator(BaseGenerator):
 
         if self.rescale:
             x /= x.max()
-        # if self.channels_last:
-        #     x = x.T
         return x, np.array(y)
