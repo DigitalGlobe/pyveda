@@ -41,14 +41,24 @@ class Labelizer():
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
         self.vedaset = vedaset
-        self.id = next(self.vedaset)[0]['properties']['id']
         self.count = len(self.vedaset)
-        self.dtype = next(self.vedaset)[0]['properties']['dtype']
-        self.mltype = next(self.vedaset)[0]['properties']['mltype']
         self.index = 0
         self.datapoint = next(self.vedaset)
-        self.props, self.image = self.datapoint[0], self.datapoint[1]
+        self.image = self.datapoint[0]
         self.flagged_tiles = []
+        self.dtype, self.mltype, self.labels, self.classes = self._get_properties()
+
+    def _get_properties(self):
+        if type(self.datapoint[0]) == 'dict':
+             dtype = self.datapoint[0]['properties']['dtype']
+             mltype = self.datapoint[0]['properties']['mltype']
+             label_items = self.datapoint[0]['properties']['label'].items()
+             labels = [l[1] for l in label]
+             classes = [l[0] for l in label]
+
+        return(dtype, mltype, labels, classes)
+
+
 
     def _create_buttons(self):
         """
@@ -99,12 +109,10 @@ class Labelizer():
         """
         try:
             if b.description == 'Keep':
-                print('dp %s has been stored' %self.id)
                 self.datapoint = next(self.flagged_tiles)
                 self.props, self.image = self.datapoint[0], self.datapoint[1]
             elif b.description == 'Remove':
                 #TODO: add actual removal of point!
-                print('dp %s has been removed' %self.id)
                 self.datapoint = next(self.flagged_tiles)
                 self.props, self.image = self.datapoint[0], self.datapoint[1]
             self.clean_flags()

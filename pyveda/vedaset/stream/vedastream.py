@@ -11,6 +11,7 @@ import numpy as np
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
+from pyveda.vv.labelizer import Labelizer
 
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):
@@ -127,6 +128,10 @@ class BufferedSampleArray(BaseSampleArray):
         except ValueError:
             lbls = []
         return BufferedVariableArray(np.array(lbls))
+
+    def clean(self):
+        Labelizer(self).clean()
+
 
 class BufferedDataStream(BaseDataSet):
     _lbl_handler_map = {"classification": ClassificationHandler,
