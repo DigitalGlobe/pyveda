@@ -24,7 +24,6 @@ class BaseGenerator():
         self.on_epoch_end()
         self.flip_h = flip_horizontal
         self.flip_v = flip_vertical
-        self._applied_augs(self.flip_h, self.flip_v)
         self.list_ids = np.arange(len(self.cache))
 
     @property
