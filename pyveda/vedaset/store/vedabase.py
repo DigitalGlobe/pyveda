@@ -41,6 +41,9 @@ class WrappedDataNode(object):
         #Arguments
             batch_size: int. batch size
             shuffle: boolean.
+            rescale: boolean. Rescale image values between 0 and 1.
+            flip_horizontal: boolean. Horizontally flip image and lables. 
+            flip_vertical: boolean. Vertically flip image and lables
         """
         return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle, **kwargs)
 

@@ -25,7 +25,7 @@ class BaseGenerator():
         self.flip_h = flip_horizontal
         self.flip_v = flip_vertical
         self._applied_augs(self.flip_h, self.flip_v)
-        self.list_ids = np.arange(0, len(self.cache))
+        self.list_ids = np.arange(len(self.cache))
 
     @property
     def mltype(self):
