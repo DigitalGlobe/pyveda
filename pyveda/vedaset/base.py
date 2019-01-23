@@ -1,27 +1,24 @@
-from pyveda.vedaset.abstract import ABCDataSet, ABCMetaProps
+from pyveda.vedaset.abstract import *
 from pyveda.fetch.handlers import get_label_handler, bytes_to_array
 from pyveda.exceptions import NotSupportedException
 
 class BaseVariableArray(ABCVariableIterator):
     _vtyp = "BaseVariableArray"
 
-    def __init__(self, vset, arr, data_transform=lambda x: x):
+    def __init__(self, vset, arr):
         self._vset = vset
         self._arr = arr
-        self._data_transform = data_transform
 
     def __getitem__(self, key):
         item = self._arr.__getitem__(key)
-        item = self._output_fn(item)
-        return self.data_transform(item)
+        return self._output_fn(item)
 
     def __iter__(self):
         return self._arr.__iter__()
 
     def __next__(self):
         item = self._arr.__next__()
-        item = self._output_fn(item)
-        return self.data_transform(item)
+        return self._output_fn(item)
 
     def __len__(self):
         return len(self._arr)
@@ -40,16 +37,6 @@ class BaseVariableArray(ABCVariableIterator):
         item = self._input_fn(item)
         return self._arr.append(item)
 
-    @property
-    def data_transform(self):
-        return self._data_transform
-
-    @data_transform.setter
-    def data_transform(self, fn):
-        if not callable(fn):
-            raise ValueError("Transforms must be callable on data")
-        self._data_transform = fn
-
 
 
 class BaseSampleArray(ABCSampleIterator):
@@ -62,14 +49,16 @@ class BaseSampleArray(ABCSampleIterator):
     def images(self):
         return self._vset._img_arr
 
-    @images.setter(self, val):
+    @images.setter
+    def images(self, val):
         raise NotSupportedException("Array modification denied: Protecting dataset integrity")
 
     @property
     def labels(self):
         return self._vset._lbl_arr
 
-    @labels.setter(self, val):
+    @labels.setter
+    def labels(self, val):
         raise NotSupportedException("Array modification denied: Protecting dataset integrity")
 
     def __getitem__(self, key):
@@ -86,21 +75,56 @@ class BaseSampleArray(ABCSampleIterator):
 class BaseDataSet(ABCDataSet, ABCMetaProps):
     _vtyp = "BaseDataSet"
 
-    def __init__(self, mltype, classes, image_shape, count=None,
-                 partition=[70, 20, 10]):
+    def __init__(self, mltype, classes, image_shape, image_dtype,
+                 count=None, partition=[70, 20, 10]):
         self._mltype = mltype
         self._classes = classes
         self._image_shape = image_shape
+        self._image_dtype = image_dtype
         self._count = count
         self._partition = partition
         self._configure_instance()
+
+    @property
+    def mltype(self):
+        return self._mltype
+
+    @property
+    def classes(self):
+        return self._classes
+
+    @property
+    def image_shape(self):
+        return self._image_shape
+
+    @property
+    def image_dtype(self):
+        return self._image_dtype
+
+    @property
+    def count(self):
+        return self._count
+
+    @property
+    def partition(self):
+        return self._partition
+
+    @partition.setter
+    def partition(self, prt):
+        assert(isinstance(prt, list))
+        assert(len(prt) == 3)
+        assert(sum(prt) == 100)
+        self._partition = prt
 
     def _configure_instance(self):
         self._train = None
         self._test = None
         self._valiate = None
+        self._img_arr_ = None
+        self._lbl_arr_ = None
 
     def _configure_fetcher(self):
         pass
+
 
 
