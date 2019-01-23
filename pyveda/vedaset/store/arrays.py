@@ -86,8 +86,8 @@ class NDImageArray(VirtualSubArray):
             return item.reshape(1, *dims)
         return item # what could this thing be, let it fail
 
-    def create_array(self, group, dtype):
-        atom = _atom_from_dtype(dtype)
+    def create_array(self, group):
+        atom = _atom_from_dtype(self._vset.dtype)
         shape = list(self._vset.image_shape)
         shape.insert(0,0)
         shape = tuple(shape)
@@ -108,7 +108,7 @@ class ClassificationArray(LabelArray):
             return item # for batch append stacked arrays
         return item.reshape(1, *dims)
 
-    def create_array(self, group, dtype):
+    def create_array(self, group):
         atom = tables.UInt8Atom()
         shape = (0, len(self._vset.classes))
         self._vset._fileh.create_earray(group, "labels", atom=atom, shape=shape)
@@ -117,8 +117,8 @@ class ClassificationArray(LabelArray):
 class SegmentationArray(LabelArray):
     _default_dtype = np.float32
 
-    def create_array(self, group, dtype):
-        atom = _atom_from_dtype(dtype)
+    def create_array(self, group):
+        atom = _atom_from_dtype(self._vset.dtype)
         shape = tuple([s if idx > 0 else 0 for
                        idx, s in enumerate(self._vset.image_shape)])
         self._vset._fileh.create_earray(group, "labels", atom=atom, shape=shape)
@@ -138,7 +138,7 @@ class ObjDetectionArray(LabelArray):
         for item in items:
             self.append(item)
 
-    def create_array(self, group, dtype, filters=tables.Filters(complevel=0)):
+    def create_array(self, group, filters=tables.Filters(complevel=0)):
         atom = tables.UInt8Atom()
         self._vset._fileh.create_vlarray(group, "labels", atom=atom, filters=filters)
 
