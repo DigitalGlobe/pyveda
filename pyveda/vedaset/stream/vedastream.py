@@ -5,10 +5,12 @@ import threading
 import time
 from functools import partial
 
+import numpy as np
+
+
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
-from pyveda.vv.labelizer import Labelizer
 
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):
@@ -124,13 +126,7 @@ class BufferedSampleArray(BaseSampleArray):
             lbls, _ = zip(*self._vset._buf)
         except ValueError:
             lbls = []
-        return BufferedVariableArray(lbls)
-
-    def clean(self):
-        Labelizer(self).clean()
-
-
-
+        return BufferedVariableArray(np.array(lbls))
 
 class BufferedDataStream(BaseDataSet):
     _lbl_handler_map = {"classification": ClassificationHandler,
