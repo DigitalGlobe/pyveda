@@ -88,7 +88,7 @@ class BufferedSampleArray(BaseSampleArray):
             # source generator is not yet exhausted
             dps = self._vset._q.get()
             lbl, img, _id = dps
-            self._vset.current_dp = _id
+            self._vset._current_dp = _id
 
             self._n_consumed += 1
 #            return dps
@@ -293,12 +293,32 @@ class BufferedDataStream(BaseDataSet):
 
 
 class VedaStream(BufferedDataStream):
+    def __init__(self, *args, **kwargs):
+        super(VedaStream, self).__init__(*args, **kwargs)
+        self._current_dp = None
+#        self._start_consumer()
+#        time.sleep(2.0)
+
+    def start(self, wait=3.0):
+        self._start_consumer()
+        time.sleep(wait)
+
     @classmethod
     def from_vc(cls, vc, **kwargs):
         inst = cls(vc.mltype, vc.classes, vc.count, vc.gen_sample_ids(**kwargs),
                    vc.imshape, **kwargs)
         setattr(inst, "prox", vc)
         return inst
+
+    @property
+    def current_dp(self):
+        if self._current_dp is None:
+            try:
+                thing, other, _id = self._buf[0]
+                self._current_dp = _id[0]
+            except IndexError:
+                pass
+        return self._current_dp
 
     def remove_datapoint(self, dpid):
         dpurl = self.prox._datapoint_base_furl.format(host_url=self.prox.host,
@@ -308,9 +328,9 @@ class VedaStream(BufferedDataStream):
         return r.status_code
 
     def remove_current_datapoint(self):
-        if not hasattr(self, "current_dp"):
-            raise AttributeError("no dp is it running?")
         cdp = self.current_dp
+        if cdp is None:
+            raise AttributeError("no current dps is it running?")
         return self.remove_datapoint(cdp)
 
 
