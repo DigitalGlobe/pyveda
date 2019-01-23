@@ -162,7 +162,7 @@ def _load_stream(vc, *args, **kwargs):
     ''' Opens a Veda collection from the server
 
     Args:
-        vc(): ?
+        vc: a VedaCollection instance
 
     Returns:
         VedaStream
