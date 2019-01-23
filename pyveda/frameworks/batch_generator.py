@@ -62,10 +62,9 @@ class BaseGenerator():
         transforms = self._applied_augs(self.flip_h, self.flip_v)
 
         # User selects no augmentation functions
-        if len(transforms) == 0 and self.mltype == 'object_detection':
-            return x, y[0]
-
         if len(transforms) == 0:
+                if self.mltype == 'object_detection':
+                return x, y[0]
             return x, y
 
         # Make Augmentations
