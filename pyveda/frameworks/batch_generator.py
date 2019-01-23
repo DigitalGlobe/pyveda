@@ -149,8 +149,6 @@ class VedaStoreGenerator(BaseGenerator):
         for i, _id in enumerate(list_ids_temp):
             x_img = self.cache.images[int(_id)]
             y_img = self.cache.labels[int(_id)]
-            #print(type(_id), _id, y_img)
-
             x_img, y_img = self.apply_transforms(x_img, y_img)
 
             x[i, ] = x_img
