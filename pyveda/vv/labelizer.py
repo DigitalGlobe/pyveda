@@ -166,7 +166,7 @@ class Labelizer():
         label_shp = self.labels
         label_type = self.classes
         positive_classes = []
-        for i, binary_class in enumerate(label_class):
+        for i, binary_class in enumerate(label_shp):
             if binary_class != 0:
                 positive_classes.append(label_type[i])
         plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
