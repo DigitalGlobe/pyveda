@@ -130,7 +130,9 @@ class BufferedSampleArray(BaseSampleArray):
         return BufferedVariableArray(np.array(lbls))
 
     def clean(self):
-        Labelizer(self).clean()
+        classes = self._vset.classes
+        mltype = self._vset.mltype
+        Labelizer(self, classes, mltype).clean()
 
 
 class BufferedDataStream(BaseDataSet):

@@ -30,7 +30,7 @@ gbdx = Auth()
 conn = gbdx.gbdx_connection
 
 class Labelizer():
-    def __init__(self, vedaset):
+    def __init__(self, vedaset, classes, mltype):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
@@ -46,7 +46,9 @@ class Labelizer():
         self.datapoint = next(self.vedaset)
         self.image = self.datapoint[1]
         self.flagged_tiles = []
-        self.dtype, self.mltype, self.labels, self.classes = self._get_properties()
+        self.classes = classes
+        self.mltype = mltype
+        self.labels = self.datapoint[0]
 
     def _get_properties(self):
         try:
@@ -129,6 +131,10 @@ class Labelizer():
         Displays image tile for a given vedaset object.
         """
         img = self.image
+        try:
+            img /= np.amax(img)
+        except TypeError:
+            img = img
         plt.figure(figsize = (10, 10))
         ax = plt.subplot()
         ax.axis("off")
