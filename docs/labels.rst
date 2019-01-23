@@ -1,8 +1,10 @@
 Features and Labels
-========================
+######################
 
 Veda features are serialized as geojson features. The machine learning labels are specified in the ``Properties`` item of the geojson feature. The label format varies based on the machine learning type.
 
+Label Formats
+===============
 
 Classification
 ----------------
@@ -83,11 +85,11 @@ The DataPoint class has a ``labels`` property that includes all labels in the pa
 
 **VedaBase Output**
 
-The VedaBase class stores labels as a NumPy array of boolean values using one-hot encoding. The label classes are stored in a `klasses` property that maps to the same position in the label array. The label order is always alphabetical.
+The VedaBase class stores labels as a NumPy array of boolean values using one-hot encoding. The label classes are stored in a `classes` property that maps to the same position in the label array. The label order is always alphabetical.
 
 .. code-block:: python
 
-    vedabase.klasses = ['boat', 'car', 'house']
+    vedabase.classes = ['boat', 'car', 'house']
     vedabase.train.labels[0] = [0, 1, 1]
 
 
@@ -118,11 +120,11 @@ The `label` property of the DataPoint is similar in structure to the Classificat
 ** VedaBase Output**
 
 
-Object detection classes are stored in the `klasses` property in the same manner as Classification data. Because object bounding boxes can overlap, the labels are in the form of a list of lists of bounding boxes. The bounding boxes are lists of `[minx, miny, maxx, maxy]` in pixel coordinates with the origin at top left. The position of the classes and labels lists match.
+Object detection classes are stored in the `classes` property in the same manner as Classification data. Because object bounding boxes can overlap, the labels are in the form of a list of lists of bounding boxes. The bounding boxes are lists of `[minx, miny, maxx, maxy]` in pixel coordinates with the origin at top left. The position of the classes and labels lists match.
 
 .. code-block:: python
 
-    vedabase.klasses = ['boat', 'car', 'house']
+    vedabase.classes = ['boat', 'car', 'house']
     vedabase.train.labels[0] = [
         [], # boat bboxes
         [[0, 0, 1, 1], [1, 2, 4, 5], [3, 3, 7, 9]], # car bboxes
@@ -147,11 +149,11 @@ The `label` property of the DataPoint has the same structure as for object detec
 
 **VedaBase Output**
 
-Segmentation classes continue in the same structure as the other machine learning types, but include a ``None`` value in the first position representing the pixels that have no segmentation data. The background pixel value is set to 0, and the segmented pixels store values that match the array index of the class name in the ``klasses`` list. The ``labels`` for segmentation are 2D NumPy arrays with the pixels representing the class list indices. The 2D array is the same size as the image tile.
+Segmentation classes continue in the same structure as the other machine learning types, but include a ``None`` value in the first position representing the pixels that have no segmentation data. The background pixel value is set to 0, and the segmented pixels store values that match the array index of the class name in the ``classes`` list. The ``labels`` for segmentation are 2D NumPy arrays with the pixels representing the class list indices. The 2D array is the same size as the image tile.
 
 .. code-block:: python
 
-    vedabase.klasses = [None, 'boat', 'car', 'house']
+    vedabase.classes = [None, 'boat', 'car', 'house']
     vedabase.train.labels[0] = [
         [0, 0, 0, 0, 0, ...], 
         [0, 3, 3, 0, 2, ...],

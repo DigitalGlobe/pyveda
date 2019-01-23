@@ -1,0 +1,38 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.18.4]
+    method: GET
+    uri: https://veda-api-development.geobigdata.io/data/1245073f-dae9-40ac-ac5c-52ca349ae8dd
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAAA71U22rcMBD9leJnr9a6S/tWaAqBhAaSPoUQZHl2V8Rru7YcSLf9947s9UOatARK
+        KmPMaKQ558zFxyw+dZBtss/g4thDlmc7aA8Q+6dsc1ycl2Mdw1VbP+3aBk/4tu2r0LgIQ7a5xbWy
+        mmilLRc5LwhTUhf8Lv99W1MuxbLNORPqb9t/CDJv4/qZZ13fdtDHkGgcs3BwO7jvYZtIIXU4dDVS
+        RPpGG6lKb40EZQ0IKGVVeK2N0Jp6sy0lpdpVhhov/Ba4BAnGmQI0UxZKhpKbtkqRYqjhfgjfU57a
+        7XaAmMAyShnhhVBGS3Q8txi1BONIxWZLECP4fM4URClRzB5lOJF29hhryOmQpZwUZnbc5dngXQ0z
+        ppIF4fZ0mxpriaBLMEY1I0bSBVUyS5hdGGnFidJ0sdAnLDuZXEhGqFg4YmksMScxdz+Rga/dMMwU
+        yjHU2Ae7RKyCwfehiwE7ZJPhzerUO2NookF7HKA/r3DDjXFf/JDOS+alKgrBpRZCoEi+ZSnX4TDs
+        Xbp7y3MmVXoRoIca3AR8xNIf6lP4AXYHaKKbgLElHPbDTOKWFkWOT8oaNEPbT5wvL85TnyTK3VjW
+        waeq9mMq6LcRxlnYI1RuRZmQhebbVeXArkTh/Ao5+xXSdlxYB6aqVqU1wTxI78xBpZhlOzZVivFa
+        2+avd37WuEOS8nEcYmg+XD9XFFLO3sJlGsyxidkGy43qoPcY5t47vweMkbKR1aF5mIZlgHqbvnuc
+        F4y/j7EbNuv1JNx1YVXBI9Rtl4gQ/CGUYVe56Eho1+m7fhMfLNPYVdMIvi8QtgPEfZsSdfX1JuFO
+        pR327wy8XmBeEqiwW/+r8E9nF2c3Zwna9/BPOe9anNjhmaYv15Oo0wi+d1YXmBcMcP0Cl0bBr7AG
+        AAA=
+    headers:
+      Access-Control-Allow-Origin: ['*']
+      Connection: [keep-alive]
+      Content-Encoding: [gzip]
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Mon, 21 Jan 2019 15:57:38 GMT']
+      ETag: [W/"6b0-dgL85X3mHD3mePIfpmeHQ/jvYfA"]
+      Vary: [Accept-Encoding]
+      X-Powered-By: [Express]
+      transfer-encoding: [chunked]
+    status: {code: 200, message: OK}
+version: 1

@@ -8,10 +8,18 @@ LOCAL = "http://host.docker.internal:3002"
 class _Config:
     def __init__(self, defhost=PROD):
         self._HOST = os.environ.get("SANDMAN_API", defhost)
+        try:
+            self._CONN = Auth().gbdx_connection
+        except:
+            pass
 
     @property
     def HOST(self):
         return self._HOST
+
+    @property
+    def CONN(self):
+        return self._CONN
 
 
 config = _Config()
@@ -28,9 +36,11 @@ def set_local():
 def set_host(host):
     config._HOST = host
 
+def set_conn(conn):
+    config._CONN = conn
+
 
 class VedaConfig:
-    _conn = Auth().gbdx_connection
 
     @property
     def host(self):
@@ -38,4 +48,5 @@ class VedaConfig:
 
     @property
     def conn(self):
-        return self._conn
+        return config.CONN
+        
