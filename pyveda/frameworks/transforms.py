@@ -72,7 +72,7 @@ def flip_labels_horizontal(shp, bbox_lst):
     for i in np.arange(len(bbox_lst)):
         for x in bbox_lst[i]:
             if bbox_lst[i] == []:
-                bbox_flipped_v.append([])
+                bbox_flipped_h.append([])
             else:
                 if (shp_center - x[0]) < 0:
                     xmin_new = shp_center + (shp_center - x[0])
