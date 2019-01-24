@@ -80,9 +80,9 @@ class BaseGenerator():
         if self.mltype == 'object_detection':
             for t_fn in transforms:
                 x = t_fn(x)
-                if t_fn == np.fliplr:
+                if t_fn is np.fliplr:
                     y = flip_labels_horizontal(self.shape, y)
-                if t_fn == np.flipud:
+                if t_fn is np.flipud:
                     y = flip_labels_vertical(self.shape, y)
             return x, y
 
