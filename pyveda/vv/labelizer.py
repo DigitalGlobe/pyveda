@@ -85,14 +85,14 @@ class Labelizer():
         if b.description == 'Yes':
             self.index += 1
             self.datapoint = self.vcp[self.index]
-            self.image = self.vcp[self.index].image
-            self.labels = self.vcp[self.index].label
+            self.image = self.datapoint.image
+            self.labels = self.datapoint.label
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
             self.index += 1
             self.datapoint = self.vcp[self.index]
-            self.image = self.vcp[self.index].image
-            self.labels = self.vcp[self.index].label
+            self.image = self.datapoint.image
+            self.labels = self.datapoint.label
         elif b.description == 'Exit':
             self.index = self.count
         self.clean()
@@ -235,7 +235,8 @@ class Labelizer():
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
                 self.flagged_tiles = iter(self.flagged_tiles)
                 self.datapoint = next(self.flagged_tiles)
-                self.labels, self.image = self.datapoint[0], self.datapoint[1]
+                self.image = self.datapoint.image
+                self.labels = self.datapoint.label
                 self.clean_flags()
             except StopIteration:
                 print("All tiles have been cleaned.")
