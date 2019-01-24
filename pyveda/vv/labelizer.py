@@ -30,7 +30,7 @@ gbdx = Auth()
 conn = gbdx.gbdx_connection
 
 class Labelizer():
-    def __init__(self, vcp, mltype):
+    def __init__(self, vcp, mltype, count):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
@@ -42,7 +42,10 @@ class Labelizer():
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
         self.vcp = vcp
-        self.count = self.vcp.count
+        if count is not None:
+            self.count = count
+        else:
+            self.count = self.vcp.count
         self.index = 0
         self.mltype = mltype
         self.datapoint = self.vcp[self.index]
