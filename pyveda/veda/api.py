@@ -442,14 +442,14 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             self.name,
             self.id
         )
-        desc +='- Bounds: {}\n'.format(
+        desc +='\t- Bounds: {}\n'.format(
             self.bounds,
         )         
-        desc +='- Count: {} samples, {}% cached\n'.format(
+        desc +='\t- Count: {} samples, {}% cached\n'.format(
             self.count,
             self.percent_cached
         ) 
-        desc += '- Chips: {}x{}, {} bands {}\n'.format(
+        desc += '\t- Chips: {}x{}, {} bands {}\n'.format(
             self.imshape[1],
             self.imshape[2], 
             self.imshape[0],
@@ -458,11 +458,12 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         plural = 'es'
         if len(self.classes) == 1:
             plural = ''
-        desc += '- Labels: {} type, {} class{}'.format(
+        desc += '\t- Labels: {} type, {} class{}'.format(
             self.mltype.replace('_',' '),
             len(self.classes),
             plural 
         ) 
+        desc += '\n'
         return desc
 
 
