@@ -22,37 +22,38 @@ from shapely.geometry.geo import shape
 from shapely.geometry import *
 import numpy as np
 import requests
-
+# from pyveda.vcp.stream import vedastream
 from pyveda.auth import Auth
-from pyveda.datapoint import DataPoint
+from pyveda.veda import api
 
 gbdx = Auth()
 conn = gbdx.gbdx_connection
 
-
 class Labelizer():
-    def __init__(self, ids, count, imshape, dtype, mltype):
+    def __init__(self, vcp, mltype, count):
         """
-          Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaCollection
+          Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
-            ids (generator): A Url generator for datapoints to be viewed
-            count (int): the number of datapoints to process
-            imshape (tuple): shape of each incoming image
-            dtype (str): the datatype of the images
-            mltype (str): the mltype of the veda collection
+            vcp: The data to be cleaned
+            mltype: the type of ML data. Can be 'classification' 'segmentation' or 'object_detection'
         """
         assert has_ipywidgets, 'Labelizer requires ipywidgets to be installed'
         assert has_ipy, 'Labelizer requires ipython to be installed'
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
-        self.ids = ids
-        self.count = count
-        self.imshape = imshape
-        self.dtype = dtype
-        self.mltype = mltype
+        self.vcp = vcp
+        if count is not None:
+            self.count = count
+        else:
+            self.count = self.vcp.count
         self.index = 0
-        self.dp = self.get_next()
+        self.mltype = mltype
+        self.datapoint = self.vcp[self.index]
+        self.image = self.datapoint.image
+        self.labels = self.datapoint.label
         self.flagged_tiles = []
+        # self.classes = classes
+        # self.labels = self.datapoint[0]
 
     def _create_buttons(self):
         """
@@ -67,21 +68,6 @@ class Labelizer():
             buttons.append(btn)
         return buttons
 
-    def _handle_buttons(self, b):
-        """
-        Callback and handling of widget buttons.
-        """
-        if b.description == 'Yes':
-            self.index += 1
-            self.dp = self.get_next()
-        elif b.description == 'No':
-            self.flagged_tiles.append(self.dp)
-            self.index += 1
-            self.dp = self.get_next()
-        elif b.description == 'Exit':
-            self.index = self.count
-        self.clean()
-
     def _create_flag_buttons(self):
         """
         Creates ipywidget widget buttons for tiles that have been flagged for review.
@@ -95,29 +81,63 @@ class Labelizer():
             buttons.append(btn)
         return buttons
 
+    def _handle_buttons(self, b):
+        """
+        Callback and handling of widget buttons.
+        """
+        if b.description == 'Yes':
+            self.index += 1
+            self.datapoint = self.vcp[self.index]
+            self.image = self.datapoint.image
+            self.labels = self.datapoint.label
+        elif b.description == 'No':
+            self.flagged_tiles.append(self.datapoint)
+            self.index += 1
+            self.datapoint = self.vcp[self.index]
+            self.image = self.datapoint.image
+            self.labels = self.datapoint.label
+        elif b.description == 'Exit':
+            self.index = self.count
+        self.clean()
+
     def _handle_flag_buttons(self, b):
         """
         Callback and handling of widget buttons for flagged tiles.
         """
         try:
             if b.description == 'Keep':
-                print('dp %s has been stored' %self.dp.id)
-                self.dp = next(self.flagged_tiles)
+                self.datapoint = next(self.flagged_tiles)
+                self.image = self.datapoint.image
+                self.labels = self.datapoint.label
             elif b.description == 'Remove':
-                self.dp.remove()
-                print('dp %s has been removed' %self.dp.id)
-                self.dp = next(self.flagged_tiles)
+                self.datapoint.remove()
+                self.datapoint = next(self.flagged_tiles)
+                self.image = self.datapoint.image
+                self.labels = self.datapoint.label
             self.clean_flags()
         except StopIteration:
             print("All flagged tiles have been cleaned.")
 
-    def _display_obj_detection(self, dp):
+    def _display_image(self):
         """
-        Adds DataPoint object detection label geometries to the image tile plot.
-        Params:
-        dp: A DataPoint object for the VedaCollection.
+        Displays image tile for a given vcp object.
         """
-        label = list(dp.label.items())
+        img = self.image
+        try:
+            img = img/np.amax(img)
+        except TypeError:
+            img = img
+        plt.figure(figsize = (10, 10))
+        ax = plt.subplot()
+        ax.axis("off")
+        ax.imshow(img)
+        return(img)
+
+    def _display_obj_detection(self):
+        """
+        Adds vcp object detection label geometries to the image tile plot.
+        """
+        label = list(self.labels.items())
         label_shp = [l[1] for l in label]
         label_type = [l[0] for l in label]
         legend_elements = []
@@ -136,29 +156,24 @@ class Labelizer():
                             fill=False, lw=2))
 
 
-
-    def _display_classification(self, dp):
+    def _display_classification(self):
         """
-        Adds DataPoint classification labels to the image plot.
-        Params:
-        dp: A DataPoint object for the VedaCollection.
+        Adds vcp classification labels to the image plot.
         """
-        label = list(dp.label.items())
-        label_class = [l[1] for l in label]
+        label = list(self.labels.items())
+        label_shp = [l[1] for l in label]
         label_type = [l[0] for l in label]
         positive_classes = []
-        for i, binary_class in enumerate(label_class):
+        for i, binary_class in enumerate(label_shp):
             if binary_class != 0:
                 positive_classes.append(label_type[i])
         plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
 
-    def _display_segmentation(self, dp):
+    def _display_segmentation(self):
         """
-        Adds DataPoint classification labels to the image plot.
-        Params:
-        dp: A DataPoint object for the VedaCollection.
+        Adds vcp classification labels to the image plot.
         """
-        label = list(dp.label.items())
+        label = list(self.labels.items())
         label_shp = [l[1] for l in label]
         label_type = [l[0] for l in label]
         legend_elements = []
@@ -178,80 +193,54 @@ class Labelizer():
                     ax.fill(x,y, color=face_color, alpha=0.4)
                     ax.plot(x,y, lw=3, color=face_color)
 
-    def _display_image(self, dp):
-        """
-        Displays image tile for a given DataPoint object.
-        Params:
-           dp: A DataPoint object for the VedaCollection.
-        """
-        plt.figure(figsize = (7, 7))
-        ax = plt.subplot()
-        ax.axis("off")
-        img = dp.image.compute()
-        try:
-            img /= img.max()
-        except TypeError:
-            img = img
-        ax.imshow(np.moveaxis(img, 0, -1))
-
-    def get_next(self):
-        """
-        Fetches the next DataPoint object from VedaCollection ids.
-        """
-        try:
-            dp_url, img_url = self.ids.__next__()
-            r = conn.get(dp_url).json()
-            self.dp = DataPoint(r, shape=self.imshape, dtype=self.dtype, mltype=self.mltype)
-            return self.dp
-        except Exception as err:
-            return None
-
     def clean_flags(self):
         """
         Method for verifying DataPoints that were flagged with clean()
         """
+        clear_output()
         buttons = self._create_flag_buttons()
         for b in buttons:
             b.on_click(self._handle_flag_buttons)
-        if self.dp is not None:
-            self._display_image(self.dp)
-            if self.dp.mltype == 'object_detection':
-                self._display_obj_detection(self.dp)
-            if self.dp.mltype == 'classification':
-                self._display_classification(self.dp)
-            if self.dp.mltype == 'segmentation':
-                self._display_segmentation(self.dp)
+        if self.datapoint is not None:
+            self._display_image()
+            if self.mltype == 'object_detection':
+                self._display_obj_detection()
+            if self.mltype == 'classification':
+                self._display_classification()
+            if self.mltype == 'segmentation':
+                self._display_segmentation()
             print('Do you want to remove this tile?')
             display(HBox(buttons))
 
     def clean(self):
         """
-        Method for verifying each DataPoint as image data with associated polygons.
+        Method for verifying each vcp object as image data with associated polygons.
         Displays a polygon overlayed on image chip with associated ipywidget
-        buttons. Allows user to click through each DataPoint object and decide
+        buttons. Allows user to click through each vcp object and decide
         whether to keep or remove the object.
         """
-
         clear_output()
         buttons = self._create_buttons()
         for b in buttons:
             b.on_click(self._handle_buttons)
-        if self.dp is not None and self.index != self.count:
+        if self.image is not None and self.index != self.count:
             print("%0.f tiles out of %0.f tiles have been cleaned" %
                  (self.index, self.count))
             display(HBox(buttons))
-            self._display_image(self.dp)
-            if self.dp.mltype == 'object_detection':
-                self._display_obj_detection(self.dp)
-            if self.dp.mltype == 'classification':
-                self._display_classification(self.dp)
-            if self.dp.mltype == 'segmentation':
-                self._display_segmentation(self.dp)
+            self._display_image()
+            if self.mltype == 'object_detection':
+                self._display_obj_detection()
+            if self.mltype == 'classification':
+                self._display_classification()
+            if self.mltype == 'segmentation':
+                self._display_segmentation()
         else:
             try:
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
                 self.flagged_tiles = iter(self.flagged_tiles)
-                self.dp = next(self.flagged_tiles)
+                self.datapoint = next(self.flagged_tiles)
+                self.image = self.datapoint.image
+                self.labels = self.datapoint.label
                 self.clean_flags()
             except StopIteration:
                 print("All tiles have been cleaned.")

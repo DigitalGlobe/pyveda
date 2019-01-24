@@ -18,6 +18,8 @@ from pyveda.veda.props import prop_wrap, VEDAPROPS
 from pyveda.veda.loaders import from_geo, from_tarball
 from pyveda.config import VedaConfig
 
+from pyveda.vv.labelizer import Labelizer
+
 cfg = VedaConfig()
 
 VALID_MLTYPES = ['classification', 'object_detection', 'segmentation']
@@ -137,6 +139,7 @@ class DataSampleClient(BaseClient):
     @property
     def __geo_interface__(self):
         return box(*self.bounds).__geo_interface__
+
 
 
 class DataCollectionClient(BaseClient):
@@ -444,25 +447,25 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         )
         desc +='\t- Bounds: {}\n'.format(
             self.bounds,
-        )         
+        )
         desc +='\t- Count: {} samples, {}% cached\n'.format(
             self.count,
             self.percent_cached
-        ) 
+        )
         desc += '\t- Chips: {}x{}, {} bands {}\n'.format(
             self.imshape[1],
-            self.imshape[2], 
+            self.imshape[2],
             self.imshape[0],
             self.dtype
-        ) 
+        )
         plural = 'es'
         if len(self.classes) == 1:
             plural = ''
         desc += '\t- Labels: {} type, {} class{}'.format(
             self.mltype.replace('_',' '),
             len(self.classes),
-            plural 
-        ) 
+            plural
+        )
         desc += '\n'
         return desc
 
@@ -471,5 +474,11 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def __geo_interface__(self):
         return box(*self.bounds).__geo_interface__
 
-
-
+    def clean(self, count=None):
+        """
+        Page through VedaCollection data and flag bad data.
+        Params:
+            count: the number of tiles to clean
+        """
+        mltype = self.mltype
+        Labelizer(self, mltype, count).clean()
