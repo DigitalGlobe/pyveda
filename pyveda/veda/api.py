@@ -475,6 +475,5 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         return box(*self.bounds).__geo_interface__
 
     def clean(self):
-        ids = self.gen_sample_ids()
         mltype = self.mltype
-        Labelizer(self, mltype, ids).clean()
+        Labelizer(self, mltype).clean()

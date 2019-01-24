@@ -30,18 +30,18 @@ gbdx = Auth()
 conn = gbdx.gbdx_connection
 
 class Labelizer():
-    def __init__(self, vcp, mltype, ids):
+    def __init__(self, vcp, mltype):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
             vcp: The data to be cleaned
+            mltype: the type of ML data. Can be 'classification' 'segmentation' or 'object_detection'
         """
         assert has_ipywidgets, 'Labelizer requires ipywidgets to be installed'
         assert has_ipy, 'Labelizer requires ipython to be installed'
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
         self.vcp = vcp
-        self.ids = ids
         self.count = self.vcp.count
         self.index = 0
         self.mltype = mltype
