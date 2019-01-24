@@ -15,7 +15,6 @@ class BaseGenerator():
     Rescale: Boolean. Flag to indicate if data returned from the generator should be rescaled between 0 and 1.
     flip_horizontal: boolean. Horizontally flip image and lables.
     flip_vertical: boolean. Vertically flip image and lables
-
     '''
 
     def __init__(self, cache, batch_size=32, shuffle=True, channels_last=False, rescale=False,
@@ -69,7 +68,7 @@ class BaseGenerator():
         # User selects no augmentation functions
         if len(transforms) == 0:
                 if self.mltype == 'object_detection':
-                    return x, y[0]
+                    return x, y
                 return x, y
 
         # Make Augmentations
@@ -82,10 +81,10 @@ class BaseGenerator():
             for t_fn in transforms:
                 x = t_fn(x)
                 if t_fn == np.fliplr:
-                    y = [flip_labels_horizontal(self.shape, y)]
+                    y = flip_labels_horizontal(self.shape, y)
                 if t_fn == np.flipud:
-                    y = [flip_labels_vertical(self.shape, y)]
-            return x, y[0]
+                    y = flip_labels_vertical(self.shape, y)
+            return x, y
 
         if self.mltype == 'segmentation':
             for t_fn in transforms:
@@ -93,10 +92,8 @@ class BaseGenerator():
                 y = t_fn(y)
             return x, y
 
-
     def build_batch(self, index):
         raise NotImplemented
-
 
     def __getitem__(self, index):
         return self.build_batch(index)
@@ -159,8 +156,6 @@ class VedaStoreGenerator(BaseGenerator):
             if self.channels_last:
                 x_img = x_img.T
             x[i, ] = x_img
-            # if self.mltype == 'object_detection':
-            #     y_img = y_img[0]
             y.append(y_img)
 
         #rescale after entire bactch is collected
@@ -197,8 +192,6 @@ class VedaStreamGenerator(BaseGenerator):
             if self.channels_last:
                 x_img = x_img.T
             x[len(y), ] = x_img
-            # if self.mltype == 'object_detection':
-                #y_img = y_img[0]
             y.append(y_img)
 
         if self.rescale:
