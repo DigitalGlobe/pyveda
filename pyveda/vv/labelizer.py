@@ -157,8 +157,9 @@ class Labelizer():
         """
         Adds vcp classification labels to the image plot.
         """
-        label_shp = self.labels
-        label_type = self.classes
+        label = list(self.labels.items())
+        label_shp = [l[1] for l in label]
+        label_type = [l[0] for l in label]
         positive_classes = []
         for i, binary_class in enumerate(label_shp):
             if binary_class != 0:
@@ -169,8 +170,9 @@ class Labelizer():
         """
         Adds vcp classification labels to the image plot.
         """
-        label_shp = self.labels
-        label_type = self.classes
+        label = list(self.labels.items())
+        label_shp = [l[1] for l in label]
+        label_type = [l[0] for l in label]
         legend_elements = []
         ax = plt.subplot()
         plt.title('Is this tile correct?', fontsize=14)
@@ -214,9 +216,6 @@ class Labelizer():
         buttons. Allows user to click through each vcp object and decide
         whether to keep or remove the object.
         """
-        if self.mltype == 'segmentation':
-            print('segmentation not currently supported')
-            return
         clear_output()
         buttons = self._create_buttons()
         for b in buttons:
