@@ -104,11 +104,13 @@ class Labelizer():
         try:
             if b.description == 'Keep':
                 self.datapoint = next(self.flagged_tiles)
-                self.labels, self.image = self.datapoint[0], self.datapoint[1]
+                self.image = self.datapoint.image
+                self.labels = self.datapoint.label
             elif b.description == 'Remove':
                 #TODO: add actual removal of point!
                 self.datapoint = next(self.flagged_tiles)
-                self.labels, self.image = self.datapoint[0], self.datapoint[1]
+                self.image = self.datapoint.image
+                self.labels = self.datapoint.label
             self.clean_flags()
         except StopIteration:
             print("All flagged tiles have been cleaned.")
