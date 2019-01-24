@@ -28,9 +28,6 @@ class BufferedSampleArray(BaseSampleArray):
     def __iter__(self):
         return self
 
-    def __getitem__(self, idx):
-        return [self.images[idx], self.labels[idx]]
-
     def __next__(self):
         while self._n_consumed < self.allocated:
             try:
@@ -100,18 +97,12 @@ class BufferedDataStream(BaseDataSet):
 
     @property
     def _img_arr(self):
-        try:
-            _, imgs = zip(*self._buf)
-        except ValueError:
-            imgs = []
+        _, imgs, _ = zip(*self._buf)
         return self._variable_class(self, imgs)
 
     @property
     def _lbl_arr(self):
-        try:
-            lbls, _ = zip(*self._buf)
-        except ValueError:
-            lbls = []
+        lbls, _, _ = zip(*self._buf)
         return self._variable_class(self, lbls)
 
     @property
