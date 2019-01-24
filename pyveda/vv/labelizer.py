@@ -107,7 +107,7 @@ class Labelizer():
                 self.image = self.datapoint.image
                 self.labels = self.datapoint.label
             elif b.description == 'Remove':
-                #TODO: add actual removal of point!
+                self.datapoint.remove()
                 self.datapoint = next(self.flagged_tiles)
                 self.image = self.datapoint.image
                 self.labels = self.datapoint.label
