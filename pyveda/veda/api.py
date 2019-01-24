@@ -475,5 +475,6 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         return box(*self.bounds).__geo_interface__
 
     def clean(self):
+        "Page through VedaCollection data and flag bad data for removal."
         mltype = self.mltype
         Labelizer(self, mltype).clean()
