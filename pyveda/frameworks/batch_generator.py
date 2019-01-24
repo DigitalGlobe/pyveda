@@ -159,8 +159,6 @@ class VedaStoreGenerator(BaseGenerator):
             if self.channels_last:
                 x_img = x_img.T
             x[i, ] = x_img
-            # if self.mltype == 'object_detection':
-            #     y_img = y_img[0]
             y.append(y_img)
 
         #rescale after entire bactch is collected
@@ -197,8 +195,6 @@ class VedaStreamGenerator(BaseGenerator):
             if self.channels_last:
                 x_img = x_img.T
             x[len(y), ] = x_img
-            # if self.mltype == 'object_detection':
-                #y_img = y_img[0]
             y.append(y_img)
 
         if self.rescale:
