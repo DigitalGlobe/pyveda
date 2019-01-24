@@ -117,7 +117,7 @@ class Labelizer():
         """
         img = self.image
         try:
-            img /= np.amax(img)
+            img = img/np.amax(img)
         except TypeError:
             img = img
         plt.figure(figsize = (10, 10))
