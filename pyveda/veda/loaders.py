@@ -37,8 +37,7 @@ def from_tarball(s3path, name=None, dtype='uint8',
                                     description="",
                                     public=False,
                                     sensors=[],
-                                    partition=[100,0,0],
-                                    url="{}/data/bulk".format(cfg.host)):
+                                    partition=[100,0,0]):
     dtype = np.dtype(dtype)
     meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors)
     options = {
@@ -50,6 +49,7 @@ def from_tarball(s3path, name=None, dtype='uint8',
         'metadata': meta,
         'options': options
     }
+    url="{}/data/bulk".format(cfg.host)
     doc = cfg.conn.post(url, json=body).json()
     return doc
 
@@ -132,5 +132,3 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
             return r.json()
         else:
             raise requests.exceptions.HTTPError(r.json())
-
-
