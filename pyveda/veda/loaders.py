@@ -49,7 +49,7 @@ def from_tarball(s3path, name=None, dtype='uint8',
         'metadata': meta,
         'options': options
     }
-    url="{}/data/bulk".format(cfg.host)
+    url = "{}/data/bulk".format(cfg.host)
     doc = cfg.conn.post(url, json=body).json()
     return doc
 
