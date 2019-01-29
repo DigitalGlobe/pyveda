@@ -75,6 +75,7 @@ class BufferedSampleArray(BaseSampleArray):
         return [self.images[idx], self.labels[idx]]
 
     def __next__(self):
+        # Order needs to be [image, label]
         while self._n_consumed < self.allocated:
             try:
                 nreqs = next(self._vset._gen)
@@ -88,9 +89,9 @@ class BufferedSampleArray(BaseSampleArray):
             # the thread running the asyncio loop to fetch more data while the
             # source generator is not yet exhausted
             dps = self._vset._q.get()
-
+            label, image = dps
             self._n_consumed += 1
-            return dps
+            return [image, label]
 
         self.exhausted = True
         raise StopIteration
