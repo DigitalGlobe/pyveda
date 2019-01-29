@@ -29,6 +29,7 @@ from pyveda.veda import api
 gbdx = Auth()
 conn = gbdx.gbdx_connection
 
+
 class Labelizer():
     def __init__(self, vcp, mltype, count):
         """
@@ -49,11 +50,19 @@ class Labelizer():
         self.index = 0
         self.mltype = mltype
         self.datapoint = self.vcp[self.index]
-        self.image = self.datapoint.image
+        # self.image = self.datapoint.image
+        self.image = self._create_images()
         self.labels = self.datapoint.label
         self.flagged_tiles = []
         # self.classes = classes
         # self.labels = self.datapoint[0]
+
+    def _create_images(self):
+        if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vcp)):
+            img = self.datapoint.image
+            return(img)
+        else:
+            print(type(self.vcp))
 
     def _create_buttons(self):
         """
@@ -88,13 +97,13 @@ class Labelizer():
         if b.description == 'Yes':
             self.index += 1
             self.datapoint = self.vcp[self.index]
-            self.image = self.datapoint.image
+            self.image = self._create_images()
             self.labels = self.datapoint.label
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
             self.index += 1
             self.datapoint = self.vcp[self.index]
-            self.image = self.datapoint.image
+            self.image = self._create_images()
             self.labels = self.datapoint.label
         elif b.description == 'Exit':
             self.index = self.count
@@ -107,12 +116,12 @@ class Labelizer():
         try:
             if b.description == 'Keep':
                 self.datapoint = next(self.flagged_tiles)
-                self.image = self.datapoint.image
+                self.image = self._create_images()
                 self.labels = self.datapoint.label
             elif b.description == 'Remove':
                 self.datapoint.remove()
                 self.datapoint = next(self.flagged_tiles)
-                self.image = self.datapoint.image
+                self.image = self._create_images()
                 self.labels = self.datapoint.label
             self.clean_flags()
         except StopIteration:
