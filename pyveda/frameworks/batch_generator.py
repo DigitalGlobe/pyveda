@@ -186,7 +186,9 @@ class VedaStreamGenerator(BaseGenerator):
         y = []
 
         while len(y) < self.batch_size:
-            y_img, x_img = next(self.cache)
+            pair = next(self.cache)
+            x_img = pair[0]
+            y_img = pair[1]
             x_img, y_img = self.apply_transforms(x_img, y_img)
 
             if self.channels_last:
