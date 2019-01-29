@@ -52,7 +52,7 @@ class Labelizer():
         self.datapoint = self.vcp[self.index]
         # self.image = self.datapoint.image
         self.image = self._create_images()
-        self.labels = self.datapoint.label
+        self.classes, self.labels =  self._create_labels()
         self.flagged_tiles = []
         # self.classes = classes
         # self.labels = self.datapoint[0]
@@ -63,6 +63,14 @@ class Labelizer():
             return(img)
         else:
             print(type(self.vcp))
+
+    def _create_labels(self):
+        if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vcp)):
+            lbl = list(self.datapoint.label.items())
+            labels = [l[1] for l in lbl]
+            classes = [l[0] for l in lbl]
+            return [classes, labels]
+
 
     def _create_buttons(self):
         """
@@ -98,13 +106,13 @@ class Labelizer():
             self.index += 1
             self.datapoint = self.vcp[self.index]
             self.image = self._create_images()
-            self.labels = self.datapoint.label
+            self.classes, self.labels = self._create_labels()
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
             self.index += 1
             self.datapoint = self.vcp[self.index]
             self.image = self._create_images()
-            self.labels = self.datapoint.label
+            self.classes, self.labels = self._create_labels()
         elif b.description == 'Exit':
             self.index = self.count
         self.clean()
@@ -117,12 +125,12 @@ class Labelizer():
             if b.description == 'Keep':
                 self.datapoint = next(self.flagged_tiles)
                 self.image = self._create_images()
-                self.labels = self.datapoint.label
+                self.classes, self.labels = self._create_labels()
             elif b.description == 'Remove':
                 self.datapoint.remove()
                 self.datapoint = next(self.flagged_tiles)
                 self.image = self._create_images()
-                self.labels = self.datapoint.label
+                self.classes, self.labels = self._create_labels()
             self.clean_flags()
         except StopIteration:
             print("All flagged tiles have been cleaned.")
@@ -146,16 +154,13 @@ class Labelizer():
         """
         Adds vcp object detection label geometries to the image tile plot.
         """
-        label = list(self.labels.items())
-        label_shp = [l[1] for l in label]
-        label_type = [l[0] for l in label]
         legend_elements = []
         ax = plt.subplot()
         plt.title('Is this tile correct?', fontsize=14)
-        for i,shp in enumerate(label_shp):
+        for i,shp in enumerate(self.labels):
             if len(shp) is not 0:
                 edge_color = np.random.rand(3,)
-                handle = patches.Patch(edgecolor=edge_color, fill=False, label = label_type[i])
+                handle = patches.Patch(edgecolor=edge_color, fill=False, label = self.classes[i])
                 legend_elements.append(handle)
                 ax.legend(handles=legend_elements, loc='lower center',
                          bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
@@ -169,29 +174,23 @@ class Labelizer():
         """
         Adds vcp classification labels to the image plot.
         """
-        label = list(self.labels.items())
-        label_shp = [l[1] for l in label]
-        label_type = [l[0] for l in label]
         positive_classes = []
-        for i, binary_class in enumerate(label_shp):
+        for i, binary_class in enumerate(self.labels):
             if binary_class != 0:
-                positive_classes.append(label_type[i])
+                positive_classes.append(self.classes[i])
         plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
 
     def _display_segmentation(self):
         """
         Adds vcp classification labels to the image plot.
         """
-        label = list(self.labels.items())
-        label_shp = [l[1] for l in label]
-        label_type = [l[0] for l in label]
         legend_elements = []
         ax = plt.subplot()
         plt.title('Is this tile correct?', fontsize=14)
-        for i, shp in enumerate(label_shp):
+        for i, shp in enumerate(self.labels):
             if len(shp) is not 0:
                 face_color = np.random.rand(3,)
-                handle = patches.Patch(color=face_color, label = label_type[i])
+                handle = patches.Patch(color=face_color, label = self.classes[i])
                 legend_elements.append(handle)
                 ax.legend(handles=legend_elements, loc='lower center',
                          bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
@@ -248,8 +247,8 @@ class Labelizer():
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
                 self.flagged_tiles = iter(self.flagged_tiles)
                 self.datapoint = next(self.flagged_tiles)
-                self.image = self.datapoint.image
-                self.labels = self.datapoint.label
+                self.image = self._create_images()
+                self.classes, self.labels = self._create_labels()
                 self.clean_flags()
             except StopIteration:
                 print("All tiles have been cleaned.")
