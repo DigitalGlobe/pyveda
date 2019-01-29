@@ -1,3 +1,4 @@
 **/*.pyc
 pyveda.egg-info
 docs/_build
+tags*
