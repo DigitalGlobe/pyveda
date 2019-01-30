@@ -22,7 +22,7 @@ from shapely.geometry.geo import shape
 from shapely.geometry import *
 import numpy as np
 import requests
-# from pyveda.vcp.stream import vedastream
+# from pyveda.vedaset.stream import vedastream
 from pyveda.auth import Auth
 from pyveda.veda import api
 
@@ -31,47 +31,57 @@ conn = gbdx.gbdx_connection
 
 
 class Labelizer():
-    def __init__(self, vcp, mltype, count):
+    def __init__(self, vedaset, mltype, count, classes):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
-            vcp: The data to be cleaned
+            vedaset: The data to be cleaned
             mltype: the type of ML data. Can be 'classification' 'segmentation' or 'object_detection'
         """
         assert has_ipywidgets, 'Labelizer requires ipywidgets to be installed'
         assert has_ipy, 'Labelizer requires ipython to be installed'
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
-        self.vcp = vcp
+        self.vedaset = vedaset
         if count is not None:
             self.count = count
         else:
-            self.count = self.vcp.count #construct universal count
+            try:
+                self.count = self.vedaset.count #construct universal count
+            execpt:
+                self.count = len(self.vedaset)
         self.index = 0
         self.mltype = mltype
         self.datapoint = self._construct_datapoint() ##construct universal DP
         self.image = self._create_images()
-        self.classes, self.labels =  self._create_labels()
+
+        if classes is not None:
+            self.classes = classes
+        else:
+            self.classes, self.labels =  self._create_labels()
         self.flagged_tiles = []
 
     def _construct_datapoint(self):
-        if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vcp)):
-            dp = self.vcp[self.index]
-            return dp
+        if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vedaset)):
+            dp = self.vedaset[self.index]
+        if 'pyveda.vedaset.stream.vedastream.BufferedSampleArray' in str(type(self.vedaset)):
+            dp= next(self.vedaset)
+        return dp
 
     def _create_images(self):
-        if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vcp)):
+        if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vedaset)):
             img = self.datapoint.image
             return img
         else:
-            print(type(self.vcp))
+            print(type(self.vedaset))
 
-    def _create_labels(self):
-        if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vcp)):
+    def _create_labels(self, classes):
+        if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vedaset)):
             lbl = list(self.datapoint.label.items())
             labels = [l[1] for l in lbl]
             classes = [l[0] for l in lbl]
             return [classes, labels]
+
 
 
     def _create_buttons(self):
@@ -139,7 +149,7 @@ class Labelizer():
 
     def _display_image(self):
         """
-        Displays image tile for a given vcp object.
+        Displays image tile for a given vedaset object.
         """
         img = self.image
         try:
@@ -154,7 +164,7 @@ class Labelizer():
 
     def _display_obj_detection(self):
         """
-        Adds vcp object detection label geometries to the image tile plot.
+        Adds vedaset object detection label geometries to the image tile plot.
         """
         legend_elements = []
         ax = plt.subplot()
@@ -174,7 +184,7 @@ class Labelizer():
 
     def _display_classification(self):
         """
-        Adds vcp classification labels to the image plot.
+        Adds vedaset classification labels to the image plot.
         """
         positive_classes = []
         for i, binary_class in enumerate(self.labels):
@@ -184,7 +194,7 @@ class Labelizer():
 
     def _display_segmentation(self):
         """
-        Adds vcp classification labels to the image plot.
+        Adds vedaset classification labels to the image plot.
         """
         legend_elements = []
         ax = plt.subplot()
@@ -224,9 +234,9 @@ class Labelizer():
 
     def clean(self):
         """
-        Method for verifying each vcp object as image data with associated polygons.
+        Method for verifying each vedaset object as image data with associated polygons.
         Displays a polygon overlayed on image chip with associated ipywidget
-        buttons. Allows user to click through each vcp object and decide
+        buttons. Allows user to click through each vedaset object and decide
         whether to keep or remove the object.
         """
         clear_output()
