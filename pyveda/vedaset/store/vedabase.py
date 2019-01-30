@@ -8,6 +8,7 @@ from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, NDImageArray
 from pyveda.vedaset.abstract import BaseSampleArray, BaseDataSet
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
+from pyveda.vv.labelizer import Labelizer
 
 FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
 
@@ -67,6 +68,15 @@ class WrappedDataNode(object):
     def __len__(self):
         return len(self._node.images)
 
+    def clean(self, count=None):
+        """
+        Page through VedaStream data and flag bad data.
+        Params:
+            count: the number of tiles to clean
+        """
+        classes = self._vset.classes
+        mltype = self._vset.mltype
+        Labelizer(self, mltype, count, classes).clean()
 
 
 class H5DataBase(BaseDataSet):
