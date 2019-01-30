@@ -63,13 +63,13 @@ class Labelizer():
         if 'VedaCollectionProxy' or 'WrappedDataNode' in str(type(self.vedaset)):
             dp = self.vedaset[self.index]
         if 'BufferedSampleArray' in str(type(self.vedaset)):
-            dp = next(self.vedaset)    
+            dp = next(self.vedaset)
         return dp
 
     def _create_images(self):
         if 'VedaCollectionProxy' in str(type(self.vedaset)):
             img = self.datapoint.image
-        if 'BufferedSampleArray' in str(type(self.vedaset)):
+        if 'BufferedSampleArray' or 'WrappedDataNode' in str(type(self.vedaset)):
             img = np.moveaxis(self.datapoint[0], 0, -1)
         return img
 
