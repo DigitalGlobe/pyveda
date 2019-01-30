@@ -58,18 +58,30 @@ class Labelizer():
         self.flagged_tiles = []
 
     def _create_images(self):
+        """
+        Creates image tiles from a datapoint
+        returns:
+            img: An image tile of size (M,N,3)
+        """
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             img = self.datapoint.image
-        if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray, store.vedabase.WrappedDataNode)):
+        if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
+                      store.vedabase.WrappedDataNode)):
             img = np.moveaxis(self.datapoint[0], 0, -1)
         return img
 
     def _create_labels(self, classes):
+        """
+        Generates labels and classes for a datapoint's image tile
+        returns:
+            [_classes, _labels]: a list of classes and corresponding labels
+        """
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             lbl = list(self.datapoint.label.items())
             _labels = [l[1] for l in lbl]
             _classes = [l[0] for l in lbl]
-        if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray, store.vedabase.WrappedDataNode)):
+        if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
+                      store.vedabase.WrappedDataNode)):
             _classes = classes
             _labels = self.datapoint[1]
         return [_classes, _labels]
@@ -250,7 +262,7 @@ class Labelizer():
                 self.flagged_tiles = iter(self.flagged_tiles)
                 self.datapoint = next(self.flagged_tiles)
                 self.image = self._create_images()
-                self.classes, self.labels = self._create_labels()
+                self.classes, self.labels = self._create_labels(self.classes)
                 self.clean_flags()
             except StopIteration:
                 print("All tiles have been cleaned.")
