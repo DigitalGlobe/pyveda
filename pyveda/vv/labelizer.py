@@ -79,7 +79,7 @@ class Labelizer():
             labels = [l[1] for l in lbl]
             classes = [l[0] for l in lbl]
             return [classes, labels]
-        if 'BufferedSampleArray' in str(type(self.vedaset)):
+        if 'BufferedSampleArray' or 'WrappedDataNode' in str(type(self.vedaset)):
             labels = self.datapoint[1]
             return [self.classes, labels]
 
@@ -138,7 +138,7 @@ class Labelizer():
                 self.image = self._create_images()
                 self.classes, self.labels = self._create_labels()
             elif b.description == 'Remove':
-                self.datapoint.remove()
+                self.datapoint.remove() ##only works for VCP, currently
                 self.datapoint = next(self.flagged_tiles)
                 self.image = self._create_images()
                 self.classes, self.labels = self._create_labels()
