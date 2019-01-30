@@ -23,24 +23,26 @@ from shapely.geometry import *
 import numpy as np
 import requests
 from pyveda.auth import Auth
+from pyveda.vedaset import stream, store
+from pyveda import veda
 
 gbdx = Auth()
 conn = gbdx.gbdx_connection
 
 
 class Labelizer():
-    def __init__(self, vedaset, mltype, count, classes):
+    def __init__(self, vset, mltype, count, classes):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
-            vedaset: The data to be cleaned
+            vset: The data to be cleaned
             mltype: the type of ML data. Can be 'classification' 'segmentation' or 'object_detection'
         """
         assert has_ipywidgets, 'Labelizer requires ipywidgets to be installed'
         assert has_ipy, 'Labelizer requires ipython to be installed'
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
-        self.vedaset = vedaset
+        self.vedaset = vset
         if count is not None:
             self.count = count
         else:
@@ -60,26 +62,27 @@ class Labelizer():
         self.flagged_tiles = []
 
     def _construct_datapoint(self):
-        if 'VedaCollectionProxy' or 'WrappedDataNode' in str(type(self.vedaset)):
+        if isinstance(self.vedaset, (veda.api.VedaCollectionProxy, store.vedabase.WrappedDataNode)):
             dp = self.vedaset[self.index]
-        if 'BufferedSampleArray' in str(type(self.vedaset)):
+        if isinstance(self.vedaset, stream.vedastream.BufferedSampleArray):
             dp = next(self.vedaset)
         return dp
 
     def _create_images(self):
-        if 'VedaCollectionProxy' in str(type(self.vedaset)):
+        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             img = self.datapoint.image
-        if 'BufferedSampleArray' or 'WrappedDataNode' in str(type(self.vedaset)):
+        if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray, store.vedabase.WrappedDataNode)):
             img = np.moveaxis(self.datapoint[0], 0, -1)
         return img
 
+
     def _create_labels(self):
-        if 'VedaCollectionProxy' in str(type(self.vedaset)):
+        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             lbl = list(self.datapoint.label.items())
             labels = [l[1] for l in lbl]
             classes = [l[0] for l in lbl]
             return [classes, labels]
-        if 'BufferedSampleArray' or 'WrappedDataNode' in str(type(self.vedaset)):
+        if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray, store.vedabase.WrappedDataNode)):
             labels = self.datapoint[1]
             return [self.classes, labels]
 
