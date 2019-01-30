@@ -63,15 +63,15 @@ class Labelizer():
         if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vedaset)):
             dp = self.vedaset[self.index]
         if 'pyveda.vedaset.stream.vedastream.BufferedSampleArray' in str(type(self.vedaset)):
-            dp= next(self.vedaset)
+            dp = next(self.vedaset)
         return dp
 
     def _create_images(self):
         if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vedaset)):
             img = self.datapoint.image
-            return img
-        else:
-            print(type(self.vedaset))
+        if 'pyveda.vedaset.stream.vedastream.BufferedSampleArray' in str(type(self.vedaset)):
+            img = np.moveaxis(self.datapoint[0], 0, -1)
+        return img
 
     def _create_labels(self):
         if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vedaset)):
