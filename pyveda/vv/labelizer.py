@@ -37,6 +37,8 @@ class Labelizer():
           Params:
             vset: The data to be cleaned
             mltype: the type of ML data. Can be 'classification' 'segmentation' or 'object_detection'
+            count: the number of datapoints to iterate through
+            classes: the classes in the dataset
         """
         assert has_ipywidgets, 'Labelizer requires ipywidgets to be installed'
         assert has_ipy, 'Labelizer requires ipython to be installed'
