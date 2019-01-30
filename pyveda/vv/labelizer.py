@@ -48,7 +48,7 @@ class Labelizer():
         else:
             try:
                 self.count = self.vedaset.count #construct universal count
-            execpt:
+            except:
                 self.count = len(self.vedaset)
         self.index = 0
         self.mltype = mltype
@@ -75,7 +75,7 @@ class Labelizer():
         else:
             print(type(self.vedaset))
 
-    def _create_labels(self, classes):
+    def _create_labels(self):
         if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vedaset)):
             lbl = list(self.datapoint.label.items())
             labels = [l[1] for l in lbl]

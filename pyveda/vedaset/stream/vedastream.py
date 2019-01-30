@@ -145,11 +145,6 @@ class BufferedSampleArray(BaseSampleArray):
             lbls = []
         return BufferedVariableArray(np.array(lbls))
 
-    def clean(self):
-        def __init__(self, vedaset, mltype, count)
-
-        Labelizer(self, classes, mltype).clean()
-
     def clean(self, count=None):
         """
         Page through VedaCollection data and flag bad data.
