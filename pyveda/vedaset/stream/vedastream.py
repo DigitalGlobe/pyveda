@@ -12,6 +12,7 @@ from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
 from pyveda.frameworks.batch_generator import VedaStreamGenerator
+from pyveda.vv.labelizer import Labelizer
 
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):
@@ -151,7 +152,6 @@ class BufferedSampleArray(BaseSampleArray):
         Params:
             count: the number of tiles to clean
         """
-        mltype = self.mltype
         classes = self._vset.classes
         mltype = self._vset.mltype
         Labelizer(self, mltype, count, classes).clean()
