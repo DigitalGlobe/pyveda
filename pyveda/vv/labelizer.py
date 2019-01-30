@@ -46,21 +46,23 @@ class Labelizer():
         if count is not None:
             self.count = count
         else:
-            self.count = self.vcp.count
+            self.count = self.vcp.count #construct universal count
         self.index = 0
         self.mltype = mltype
-        self.datapoint = self.vcp[self.index]
-        # self.image = self.datapoint.image
+        self.datapoint = self._construct_datapoint() ##construct universal DP
         self.image = self._create_images()
         self.classes, self.labels =  self._create_labels()
         self.flagged_tiles = []
-        # self.classes = classes
-        # self.labels = self.datapoint[0]
+
+    def _construct_datapoint(self):
+        if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vcp)):
+            dp = self.vcp[self.index]
+            return dp
 
     def _create_images(self):
         if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vcp)):
             img = self.datapoint.image
-            return(img)
+            return img
         else:
             print(type(self.vcp))
 
@@ -104,13 +106,13 @@ class Labelizer():
         """
         if b.description == 'Yes':
             self.index += 1
-            self.datapoint = self.vcp[self.index]
+            self.datapoint = self._construct_datapoint()
             self.image = self._create_images()
             self.classes, self.labels = self._create_labels()
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
             self.index += 1
-            self.datapoint = self.vcp[self.index]
+            self.datapoint = self._construct_datapoint()
             self.image = self._create_images()
             self.classes, self.labels = self._create_labels()
         elif b.description == 'Exit':
