@@ -52,7 +52,7 @@ class Labelizer():
                 self.count = len(self.vedaset)
         self.index = 0
         self.mltype = mltype
-        self.datapoint = self._construct_datapoint() ##construct universal DP
+        self.datapoint = self.vedaset[self.index] 
         self.image = self._create_images()
         if classes is not None:
             self.classes = classes
@@ -60,13 +60,6 @@ class Labelizer():
         else:
             self.classes, self.labels =  self._create_labels()
         self.flagged_tiles = []
-
-    def _construct_datapoint(self):
-        if isinstance(self.vedaset, (veda.api.VedaCollectionProxy, store.vedabase.WrappedDataNode)):
-            dp = self.vedaset[self.index]
-        if isinstance(self.vedaset, stream.vedastream.BufferedSampleArray):
-            dp = next(self.vedaset)
-        return dp
 
     def _create_images(self):
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
@@ -118,13 +111,13 @@ class Labelizer():
         """
         if b.description == 'Yes':
             self.index += 1
-            self.datapoint = self._construct_datapoint()
+            self.datapoint = self.vedaset[self.index]
             self.image = self._create_images()
             self.classes, self.labels = self._create_labels()
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
             self.index += 1
-            self.datapoint = self._construct_datapoint()
+            self.datapoint = self.vedaset[self.index]
             self.image = self._create_images()
             self.classes, self.labels = self._create_labels()
         elif b.description == 'Exit':
