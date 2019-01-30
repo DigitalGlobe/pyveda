@@ -60,10 +60,10 @@ class Labelizer():
         self.flagged_tiles = []
 
     def _construct_datapoint(self):
-        if 'VedaCollectionProxy' in str(type(self.vedaset)):
+        if 'VedaCollectionProxy' or 'WrappedDataNode' in str(type(self.vedaset)):
             dp = self.vedaset[self.index]
         if 'BufferedSampleArray' in str(type(self.vedaset)):
-            dp = next(self.vedaset)
+            dp = next(self.vedaset)    
         return dp
 
     def _create_images(self):
