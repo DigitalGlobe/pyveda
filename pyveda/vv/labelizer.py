@@ -52,9 +52,9 @@ class Labelizer():
         self.mltype = mltype
         self.datapoint = self._construct_datapoint() ##construct universal DP
         self.image = self._create_images()
-
         if classes is not None:
             self.classes = classes
+            self.labels = self._create_labels()[1]
         else:
             self.classes, self.labels =  self._create_labels()
         self.flagged_tiles = []
@@ -79,6 +79,10 @@ class Labelizer():
             labels = [l[1] for l in lbl]
             classes = [l[0] for l in lbl]
             return [classes, labels]
+        if 'pyveda.vedaset.stream.vedastream.BufferedSampleArray' in str(type(self.vedaset)):
+            labels = self.datapoint[1]
+            return [self.classes, labels]
+
 
 
 
