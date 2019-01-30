@@ -60,31 +60,28 @@ class Labelizer():
         self.flagged_tiles = []
 
     def _construct_datapoint(self):
-        if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vedaset)):
+        if 'VedaCollectionProxy' in str(type(self.vedaset)):
             dp = self.vedaset[self.index]
-        if 'pyveda.vedaset.stream.vedastream.BufferedSampleArray' in str(type(self.vedaset)):
+        if 'BufferedSampleArray' in str(type(self.vedaset)):
             dp = next(self.vedaset)
         return dp
 
     def _create_images(self):
-        if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vedaset)):
+        if 'VedaCollectionProxy' in str(type(self.vedaset)):
             img = self.datapoint.image
-        if 'pyveda.vedaset.stream.vedastream.BufferedSampleArray' in str(type(self.vedaset)):
+        if 'BufferedSampleArray' in str(type(self.vedaset)):
             img = np.moveaxis(self.datapoint[0], 0, -1)
         return img
 
     def _create_labels(self):
-        if 'pyveda.veda.api.VedaCollectionProxy' in str(type(self.vedaset)):
+        if 'VedaCollectionProxy' in str(type(self.vedaset)):
             lbl = list(self.datapoint.label.items())
             labels = [l[1] for l in lbl]
             classes = [l[0] for l in lbl]
             return [classes, labels]
-        if 'pyveda.vedaset.stream.vedastream.BufferedSampleArray' in str(type(self.vedaset)):
+        if 'BufferedSampleArray' in str(type(self.vedaset)):
             labels = self.datapoint[1]
             return [self.classes, labels]
-
-
-
 
     def _create_buttons(self):
         """

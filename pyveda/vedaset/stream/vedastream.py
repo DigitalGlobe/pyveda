@@ -148,7 +148,7 @@ class BufferedSampleArray(BaseSampleArray):
 
     def clean(self, count=None):
         """
-        Page through VedaCollection data and flag bad data.
+        Page through VedaStream data and flag bad data.
         Params:
             count: the number of tiles to clean
         """
