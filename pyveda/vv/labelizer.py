@@ -80,7 +80,7 @@ class Labelizer():
             labels: a list of labels for an image tile
         """
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
-            labels = self.datapoint.label
+            labels = self.datapoint.label.values()
         if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
                       store.vedabase.WrappedDataNode)):
             labels = self.datapoint[1]
@@ -171,7 +171,7 @@ class Labelizer():
         legend_elements = []
         ax = plt.subplot()
         plt.title('Is this tile correct?', fontsize=14)
-        for i,shp in enumerate(self.labels):
+        for i, shp in enumerate(self.labels):
             if len(shp) is not 0:
                 edge_color = np.random.rand(3,)
                 handle = patches.Patch(edgecolor=edge_color, fill=False, label = self.classes[i])
