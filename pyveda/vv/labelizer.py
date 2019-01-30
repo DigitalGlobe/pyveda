@@ -47,18 +47,14 @@ class Labelizer():
             self.count = count
         else:
             try:
-                self.count = self.vedaset.count #construct universal count
+                self.count = self.vedaset.count
             except:
                 self.count = len(self.vedaset)
         self.index = 0
         self.mltype = mltype
-        self.datapoint = self.vedaset[self.index] 
+        self.datapoint = self.vedaset[self.index]
         self.image = self._create_images()
-        if classes is not None:
-            self.classes = classes
-            self.labels = self._create_labels()[1]
-        else:
-            self.classes, self.labels =  self._create_labels()
+        self.classes, self.labels = self._create_labels(classes)
         self.flagged_tiles = []
 
     def _create_images(self):
@@ -68,16 +64,15 @@ class Labelizer():
             img = np.moveaxis(self.datapoint[0], 0, -1)
         return img
 
-
-    def _create_labels(self):
+    def _create_labels(self, classes):
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             lbl = list(self.datapoint.label.items())
-            labels = [l[1] for l in lbl]
-            classes = [l[0] for l in lbl]
-            return [classes, labels]
+            _labels = [l[1] for l in lbl]
+            _classes = [l[0] for l in lbl]
         if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray, store.vedabase.WrappedDataNode)):
-            labels = self.datapoint[1]
-            return [self.classes, labels]
+            _classes = classes
+            _labels = self.datapoint[1]
+        return [_classes, _labels]
 
     def _create_buttons(self):
         """
@@ -113,13 +108,13 @@ class Labelizer():
             self.index += 1
             self.datapoint = self.vedaset[self.index]
             self.image = self._create_images()
-            self.classes, self.labels = self._create_labels()
+            self.classes, self.labels = self._create_labels(self.classes)
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
             self.index += 1
             self.datapoint = self.vedaset[self.index]
             self.image = self._create_images()
-            self.classes, self.labels = self._create_labels()
+            self.classes, self.labels = self._create_labels(self.classes)
         elif b.description == 'Exit':
             self.index = self.count
         self.clean()
@@ -132,12 +127,12 @@ class Labelizer():
             if b.description == 'Keep':
                 self.datapoint = next(self.flagged_tiles)
                 self.image = self._create_images()
-                self.classes, self.labels = self._create_labels()
+                self.classes, self.labels = self._create_labels(self.classes)
             elif b.description == 'Remove':
                 self.datapoint.remove() ##only works for VCP, currently
                 self.datapoint = next(self.flagged_tiles)
                 self.image = self._create_images()
-                self.classes, self.labels = self._create_labels()
+                self.classes, self.labels = self._create_labels(self.classes)
             self.clean_flags()
         except StopIteration:
             print("All flagged tiles have been cleaned.")
