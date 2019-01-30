@@ -22,9 +22,7 @@ from shapely.geometry.geo import shape
 from shapely.geometry import *
 import numpy as np
 import requests
-# from pyveda.vedaset.stream import vedastream
 from pyveda.auth import Auth
-# from pyveda.veda import api
 
 gbdx = Auth()
 conn = gbdx.gbdx_connection
