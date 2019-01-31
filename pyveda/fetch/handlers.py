@@ -87,7 +87,7 @@ class SegmentationHandler(BaseLabelHandler):
                     out_array = SegmentationHandler._create_mask(shapes, value, out_array)
                 except TypeError as e:
                     pass
-                    
+
         return out_array
 
     @staticmethod
@@ -111,7 +111,7 @@ class SegmentationHandler(BaseLabelHandler):
             coords = f['coordinates'][0]
             r, c = zip(*[(x,y) for x,y in coords])
             rr, cc = polygon(np.array(r), np.array(c))
-            mask[rr, cc] = value
+            mask[cc, rr] = value
         return mask
 
 
@@ -142,4 +142,3 @@ class ObjDetectionHandler(BaseLabelHandler):
                 class_labels.append([*ll, *ur])
             labels.append(class_labels)
         return labels
-
