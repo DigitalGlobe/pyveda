@@ -109,9 +109,9 @@ class SegmentationHandler(BaseLabelHandler):
     def _create_mask(shapes, value, mask):
         for f in shapes:
             coords = f['coordinates'][0]
-            r, c = zip(*[(x,y) for x,y in coords])
+            c, r = zip(*[(x,y) for x,y in coords])
             rr, cc = polygon(np.array(r), np.array(c))
-            mask[cc, rr] = value
+            mask[rr, cc] = value
         return mask
 
 
