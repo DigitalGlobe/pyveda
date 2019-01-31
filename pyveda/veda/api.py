@@ -400,16 +400,6 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             del doc['properties']['id']
         return cls(**doc['properties'])
 
-    @classmethod
-    def from_id(cls, _id):
-        """ Helper method that fetches an id into a VedaCollection """
-        r = cfg.conn.get("{}/data/{}".format(cls.host, _id))
-        r.raise_for_status()
-        doc = r.json()
-        doc['properties']['host'] = host
-        doc['properties']['id'] = _id
-        return cls.from_doc(doc)
-
     def __iter__(self):
         self.n = 0
         return self
