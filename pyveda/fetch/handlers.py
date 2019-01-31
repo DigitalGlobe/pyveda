@@ -5,6 +5,8 @@ from tempfile import NamedTemporaryFile
 from shapely.geometry import shape, box
 from pyveda.utils import from_bounds
 import numpy as np
+
+from rasterio.features import rasterize
 from skimage.draw import polygon
 from skimage.io import imread
 
@@ -81,10 +83,9 @@ class SegmentationHandler(BaseLabelHandler):
         value = 1
         for klass in klasses:
             shapes = payload[klass]
-            try:
+            if shapes:
                 out_array += rasterize(((shape(g), value) for g in shapes), out_shape=out_shape)
-            except Exception as e:
-                pass
+            value += 1
         return out_array
 
     @staticmethod
