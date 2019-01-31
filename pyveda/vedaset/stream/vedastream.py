@@ -102,7 +102,7 @@ class BufferedDataStream(BaseDataSet):
 
     @property
     def _lbl_arr(self):
-        lbls, _, _ = zip(*self._buf)
+        lbls, _ = zip(*self._buf)
         return self._variable_class(self, lbls)
 
     @property

@@ -56,6 +56,7 @@ class BaseVariableArray(ABCVariableIterator):
 
     def __init__(self, vset, arr):
         self._vset = vset
+        # TODO Check arr iterable/iterator container-like w append(write)
         self._arr = iter(arr)
 
     def __getitem__(self, key):
