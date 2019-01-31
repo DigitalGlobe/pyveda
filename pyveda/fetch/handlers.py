@@ -5,6 +5,7 @@ from tempfile import NamedTemporaryFile
 from shapely.geometry import shape, box
 from pyveda.utils import from_bounds
 import numpy as np
+
 from skimage.draw import polygon
 from skimage.io import imread
 
@@ -77,14 +78,16 @@ class SegmentationHandler(BaseLabelHandler):
         payload = SegmentationHandler._parse_response(item)
         if len(out_shape) == 3:
             out_shape = out_shape[-2:]
-        out_array = np.zeros(out_shape)
-        value = 1
-        for klass in klasses:
+        out_array = np.zeros(out_shape, dtype=np.uint8)
+        for value, klass in enumerate(klasses):
+            value += 1
             shapes = payload[klass]
-            try:
-                out_array += rasterize(((shape(g), value) for g in shapes), out_shape=out_shape)
-            except Exception as e:
-                pass
+            if shapes:
+                try:
+                    out_array = SegmentationHandler._create_mask(shapes, value, out_array)
+                except TypeError as e:
+                    pass
+                    
         return out_array
 
     @staticmethod
@@ -96,20 +99,20 @@ class SegmentationHandler(BaseLabelHandler):
         value = 1
         for k, features in item['data']['label'].items():
             try:
-                out_array += SegmentationHandler._create_mask(features, value, out_shape)
+                out_array = SegmentationHandler._create_mask(features, value, out_array)
                 value += 1
-            except Exception as e: # I think this is ValueError from rasterio but need check
+            except TypeError as e:
                 pass
         return out_array
 
     @staticmethod
-    def _create_mask(shapes, value, _shape):
-        mask = np.zeros(_shape, dtype=np.uint8)
+    def _create_mask(shapes, value, mask):
         for f in shapes:
             coords = f['coordinates'][0]
             r, c = zip(*[(x,y) for x,y in coords])
             rr, cc = polygon(np.array(r), np.array(c))
             mask[rr, cc] = value
+        return mask
 
 
 class ObjDetectionHandler(BaseLabelHandler):
