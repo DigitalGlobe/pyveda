@@ -480,5 +480,6 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         Params:
             count: the number of tiles to clean
         """
+        classes = self.classes
         mltype = self.mltype
-        Labelizer(self, mltype, count).clean()
+        Labelizer(self, mltype, count, classes).clean()

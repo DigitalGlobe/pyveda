@@ -22,35 +22,65 @@ from shapely.geometry.geo import shape
 from shapely.geometry import *
 import numpy as np
 import requests
-# from pyveda.vcp.stream import vedastream
 from pyveda.auth import Auth
-from pyveda.veda import api
+from pyveda.vedaset import stream, store
+from pyveda import veda
 
 class Labelizer():
-    def __init__(self, vcp, mltype, count):
+    def __init__(self, vset, mltype, count, classes):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
-            vcp: The data to be cleaned
+            vset: The data to be cleaned
             mltype: the type of ML data. Can be 'classification' 'segmentation' or 'object_detection'
+            count: the number of datapoints to iterate through
+            classes: the classes in the dataset
         """
         assert has_ipywidgets, 'Labelizer requires ipywidgets to be installed'
         assert has_ipy, 'Labelizer requires ipython to be installed'
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
-        self.vcp = vcp
+        self.vedaset = vset
         if count is not None:
             self.count = count
         else:
-            self.count = self.vcp.count
+            try:
+                self.count = self.vedaset.count
+            except:
+                self.count = len(self.vedaset)
         self.index = 0
         self.mltype = mltype
-        self.datapoint = self.vcp[self.index]
-        self.image = self.datapoint.image
-        self.labels = self.datapoint.label
+        self.datapoint = self.vedaset[self.index]
+        self.image = self._create_images()
+        self.classes = classes
+        self.labels = self._create_labels()
         self.flagged_tiles = []
-        # self.classes = classes
-        # self.labels = self.datapoint[0]
+
+    def _create_images(self):
+        """
+        Creates image tiles from a datapoint
+        returns:
+            img: An image tile of size (M,N,3)
+        """
+        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+            img = self.datapoint.image
+        if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
+                      store.vedabase.WrappedDataNode)):
+            img = np.moveaxis(self.datapoint[0], 0, -1)
+        return img
+
+    def _create_labels(self):
+        """
+        Generates labels for a datapoint's image tile
+        returns:
+            labels: a list of labels for an image tile
+        """
+        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+            labels = self.datapoint.label.values()
+        if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
+                      store.vedabase.WrappedDataNode)):
+            labels = self.datapoint[1]
+        return labels
 
     def _create_buttons(self):
         """
@@ -84,15 +114,15 @@ class Labelizer():
         """
         if b.description == 'Yes':
             self.index += 1
-            self.datapoint = self.vcp[self.index]
-            self.image = self.datapoint.image
-            self.labels = self.datapoint.label
+            self.datapoint = self.vedaset[self.index]
+            self.image = self._create_images()
+            self.labels = self._create_labels()
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
             self.index += 1
-            self.datapoint = self.vcp[self.index]
-            self.image = self.datapoint.image
-            self.labels = self.datapoint.label
+            self.datapoint = self.vedaset[self.index]
+            self.image = self._create_images()
+            self.labels = self._create_labels()
         elif b.description == 'Exit':
             self.index = self.count
         self.clean()
@@ -104,20 +134,20 @@ class Labelizer():
         try:
             if b.description == 'Keep':
                 self.datapoint = next(self.flagged_tiles)
-                self.image = self.datapoint.image
-                self.labels = self.datapoint.label
+                self.image = self._create_images()
+                self.labels = self._create_labels()
             elif b.description == 'Remove':
-                self.datapoint.remove()
+                self.datapoint.remove() ##only works for VCP, currently
                 self.datapoint = next(self.flagged_tiles)
-                self.image = self.datapoint.image
-                self.labels = self.datapoint.label
+                self.image = self._create_images()
+                self.labels = self._create_labels()
             self.clean_flags()
         except StopIteration:
             print("All flagged tiles have been cleaned.")
 
     def _display_image(self):
         """
-        Displays image tile for a given vcp object.
+        Displays image tile for a given vedaset object.
         """
         img = self.image
         try:
@@ -132,18 +162,15 @@ class Labelizer():
 
     def _display_obj_detection(self):
         """
-        Adds vcp object detection label geometries to the image tile plot.
+        Adds vedaset object detection label geometries to the image tile plot.
         """
-        label = list(self.labels.items())
-        label_shp = [l[1] for l in label]
-        label_type = [l[0] for l in label]
         legend_elements = []
         ax = plt.subplot()
         plt.title('Is this tile correct?', fontsize=14)
-        for i,shp in enumerate(label_shp):
+        for i, shp in enumerate(self.labels):
             if len(shp) is not 0:
                 edge_color = np.random.rand(3,)
-                handle = patches.Patch(edgecolor=edge_color, fill=False, label = label_type[i])
+                handle = patches.Patch(edgecolor=edge_color, fill=False, label = self.classes[i])
                 legend_elements.append(handle)
                 ax.legend(handles=legend_elements, loc='lower center',
                          bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
@@ -155,40 +182,39 @@ class Labelizer():
 
     def _display_classification(self):
         """
-        Adds vcp classification labels to the image plot.
+        Adds vedaset classification labels to the image plot.
         """
-        label = list(self.labels.items())
-        label_shp = [l[1] for l in label]
-        label_type = [l[0] for l in label]
         positive_classes = []
-        for i, binary_class in enumerate(label_shp):
+        for i, binary_class in enumerate(self.labels):
             if binary_class != 0:
-                positive_classes.append(label_type[i])
+                positive_classes.append(self.classes[i])
         plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
 
     def _display_segmentation(self):
         """
-        Adds vcp classification labels to the image plot.
+        Adds vedaset classification labels to the image plot.
         """
-        label = list(self.labels.items())
-        label_shp = [l[1] for l in label]
-        label_type = [l[0] for l in label]
-        legend_elements = []
         ax = plt.subplot()
         plt.title('Is this tile correct?', fontsize=14)
-        for i, shp in enumerate(label_shp):
-            if len(shp) is not 0:
-                face_color = np.random.rand(3,)
-                handle = patches.Patch(color=face_color, label = label_type[i])
-                legend_elements.append(handle)
-                ax.legend(handles=legend_elements, loc='lower center',
-                         bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
-            for coord in shp:
-                if coord['type']=='Polygon':
-                    geom = Polygon(coord['coordinates'][0])
-                    x,y = geom.exterior.xy
-                    ax.fill(x,y, color=face_color, alpha=0.4)
-                    ax.plot(x,y, lw=3, color=face_color)
+        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+            legend_elements = []
+            for i, shp in enumerate(self.labels):
+                if len(shp) is not 0:
+                    face_color = np.random.rand(3,)
+                    handle = patches.Patch(color=face_color, label = self.classes[i])
+                    legend_elements.append(handle)
+                    ax.legend(handles=legend_elements, loc='lower center',
+                             bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
+                for coord in shp:
+                    if coord['type']=='Polygon':
+                        geom = Polygon(coord['coordinates'][0])
+                        x,y = geom.exterior.xy
+                        ax.fill(x,y, color=face_color, alpha=0.4)
+                        ax.plot(x,y, lw=3, color=face_color)
+        else:
+            ax.imshow(self.labels, alpha=0.5)
+            #TODO: add legend for this type of label
+
 
     def clean_flags(self):
         """
@@ -211,9 +237,9 @@ class Labelizer():
 
     def clean(self):
         """
-        Method for verifying each vcp object as image data with associated polygons.
+        Method for verifying each vedaset object as image data with associated polygons.
         Displays a polygon overlayed on image chip with associated ipywidget
-        buttons. Allows user to click through each vcp object and decide
+        buttons. Allows user to click through each vedaset object and decide
         whether to keep or remove the object.
         """
         clear_output()
@@ -236,8 +262,8 @@ class Labelizer():
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
                 self.flagged_tiles = iter(self.flagged_tiles)
                 self.datapoint = next(self.flagged_tiles)
-                self.image = self.datapoint.image
-                self.labels = self.datapoint.label
+                self.image = self._create_images()
+                self.labels = self._create_labels()
                 self.clean_flags()
             except StopIteration:
                 print("All tiles have been cleaned.")

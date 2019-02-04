@@ -12,6 +12,7 @@ from pyveda.fetch.aiohttp.client import VedaStreamFetcher
 from pyveda.fetch.handlers import NDImageHandler, ClassificationHandler, SegmentationHandler, ObjDetectionHandler
 from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
 from pyveda.frameworks.batch_generator import VedaStreamGenerator
+from pyveda.vv.labelizer import Labelizer
 
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):
@@ -144,6 +145,17 @@ class BufferedSampleArray(BaseSampleArray):
         except ValueError:
             lbls = []
         return BufferedVariableArray(np.array(lbls))
+
+    def clean(self, count=None):
+        """
+        Page through VedaStream data and flag bad data.
+        Params:
+            count: the number of tiles to clean
+        """
+        classes = self._vset.classes
+        mltype = self._vset.mltype
+        Labelizer(self, mltype, count, classes).clean()
+
 
 class BufferedDataStream(BaseDataSet):
     _lbl_handler_map = {"classification": ClassificationHandler,
