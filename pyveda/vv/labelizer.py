@@ -26,9 +26,6 @@ import requests
 from pyveda.auth import Auth
 from pyveda.veda import api
 
-gbdx = Auth()
-conn = gbdx.gbdx_connection
-
 class Labelizer():
     def __init__(self, vcp, mltype, count):
         """
