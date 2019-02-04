@@ -87,3 +87,4 @@ def get_array_handler(inst):
         return SegmentationMixin
     return ObjDetectionMixin
 
+

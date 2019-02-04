@@ -36,7 +36,7 @@ class VirtualIndexManager(object):
     def partition(self):
         return self._partition
 
-    @parts.setter
+    @partition.setter
     def partition(self, partition):
         self._partition = partition
         self.set_indexes()
@@ -57,36 +57,15 @@ class BaseVariableArray(ABCVariableIterator):
     def __init__(self, vset, arr):
         self._vset = vset
         # TODO Check arr iterable/iterator container-like w append(write)
-        self._arr = iter(arr)
+        self._arr_ = arr
 
-    def __getitem__(self, key):
-        item = self._arr.__getitem__(key)
-        return self._output_fn(item)
+    @property
+    def _arr(self):
+        return self._arr_
 
-    def __iter__(self):
-        return self._arr.__iter__()
-
-    def __next__(self):
-        item = self._arr.__next__()
-        return self._output_fn(item)
-
-    def __len__(self):
-        return len(self._arr)
-
-    def _input_fn(self, item):
-        # Meant to be overriden when data must be transformed before writing,
-        # for instance in the case of custom serialization
-        return item
-
-    def _output_fn(self, item):
-        # Meant to be overridden when data must be transformed after reading,
-        # for instance in the case of custom de-serialization
-        return item
-
-    def append(self, item):
-        item = self._input_fn(item)
-        return self._arr.append(item)
-
+    @_arr.setter
+    def _arr(self, arr):
+        if not isinstance(arr, self.__class__)
 
 
 class BaseSampleArray(ABCSampleIterator):

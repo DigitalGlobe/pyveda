@@ -1,5 +1,19 @@
 from abc import ABC, abstractmethod
 
+
+def create_veda_abc_type(name, attr):
+    @classmethod
+    def _check(cls, inst):
+        return getattr(inst, attr)
+
+    dct = dict(__instancecheck__=_check, __subclasshook__=_check)
+    meta = type("ABCVtype", (type, ), dct)
+    return meta(name, tuple(), dct)
+
+ABCSourceArray = create_veda_abc_type("ABCSourceArray", "append")
+# Fill out rest
+
+
 class ABCDataVariable(ABC):
 
     _vtyp = "ABCDataVariale"
