@@ -256,12 +256,7 @@ class Labelizer():
             if self.mltype == 'classification':
                 self._display_classification()
             if self.mltype == 'segmentation':
-                if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
-                              store.vedabase.WrappedDataNode)):
-                    print('segmentation not supported for VedaBase or VedaStream')
-                    return
-                else:
-                    self._display_segmentation()
+                self._display_segmentation()
         else:
             try:
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
