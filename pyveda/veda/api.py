@@ -13,7 +13,7 @@ import requests
 from tempfile import NamedTemporaryFile
 from shapely.geometry import box
 
-from pyveda.utils import features_to_pixels
+from pyveda.utils import features_to_pixels, url_to_array
 from pyveda.veda.props import prop_wrap, VEDAPROPS
 from pyveda.veda.loaders import from_geo, from_tarball
 from pyveda.config import VedaConfig
@@ -104,8 +104,7 @@ class DataSampleClient(BaseClient):
           Returns:
             image (ndarray): the image response as an array
         """
-        img = Image.open(self.conn.get(url, stream=True).raw)
-        return np.array(img)
+        return url_to_array(url, self.conn.access_token) 
 
     def _map_data_props(self):
         """
