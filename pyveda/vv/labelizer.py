@@ -26,10 +26,6 @@ from pyveda.auth import Auth
 from pyveda.vedaset import stream, store
 from pyveda import veda
 
-gbdx = Auth()
-conn = gbdx.gbdx_connection
-
-
 class Labelizer():
     def __init__(self, vset, mltype, count, classes):
         """
@@ -198,22 +194,27 @@ class Labelizer():
         """
         Adds vedaset classification labels to the image plot.
         """
-        legend_elements = []
         ax = plt.subplot()
         plt.title('Is this tile correct?', fontsize=14)
-        for i, shp in enumerate(self.labels):
-            if len(shp) is not 0:
-                face_color = np.random.rand(3,)
-                handle = patches.Patch(color=face_color, label = self.classes[i])
-                legend_elements.append(handle)
-                ax.legend(handles=legend_elements, loc='lower center',
-                         bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
-            for coord in shp:
-                if coord['type']=='Polygon':
-                    geom = Polygon(coord['coordinates'][0])
-                    x,y = geom.exterior.xy
-                    ax.fill(x,y, color=face_color, alpha=0.4)
-                    ax.plot(x,y, lw=3, color=face_color)
+        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+            legend_elements = []
+            for i, shp in enumerate(self.labels):
+                if len(shp) is not 0:
+                    face_color = np.random.rand(3,)
+                    handle = patches.Patch(color=face_color, label = self.classes[i])
+                    legend_elements.append(handle)
+                    ax.legend(handles=legend_elements, loc='lower center',
+                             bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
+                for coord in shp:
+                    if coord['type']=='Polygon':
+                        geom = Polygon(coord['coordinates'][0])
+                        x,y = geom.exterior.xy
+                        ax.fill(x,y, color=face_color, alpha=0.4)
+                        ax.plot(x,y, lw=3, color=face_color)
+        else:
+            ax.imshow(self.labels, alpha=0.5)
+            #TODO: add legend for this type of label
+
 
     def clean_flags(self):
         """

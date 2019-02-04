@@ -85,9 +85,8 @@ class SegmentationHandler(BaseLabelHandler):
             if shapes:
                 try:
                     out_array = SegmentationHandler._create_mask(shapes, value, out_array)
-                except TypeError as e:
+                except Exception as e:
                     pass
-                    
         return out_array
 
     @staticmethod
@@ -107,11 +106,19 @@ class SegmentationHandler(BaseLabelHandler):
 
     @staticmethod
     def _create_mask(shapes, value, mask):
-        for f in shapes:
-            coords = f['coordinates'][0]
-            r, c = zip(*[(x,y) for x,y in coords])
+        def _apply(mask, coords):
+            c, r = zip(*[(x,y) for x,y in coords])
             rr, cc = polygon(np.array(r), np.array(c))
             mask[rr, cc] = value
+            return mask
+
+        for f in shapes:
+            if f['type'] == 'MultiPolygon': 
+                for coords in f['coordinates']:
+                    mask = _apply(mask, coords[0])
+            else:
+                coords = f['coordinates'][0]
+                mask = _apply(mask, coords)
         return mask
 
 
@@ -142,4 +149,3 @@ class ObjDetectionHandler(BaseLabelHandler):
                 class_labels.append([*ll, *ur])
             labels.append(class_labels)
         return labels
-
