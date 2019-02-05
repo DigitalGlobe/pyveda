@@ -89,22 +89,14 @@ class DataSampleClient(BaseClient):
 
     @property
     def image(self):
-        return self._get_image(self.links['image']['href'])
+        url = self.links['image']['href']
+        return url_to_array(url, self.conn.access_token)
 
     @property
     def preview(self):
-        return self._get_image(self.links['thumbnail']['href'])
-
-    def _get_image(self, url):
-        """
-          gets an image, either a prview png or image chip tif
-
-          Args:
-            url (str): the url to the image to fetch
-          Returns:
-            image (ndarray): the image response as an array
-        """
-        return url_to_array(url, self.conn.access_token) 
+        url = self.links['thumbnail']['href']
+        img = Image.open(self.conn.get(url, stream=True).raw)
+        return np.array(img)
 
     def _map_data_props(self):
         """
