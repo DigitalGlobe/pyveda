@@ -145,6 +145,10 @@ class Labelizer():
         except StopIteration:
             print("All flagged tiles have been cleaned.")
 
+    def _recolor_images(self):
+        img = self.image
+
+
     def _display_image(self):
         """
         Displays image tile for a given vedaset object.
@@ -212,8 +216,14 @@ class Labelizer():
                         ax.fill(x,y, color=face_color, alpha=0.4)
                         ax.plot(x,y, lw=3, color=face_color)
         else:
-            ax.imshow(self.labels, alpha=0.5)
-            #TODO: add legend for this type of label
+            im = ax.imshow(self.labels, alpha=0.5)
+            values = np.unique(self.labels.ravel())
+            colors = [im.cmap(im.norm(value)) for value in values]
+            try:
+                lpatches = [patches.Patch(color=colors[i+1], label=a) for i,a in enumerate(self.classes)]
+                ax.legend(handles=lpatches, bbox_to_anchor=(0.5,-0.1))
+            except:
+                pass
 
 
     def clean_flags(self):
