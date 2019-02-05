@@ -125,6 +125,9 @@ class Model(object):
         r.raise_for_status()
         meta = {k: v for k, v in r.json()['properties'].items()}
         self.meta.update(meta)
+        for k,v in self.meta.items():
+            setattr(self, k, v)
+
 
 
     def __repr__(self):
