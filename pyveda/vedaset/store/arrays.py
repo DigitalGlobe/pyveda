@@ -5,6 +5,7 @@ import ujson as json
 from pyveda.utils import mktempfilename, _atom_from_dtype
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 
+
 class IOArrayMixin(object):
     pass
 
@@ -29,7 +30,7 @@ class NDImageMixin(IOImageMixin):
         return item # what could this thing be, let it fail
 
     def create_array(self, group):
-        atom = _atom_from_dtype(self._vset.dtype)
+        atom = _atom_from_dtype(self._vset.image_dtype)
         shape = list(self._vset.image_shape)
         shape.insert(0,0)
         shape = tuple(shape)
@@ -52,10 +53,12 @@ class ClassificationMixin(IOLabelMixin):
 
 
 class SegmentationMixin(IOLabelMixin):
-    _default_dtype = np.float32
+    _default_dtype = np.uint8
 
-    def create_array(self, group):
-        atom = _atom_from_dtype(self._vset.dtype)
+    def create_array(self, group, dtype=None):
+        if not dtype:
+            dtype = self._default_dtype
+        atom = _atom_from_dtype(dtype)
         shape = tuple([s if idx > 0 else 0 for
                        idx, s in enumerate(self._vset.image_shape)])
         self._vset._fileh.create_earray(group, "labels", atom=atom, shape=shape)
@@ -86,5 +89,4 @@ def get_array_handler(inst):
     if inst.mltype == "segmentation":
         return SegmentationMixin
     return ObjDetectionMixin
-
 
