@@ -284,3 +284,4 @@ class VedaStreamFetcher(BaseVedaSetFetcher):
                 return True
             await self._qreq.put(req)
         return True
+

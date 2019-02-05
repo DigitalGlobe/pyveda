@@ -33,19 +33,15 @@ class ABCVariableIterator(ABC):
 
     @abstractmethod
     def __len__(self):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def __getitem__(self, item):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def __iter__(self):
-        raise NotImplementedError
-
-    #@abstractmethod
-    #def __next__(self):
-    #    raise NotImplementedError
+        pass
 
 
 class ABCSampleIterator(ABC):
@@ -54,29 +50,29 @@ class ABCSampleIterator(ABC):
 
     @abstractmethod
     def __len__(self):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def __getitem__(self, item):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def __iter__(self, spec):
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def __next__(self):
-        raise NotImplementedError
+        pass
 
     @property
     @abstractmethod
     def images(self):
-        raise NotImplementedError
+        pass
 
     @property
     @abstractmethod
     def labels(self):
-        raise NotImplementedError
+        pass
 
 
 class ABCDataSet(ABC):
@@ -85,37 +81,57 @@ class ABCDataSet(ABC):
 
     @abstractmethod
     def __len__(self):
-        raise NotImplementedError
+        pass
 
     @property
     @abstractmethod
     def train(self):
-        raise NotImplementedError
+        pass
 
     @property
     @abstractmethod
     def test(self):
-        raise NotImplementedError
+        pass
 
     @property
     @abstractmethod
     def validate(self):
-        raise NotImplementedError
+        pass
 
 
 class ABCMetaProps(ABC):
 
     _vtyp = "ABCMetaProps"
+    _props = ["mltype",
+              "classes",
+              "image_shape",
+              "image_dtype",
+              "count"]
 
     @property
     @abstractmethod
     def mltype(self):
-        raise NotImplementedError
+        pass
 
     @property
     @abstractmethod
     def classes(self):
-        raise NotImplementedError
+        pass
+
+    @property
+    @abstractmethod
+    def image_shape(self):
+        pass
+
+    @property
+    @abstractmethod
+    def image_dtype(self):
+        pass
+
+    @property
+    @abstractmethod
+    def count(self):
+        pass
 
 
 class ABCMLType(type):
