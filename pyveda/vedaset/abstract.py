@@ -6,7 +6,7 @@ def create_veda_abc_type(name, attr):
     def _check(cls, inst):
         return getattr(inst, attr)
 
-    dct = dict(__instancecheck__=_check, __subclasshook__=_check)
+    dct = dict(__instancecheck__=_check, __subclasscheck__=_check)
     meta = type("ABCVtype", (type, ), dct)
     return meta(name, tuple(), dct)
 
@@ -117,6 +117,52 @@ class ABCMetaProps(ABC):
     def classes(self):
         raise NotImplementedError
 
+
+class ABCMLType(type):
+    def __subclasscheck__(cls, C):
+        if super().__subclasscheck__(C.__class__):
+            return True
+        if hasattr(C, "mltype"):
+            if super().__subclasscheck__(C.mltype.__class__):
+                return True
+            if isinstance(C.mltype, str):
+                return cls._match_from_string(C.mltype)
+        return False
+
+    @classmethod
+    @abstractmethod
+    def _match_from_string(cls, strobj):
+        pass
+
+    __instancecheck__ = __subclasscheck__
+
+
+class MLType(metaclass=ABCMLType):
+    @classmethod
+    def _match_from_string(cls, mlstr):
+        if mlstr.lower() == cls.__name__.lower():
+            return True
+        if mlstr.lower() == getattr(cls, "_mltype", "").lower():
+            return True
+        return False
+
+
+class ClassificationType(MLType):
+    _mltype = "Classification"
+
+
+class SegmentationType(MLType):
+    _mltype = "Segmentation"
+
+
+class ObjectDetectionType(MLType):
+    _mltype = "ObjDetection"
+
+
+class mltypes:
+    Classification = ClassificationType
+    Segmentation = SegmentationType
+    ObjectDetection = ObjectDetectionType
 
 
 
