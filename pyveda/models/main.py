@@ -102,11 +102,11 @@ class Model(object):
 
     def publish(self):
         assert self.id is not None, 'You can only publish a saved Model. Call the save method first.'
-        return cfg.conn.put(self.links["publish"]["href"], json={"public": True}).json()
+        return cfg.conn.put(self.links["update"]["href"], json={"public": True}).json()
 
     def unpublish(self):
         assert self.id is not None, 'You can only unpublish a saved Model. Call the save method first.'
-        return cfg.conn.put(self.links["publish"]["href"], json={"public": False}).json()
+        return cfg.conn.put(self.links["update"]["href"], json={"public": False}).json()
 
     def download(self, path=None):
         assert self.id is not None, 'You can only download a saved Model. Call the save method first.'
