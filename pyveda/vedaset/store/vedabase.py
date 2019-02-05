@@ -12,7 +12,7 @@ from pyveda.vedaset.store.arrays import get_array_handler, NDImageMixin
 ignore_NaturalNameWarning = partial(ignore_warnings,
                                     _warning=tables.NaturalNameWarning)
 
-class VirtualSubArray(BaseVariableArray):
+class HDF5PartitionedArray(BaseVariableArray):
     """
     This wraps a pytables array with access determined
     by a contiguous index range given by two integers
@@ -38,12 +38,13 @@ class VirtualSubArray(BaseVariableArray):
     def __getitem__(self, key):
         if isinstance(key, int):
             spec = self._translate_idx(key)
-        if isinstance(key, slice):
+            return self._output_fn(self._arr.__getitem__(spec))
+        elif isinstance(key, slice):
             spec = self._translate_slice(key)
-        return self._arr.__getitem__(spec)
+        return [self._output_fn(v) for v in self._arr.__getitem__(spec)]
 
     def __iter__(self):
-        return self # return underlying iter?
+        return self
 
     def __next__(self):
         # The subtleties of the following line are important to understand:
@@ -54,7 +55,7 @@ class VirtualSubArray(BaseVariableArray):
         # since there is always only one maintained instance of iter state. See
         # issue https://github.com/PyTables/PyTables/issues/293
         self._itr = self._arr.iterrows(self._start, self._stop)
-        return self._itr.__next__()
+        return self._output_fn(self._itr.__next__())
 
     def _translate_idx(self, vidx):
         if vidx is None: # Bounce back None slice parts
@@ -75,9 +76,12 @@ class VirtualSubArray(BaseVariableArray):
             stop = self._stop
         return slice(start, stop, step)
 
-    def append_batch(self, items):
-        self.append(items)
+    def append(self, item):
+        self._arr.append(self._input_fn(item))
 
+    def append_batch(self, items):
+        items = [self._input_fn(v) for v in items]
+        self._arr.append(items)
 
 
 class WrappedSampleNode(BaseSampleArray):
@@ -112,9 +116,10 @@ class H5DataBase(BaseDataSet):
     """
     _fetch_class = VedaStoreFetcher
     _sample_class = WrappedSampleNode
+    _variable_class = PartitionedHDF5Array
 
     def __init__(self, fname, image_dtype=None, title="SBWM", overwrite=False,
-                 mode="a", *args, **kwargs):
+                 mode="a", **kwargs):
 
         if os.path.exists(fname):
             if overwrite:
@@ -123,12 +128,13 @@ class H5DataBase(BaseDataSet):
                 self._load_existing(fname, mode, partition)
                 return
 
+        super(H5DataBase, self).__init__(**kwargs)
         self._fileh = tables.open_file(fname, mode="a", title=title)
-        self._fileh.root._v_attrs.mltype = mltype
-        self._fileh.root._v_attrs.klasses = classes
-        self._fileh.root._v_attrs.image_shape = image_shape
-        self._fileh.root._v_attrs.image_dtype = image_dtype
-        self._fileh.root._v_attrs.partition = partition
+        self._fileh.root._v_attrs.mltype = self.mltype
+        self._fileh.root._v_attrs.klasses = self.classes
+        self._fileh.root._v_attrs.image_shape = self.image_shape
+        self._fileh.root._v_attrs.image_dtype = self.image_dtype
+        self._fileh.root._v_attrs.partition = self.partition
 
         self._build_filetree()
 
@@ -137,14 +143,18 @@ class H5DataBase(BaseDataSet):
             raise ValueError("Opening the file in write mode will overwrite the file")
         self._fileh = tables.open_file(fname, mode=mode)
 
-    def _build_filetree(self, dg=["train", "test", "validate"]):
+    def _build_filetree(self):
         # Build group nodes
-        for name in dg:
+        for name in self._groups:
             self._fileh.create_group("/", name.lower(),
                                      "Records of ML experimentation phases")
         # Build table, array leaves
         self._create_tables()
         self._create_arrays()
+
+    @property
+    def _root(self):
+        return self._fileh.root
 
     @ignore_NaturalNameWarning
     def _create_arrays(self):
@@ -159,39 +169,32 @@ class H5DataBase(BaseDataSet):
                              for idx, klass in enumerate(self.classes)])
 
         # Build main id index and feature tables on root
-        self._fileh.create_table(self._fileh.root, "sample_index", idx_cols,
+        self._fileh.create_table(self._root, "sample_index", idx_cols,
                                  "Constituent Datasample ID index", filters)
-        self._fileh.create_table(self._fileh.root, "feature_table" feature_cols,
+        self._fileh.create_table(self._root, "feature_table" feature_cols,
                                  "Datasample feature contexts", filters)
 
         # Build tables on groups that can be used for recording id logs during
         # model experimentation
-        for name, group in self._groups.items():
+        for name, group in self._hgroups.items():
             self._fileh.create_table(group, "sample_log", idx_cols,
                                      "Datasample ID log", filters)
 
     @property
-    def _lbl_arr_class(self):
-        return get_array_handler(self)
-
-    @property
-    def _img_arr_class(self):
-        return NDImageArray
-
-    @property
     def _img_arr(self):
         if self._img_arr_ is None:
-            self._img_arr_ = self._img_arr_class(self, self._fileh.root.images)
+            self._img_arr_ = NDImageArray(self, self._fileh.root.images)
         return self._img_arr_
 
     @property
     def _lbl_arr(self):
         if self._lbl_arr_ is None:
-            self._lbl_arr_ = self._lbl_arr_class(self, self._fileh.root.labels)
+            lbl_handler_class = get_array_handler(self)
+            self._lbl_arr_ = lbl_handler_class(self, self._fileh.root.labels)
         return self._lbl_arr_
 
     @property
-    def _groups(self):
+    def _hgroups(self):
         return {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
 
     def flush(self):
@@ -220,6 +223,3 @@ class H5DataBase(BaseDataSet):
         inst = cls(fname, **kwargs)
         return inst
 
-    #@classmethod
-    #def from_vc(cls, vc, **kwargs):
-    #    # Load an empty H5DataBase from a VC
