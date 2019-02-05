@@ -233,4 +233,18 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
                    url=url, conn=conn, **kwargs)
     return VedaCollectionProxy.from_doc(doc)
 
-create_from_tarball = from_tarball
+def create_from_tarball(s3path, name, mltype="classification", imshape=[3,256,256]):
+    ''' Creates a new collection from tarball
+
+    Args:
+        s3path (str): The url to the tarball.
+        name (str): A name for the collection.
+        mltype (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
+        imshape (list): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
+
+    Returns:
+        VedaCollectionProxy
+    '''
+    assert isinstance(name, str), ValueError('Name must be defined as a string')
+    doc = from_tarball(s3path, name=name, mltype=mltype, imshape=imshape)
+    return VedaCollectionProxy.from_doc(doc)
