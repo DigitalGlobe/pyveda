@@ -3,20 +3,21 @@ from pyveda.vedaset.abstract import *
 from pyveda.fetch.handlers import get_label_handler, bytes_to_array
 from pyveda.exceptions import NotSupportedException
 
+DATAGROUPS = ["train", "test", "validate"]
 
 class VirtualIndexManager(object):
     IndexObj = namedtuple("IndexObj", "name start stop allocated")
-    order = ["train", "test", "validate"]
 
-    def __init__(self, partition, count):
+    def __init__(self, partition, count, groups):
         self._partition = partition
         self._count = count
+        self._groups = groups # This prescribes allocation ordering
         self.set_indexes()
 
     def __getitem__(self, key):
         if isinstance(key, int) and key in range(3):
-            return self.indexes[self.order[key]]
-        if isinstance(key, str) and key in self.order:
+            return self.indexes[self._groups[key]]
+        if isinstance(key, str) and key in self._groups:
             return self.indexes[key]
         raise ValueError("Provide a data group name or order index")
 
@@ -25,7 +26,7 @@ class VirtualIndexManager(object):
         idxs = [(0, n0, n0), (n0, n0 + n1, n1), (n0 + n1, self.count, n2)]
         # Set dict to proxy key val lookup access
         self.indexes = dict()
-        for group, (start, stop, allocated) in zip(self.order, idxs):
+        for group, (start, stop, allocated) in zip(self._groups, idxs):
             self.indexes[group] = self.IndexObj(name=group, start=start,
                                            stop=stop, allocated=allocated)
         # Set instance vars for attribute access
@@ -71,8 +72,25 @@ class BaseVariableArray(ABCVariableIterator):
 class BaseSampleArray(ABCSampleIterator):
     _vtyp = "BaseSampleArray"
 
-    def __init__(self, vset):
+    def __init__(self, vset, group):
         self._vset = vset
+        self._dgroup = group
+
+    @property
+    def mltype(self):
+        return self._vset.mltype
+
+    @property
+    def classes(self):
+        return self._vset.classes
+
+    @property
+    def image_shape(self):
+        return self._vset.image_shape
+
+    @property
+    def image_dtype(self):
+        return self._vset.image_dtype
 
     @property
     def allocated(self):
@@ -82,20 +100,30 @@ class BaseSampleArray(ABCSampleIterator):
     def images(self):
         return self._vset._img_arr
 
-    @images.setter
-    def images(self, val):
-        raise NotSupportedException("Array modification denied: Protecting dataset integrity")
-
     @property
     def labels(self):
         return self._vset._lbl_arr
+
+    @images.setter
+    def images(self, val):
+        raise NotSupportedException("Array modification denied: Protecting dataset integrity")
 
     @labels.setter
     def labels(self, val):
         raise NotSupportedException("Array modification denied: Protecting dataset integrity")
 
+    def batch_iter(self, batch_size):
+        while True:
+            batch = []
+            while len(batch) < batch_size:
+                batch.append(self.__next__())
+            yield batch
+
     def __getitem__(self, key):
         return [self.images[key], self.labels[key]]
+
+    def __len__(self):
+        return self.allocated
 
     def __iter__(self):
         raise NotImplementedError
@@ -104,23 +132,24 @@ class BaseSampleArray(ABCSampleIterator):
         raise NotImplementedError
 
 
-
 class BaseDataSet(ABCDataSet, ABCMetaProps):
     _vtyp = "BaseDataSet"
     _fetch_class = NotImplemented
     _sample_class = NotImplemented
     _variable_class = NotImplemented
 
-    def __init__(self, mltype, classes, image_shape, image_dtype,
-                 count, partition=[70, 20, 10]):
+    def __init__(self, mltype=None, classes=[], image_shape=None,
+                 image_dtype=None, count=None, partition=[70, 20, 10],
+                 groups=DATAGROUPS):
         self._mltype = mltype
         self._classes = classes
         self._image_shape = image_shape
         self._image_dtype = image_dtype
         self._count = count
         self._partition = partition
+        self._groups = groups
         self._configure_instance()
-        self._vim = VirtualIndexManager(partition, count)
+        self._vim = VirtualIndexManager(partition, count, groups)
 
     def _configure_instance(self):
         self._train = None
@@ -147,23 +176,21 @@ class BaseDataSet(ABCDataSet, ABCMetaProps):
 
     @property
     def count(self):
-        return self._count
+        return self._vim.count
 
     @count.setter
     def count(self, count):
-        self._count = count
         self._vim.count = count
 
     @property
     def partition(self):
-        return self._partition
+        return self._vim._partition
 
     @partition.setter
     def partition(self, partition):
         assert(isinstance(partition, list))
         assert(len(partition) == 3)
         assert(sum(partition) == 100)
-        self._partition = partition
         self._vim.partition = partition
 
     @property
@@ -177,22 +204,19 @@ class BaseDataSet(ABCDataSet, ABCMetaProps):
     @property
     def train(self):
         if self._train is None:
-            self._train = self._sample_class(self)
-            setattr(self._train, "_dgroup", "train")
+            self._train = self._sample_class(self, "train")
         return self._train
 
     @property
     def test(self):
         if self._test is None:
-            self._test = self._sample_class(self)
-            setattr(self._test, "_dgroup", "test")
+            self._test = self._sample_class(self, "test")
         return self._test
 
     @property
     def validate(self):
         if self._validate is None:
-            self._validate = self._sample_class(self)
-            setattr(self._validate, "_dgroup", "validate")
+            self._validate = self._sample_class(self, "validate")
         return self._validate
 
     @property
