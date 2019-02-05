@@ -14,6 +14,7 @@ except:
 try:
     import matplotlib.pyplot as plt
     import matplotlib.patches as patches
+    from matplotlib.colors import LinearSegmentedColormap
     has_plt = True
 except:
     has_plt = False
@@ -216,7 +217,13 @@ class Labelizer():
                         ax.fill(x,y, color=face_color, alpha=0.4)
                         ax.plot(x,y, lw=3, color=face_color)
         else:
-            im = ax.imshow(self.labels, alpha=0.5)
+            legend_colors = [(0.5,0.5,0.5)]
+            cmap_name = 'segmentation_labels'
+            for i, shp in enumerate(self.classes):
+                color = np.random.rand(3,)
+                legend_colors.append(color)
+            cm = LinearSegmentedColormap.from_list(cmap_name, legend_colors, N=100)
+            im = ax.imshow(self.labels, alpha=0.5, cmap=cm)
             values = np.unique(self.labels.ravel())
             colors = [im.cmap(im.norm(value)) for value in values]
             try:
@@ -224,6 +231,9 @@ class Labelizer():
                 ax.legend(handles=lpatches, bbox_to_anchor=(0.5,-0.1))
             except:
                 pass
+
+
+
 
 
     def clean_flags(self):
