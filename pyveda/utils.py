@@ -58,7 +58,7 @@ def features_to_pixels(image, features, mltype):
       Each feature is converted using the bounds of the givein image.
 
       Args:
-          image (rda image): The rda image to use for pixel transformations 
+          image (rda image): The rda image to use for pixel transformations
           features (list): a list of geojson feature geometries
           mytype (str): the mltype of data that should be returned
     """
@@ -198,3 +198,8 @@ class StoppableThread(threading.Thread):
         return self._stopper.is_set()
 
 
+def extend_instance(obj, cls):
+    """Apply mixins to a class instance after creation"""
+    base_cls = obj.__class__
+    base_cls_name = obj.__class__.__name__
+    obj.__class__ = type(base_cls_name, (cls, base_cls),{})
