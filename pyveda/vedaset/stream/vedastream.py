@@ -15,15 +15,12 @@ class BufferedVariableArray(BaseVariableArray):
 
 
 class BufferedSampleArray(BaseSampleArray):
-    def __init__(self, vset):
-        super(BufferedSampleArray, self).__init__(vset)
+    def __init__(self, vset, group):
+        super(BufferedSampleArray, self).__init__(vset, group)
         self._n_consumed = 0
         self._exhausted = False
         if self.allocated == 0:
             self.exhausted = True
-
-    def __len__(self):
-        return self.allocated
 
     def __iter__(self):
         return self
@@ -49,13 +46,6 @@ class BufferedSampleArray(BaseSampleArray):
         self.exhausted = True
         raise StopIteration
 
-    def batch_iter(self, batch_size):
-        while True:
-            batch = []
-            while len(batch) < batch_size:
-                batch.append(self.__next__())
-            yield batch
-
     @property
     def exhausted(self):
         return self._exhausted
@@ -75,8 +65,8 @@ class BufferedDataStream(BaseDataSet):
 
     def __init__(self, source, bufsize=100, auto_startup=False,
                  auto_shutdown=False, write_index=True, write_h5=False,
-                 *args, **kwargs):
-        super(BufferedDataStream, self).__init__(*args, **kwargs)
+                 **kwargs):
+        super(BufferedDataStream, self).__init__(**kwargs)
         self._gen = source
         self._auto_startup = auto_startup
         self._auto_shutdown = auto_shutdown
@@ -102,7 +92,7 @@ class BufferedDataStream(BaseDataSet):
 
     @property
     def _lbl_arr(self):
-        lbls, _ = zip(*self._buf)
+        lbls, _, _ = zip(*self._buf)
         return self._variable_class(self, lbls)
 
     @property
