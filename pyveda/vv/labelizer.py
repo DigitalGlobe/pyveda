@@ -146,7 +146,7 @@ class Labelizer():
             self.datapoint = self.vedaset[self.index]
             self.image = self._create_images()
             self.labels = self._create_labels()
-            # self.preview()
+            self.preview()
             print(self.index)
         elif b.description == 'Exit':
             clear_output()
@@ -315,7 +315,7 @@ class Labelizer():
         for b in buttons:
             b.on_click(self._handle_preview_buttons)
         display(HBox(buttons))
-        for c in range(self.count):
+        while self.index < self.count:
             self._display_image()
             if self.mltype == 'object_detection':
                 self._display_obj_detection(title=False)
