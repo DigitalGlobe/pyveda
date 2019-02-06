@@ -1,6 +1,6 @@
 try:
     import ipywidgets as widgets
-    from ipywidgets import Button, HBox, VBox, RadioButtons, interact
+    from ipywidgets import Button, HBox, VBox, interact, IntSlider
     has_ipywidgets = True
 except:
     has_ipywidgets = False
@@ -159,7 +159,7 @@ class Labelizer():
         ax = plt.subplot()
         ax.axis("off")
         ax.imshow(img)
-        return(img)
+        # return(img)
 
     def _display_obj_detection(self):
         """
@@ -279,9 +279,21 @@ class Labelizer():
                 self.clean_flags()
             except StopIteration:
                 print("All tiles have been cleaned.")
+    # def _create_slider(self):
+    #     """
+    #     Creates ipywidget widget sliders
+    #     Returns:
+    #         buttons: A list of ipywidget Button() objects
+    #     """
+    #     w = widgets.IntSlider()
+    #     w.value = self.count
+    #     return(w)
+    #
+    #     return buttons
 
     def preview(self):
-        interact(self._display_image, idx=widgets.IntSlider(min=0, max=self.count, step=1, value=0))
+        # display()
+        interact(self._display_image, idx=IntSlider(min=0, max=self.count, step=1, value=0))
         # if self.image is not None and self.index != self.count:
         #     self._display_image()
         #     if self.mltype == 'object_detection':

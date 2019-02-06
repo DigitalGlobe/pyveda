@@ -483,3 +483,13 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         classes = self.classes
         mltype = self.mltype
         Labelizer(self, mltype, count, classes).clean()
+
+    def preview(self, count=None):
+        """
+        Page through VedaCollection data and flag bad data.
+        Params:
+            count: the number of tiles to clean
+        """
+        classes = self.classes
+        mltype = self.mltype
+        Labelizer(self, mltype, count, classes).preview()
