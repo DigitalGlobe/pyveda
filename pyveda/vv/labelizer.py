@@ -96,6 +96,15 @@ class Labelizer():
             buttons.append(btn)
         return buttons
 
+    def _create_preview_buttons(self):
+        buttons = []
+        actions = ['Show next tiles', 'Show previous tiles', 'Exit']
+        for b in actions:
+            btn = Button(description=b)
+            buttons.append(btn)
+        return buttons
+
+
     def _create_flag_buttons(self):
         """
         Creates ipywidget widget buttons for tiles that have been flagged for review.
@@ -127,6 +136,16 @@ class Labelizer():
         elif b.description == 'Exit':
             self.index = self.count
         self.clean()
+
+    def _handle_preview_buttons(self, b):
+        if b.description == ('Show next tiles'):
+            ##add functionality
+            print('show more tiles')
+        elif b.description == ('Show previous tiles'):
+            ##add functionality
+            print('show less tiles')
+        self.preview()
+
 
     def _handle_flag_buttons(self, b):
         """
@@ -280,8 +299,11 @@ class Labelizer():
             except StopIteration:
                 print("All tiles have been cleaned.")
 
-
     def preview(self):
+        clear_output()
+        buttons = self._create_preview_buttons()
+        for b in buttons:
+            b.on_click(self._handle_preview_buttons)
         for c in range(self.count):
             self._display_image()
             if self.mltype == 'object_detection':
