@@ -98,7 +98,7 @@ class Labelizer():
 
     def _create_preview_buttons(self):
         buttons = []
-        actions = ['Show next tiles', 'Show previous tiles', 'Exit']
+        actions = ['Show next tile set', 'Exit']
         for b in actions:
             btn = Button(description=b)
             buttons.append(btn)
@@ -138,14 +138,7 @@ class Labelizer():
         self.clean()
 
     def _handle_preview_buttons(self, b):
-        if b.description == ('Show next tiles'):
-            self.preview()
-        elif b.description == ('Show previous tiles'):
-            #TODO: figure out why this doesn't work
-            self.index -= self.count
-            self.datapoint = self.vedaset[self.index]
-            self.image = self._create_images()
-            self.labels = self._create_labels()
+        if b.description == ('Show next tile set'):
             self.preview()
         elif b.description == 'Exit':
             clear_output()
