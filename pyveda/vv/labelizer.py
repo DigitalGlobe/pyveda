@@ -140,7 +140,6 @@ class Labelizer():
     def _handle_preview_buttons(self, b):
         if b.description == ('Show next tiles'):
             self.preview()
-            print(self.index)
         elif b.description == ('Show previous tiles'):
             #TODO: figure out why this doesn't work
             self.index -= self.count
@@ -148,7 +147,6 @@ class Labelizer():
             self.image = self._create_images()
             self.labels = self._create_labels()
             self.preview()
-            print(self.index)
         elif b.description == 'Exit':
             clear_output()
             return
@@ -325,9 +323,7 @@ class Labelizer():
             if self.mltype == 'segmentation':
                 self._display_segmentation(title=False)
             plt.show()
-            print(self.index)
             self.index += 1
             self.datapoint = self.vedaset[self.index]
             self.image = self._create_images()
             self.labels = self._create_labels()
-            print(self.index)
