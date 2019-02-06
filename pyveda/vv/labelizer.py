@@ -279,26 +279,19 @@ class Labelizer():
                 self.clean_flags()
             except StopIteration:
                 print("All tiles have been cleaned.")
-    # def _create_slider(self):
-    #     """
-    #     Creates ipywidget widget sliders
-    #     Returns:
-    #         buttons: A list of ipywidget Button() objects
-    #     """
-    #     w = widgets.IntSlider()
-    #     w.value = self.count
-    #     return(w)
-    #
-    #     return buttons
+
 
     def preview(self):
-        # display()
-        interact(self._display_image, idx=IntSlider(min=0, max=self.count, step=1, value=0))
-        # if self.image is not None and self.index != self.count:
-        #     self._display_image()
-        #     if self.mltype == 'object_detection':
-        #         self._display_obj_detection()
-        #     if self.mltype == 'classification':
-        #         self._display_classification()
-        #     if self.mltype == 'segmentation':
-        #         self._display_segmentation()
+        for c in range(self.count):
+            self._display_image()
+            if self.mltype == 'object_detection':
+                self._display_obj_detection()
+            if self.mltype == 'classification':
+                self._display_classification()
+            if self.mltype == 'segmentation':
+                self._display_segmentation()
+            plt.show()
+            self.index += 1
+            self.datapoint = self.vedaset[self.index]
+            self.image = self._create_images()
+            self.labels = self._create_labels()
