@@ -180,10 +180,12 @@ class Labelizer():
         ax.imshow(img)
         # return(img)
 
-    def _display_obj_detection(self):
+    def _display_obj_detection(self, title=True):
         """
         Adds vedaset object detection label geometries to the image tile plot.
         """
+        if title==True:
+            plt.title('Is this tile correct?', fontsize=14)
         legend_elements = []
         ax = plt.subplot()
         for i, shp in enumerate(self.labels):
@@ -199,7 +201,7 @@ class Labelizer():
                             fill=False, lw=2))
 
 
-    def _display_classification(self):
+    def _display_classification(self, title=True):
         """
         Adds vedaset classification labels to the image plot.
         """
@@ -207,11 +209,15 @@ class Labelizer():
         for i, binary_class in enumerate(self.labels):
             if binary_class != 0:
                 positive_classes.append(self.classes[i])
+        if title==True:
+            plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
 
-    def _display_segmentation(self):
+    def _display_segmentation(self, title=True):
         """
         Adds vedaset classification labels to the image plot.
         """
+        if title==True:
+            plt.title('Is this tile correct?', fontsize=14)
         ax = plt.subplot()
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             legend_elements = []
@@ -258,7 +264,6 @@ class Labelizer():
             if self.mltype == 'object_detection':
                 self._display_obj_detection()
             if self.mltype == 'classification':
-                ax.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
                 self._display_classification()
             if self.mltype == 'segmentation':
                 ax._display_segmentation()
@@ -306,11 +311,11 @@ class Labelizer():
         for c in range(self.count):
             self._display_image()
             if self.mltype == 'object_detection':
-                self._display_obj_detection()
+                self._display_obj_detection(title=False)
             if self.mltype == 'classification':
-                self._display_classification()
+                self._display_classification(title=False)
             if self.mltype == 'segmentation':
-                self._display_segmentation()
+                self._display_segmentation(title=False)
             plt.show()
             self.index += 1
             self.datapoint = self.vedaset[self.index]
