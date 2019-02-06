@@ -146,10 +146,6 @@ class Labelizer():
         except StopIteration:
             print("All flagged tiles have been cleaned.")
 
-    def _recolor_images(self):
-        img = self.image
-
-
     def _display_image(self):
         """
         Displays image tile for a given vedaset object.
@@ -232,10 +228,6 @@ class Labelizer():
             except:
                 pass
 
-
-
-
-
     def clean_flags(self):
         """
         Method for verifying DataPoints that were flagged with clean()
@@ -287,3 +279,13 @@ class Labelizer():
                 self.clean_flags()
             except StopIteration:
                 print("All tiles have been cleaned.")
+
+    def preview(self):
+        if self.image is not None and self.index != self.count:
+            self._display_image()
+            if self.mltype == 'object_detection':
+                self._display_obj_detection()
+            if self.mltype == 'classification':
+                self._display_classification()
+            if self.mltype == 'segmentation':
+                self._display_segmentation()
