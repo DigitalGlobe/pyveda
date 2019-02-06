@@ -140,9 +140,14 @@ class Labelizer():
     def _handle_preview_buttons(self, b):
         if b.description == ('Show next tiles'):
             self.preview()
+            print(self.index)
         elif b.description == ('Show previous tiles'):
-            ##add functionality
-            print('show less tiles')
+            self.index -= self.count
+            self.datapoint = self.vedaset[self.index]
+            self.image = self._create_images()
+            self.labels = self._create_labels()
+            # self.preview()
+            print(self.index)
         elif b.description == 'Exit':
             clear_output()
             return
