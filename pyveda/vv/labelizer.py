@@ -142,6 +142,7 @@ class Labelizer():
             self.preview()
             print(self.index)
         elif b.description == ('Show previous tiles'):
+            #TODO: figure out why this doesn't work
             self.index -= self.count
             self.datapoint = self.vedaset[self.index]
             self.image = self._create_images()
@@ -315,7 +316,7 @@ class Labelizer():
         for b in buttons:
             b.on_click(self._handle_preview_buttons)
         display(HBox(buttons))
-        while self.index < self.count:
+        for c in range(0, self.count):
             self._display_image()
             if self.mltype == 'object_detection':
                 self._display_obj_detection(title=False)
@@ -324,7 +325,9 @@ class Labelizer():
             if self.mltype == 'segmentation':
                 self._display_segmentation(title=False)
             plt.show()
+            print(self.index)
             self.index += 1
             self.datapoint = self.vedaset[self.index]
             self.image = self._create_images()
             self.labels = self._create_labels()
+            print(self.index)
