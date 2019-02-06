@@ -213,4 +213,11 @@ class BaseDataSet(ABCDataSet):
         except (TypeError, AttributeError):
             return self.count
 
+    def _unpack(self):
+        """
+        Instance method useful for unpacking an existing Vedatype-like thing
+        into a map that can be used for initializing other Vedatype-like things
+        """
+        return dict([(pname, getattr(self, pname)) for pname
+                     in self._props.keys()])
 
