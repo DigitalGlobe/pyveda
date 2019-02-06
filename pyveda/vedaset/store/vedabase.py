@@ -118,23 +118,16 @@ class H5DataBase(BaseDataSet):
     _sample_class = WrappedSampleNode
     _variable_class = PartitionedHDF5Array
 
-    def __init__(self, fname, image_dtype=None, title="SBWM", overwrite=False,
-                 mode="a", **kwargs):
+    def __init__(self, fname, title="SBWM", overwrite=False, mode="a", **kwargs):
 
         if os.path.exists(fname):
             if overwrite:
                 os.remove(fname)
             else:
-                self._load_existing(fname, mode, partition)
+                self._load_existing(fname, mode)
                 return
 
         super(H5DataBase, self).__init__(**kwargs)
-        self._fileh = tables.open_file(fname, mode="a", title=title)
-        self._fileh.root._v_attrs.mltype = self.mltype
-        self._fileh.root._v_attrs.klasses = self.classes
-        self._fileh.root._v_attrs.image_shape = self.image_shape
-        self._fileh.root._v_attrs.image_dtype = self.image_dtype
-        self._fileh.root._v_attrs.partition = self.partition
 
         self._build_filetree()
 
