@@ -139,12 +139,13 @@ class Labelizer():
 
     def _handle_preview_buttons(self, b):
         if b.description == ('Show next tiles'):
-            ##add functionality
-            print('show more tiles')
+            self.preview()
         elif b.description == ('Show previous tiles'):
             ##add functionality
             print('show less tiles')
-        self.preview()
+        elif b.description == 'Exit':
+            clear_output()
+            return
 
 
     def _handle_flag_buttons(self, b):
@@ -308,6 +309,7 @@ class Labelizer():
         buttons = self._create_preview_buttons()
         for b in buttons:
             b.on_click(self._handle_preview_buttons)
+        display(HBox(buttons))
         for c in range(self.count):
             self._display_image()
             if self.mltype == 'object_detection':
