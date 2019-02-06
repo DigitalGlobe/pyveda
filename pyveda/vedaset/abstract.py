@@ -1,19 +1,6 @@
 from abc import ABC, abstractmethod
 
 
-def create_veda_abc_type(name, attr):
-    @classmethod
-    def _check(cls, inst):
-        return getattr(inst, attr)
-
-    dct = dict(__instancecheck__=_check, __subclasscheck__=_check)
-    meta = type("ABCVtype", (type, ), dct)
-    return meta(name, tuple(), dct)
-
-ABCSourceArray = create_veda_abc_type("ABCSourceArray", "append")
-# Fill out rest
-
-
 class ABCDataVariable(ABC):
 
     _vtyp = "ABCDataVariale"
@@ -96,41 +83,6 @@ class ABCDataSet(ABC):
     @property
     @abstractmethod
     def validate(self):
-        pass
-
-
-class ABCMetaProps(ABC):
-
-    _vtyp = "ABCMetaProps"
-    _props = ["mltype",
-              "classes",
-              "image_shape",
-              "image_dtype",
-              "count"]
-
-    @property
-    @abstractmethod
-    def mltype(self):
-        pass
-
-    @property
-    @abstractmethod
-    def classes(self):
-        pass
-
-    @property
-    @abstractmethod
-    def image_shape(self):
-        pass
-
-    @property
-    @abstractmethod
-    def image_dtype(self):
-        pass
-
-    @property
-    @abstractmethod
-    def count(self):
         pass
 
 
