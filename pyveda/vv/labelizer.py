@@ -186,7 +186,6 @@ class Labelizer():
         """
         legend_elements = []
         ax = plt.subplot()
-        plt.title('Is this tile correct?', fontsize=14)
         for i, shp in enumerate(self.labels):
             if len(shp) is not 0:
                 edge_color = np.random.rand(3,)
@@ -208,14 +207,12 @@ class Labelizer():
         for i, binary_class in enumerate(self.labels):
             if binary_class != 0:
                 positive_classes.append(self.classes[i])
-        plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
 
     def _display_segmentation(self):
         """
         Adds vedaset classification labels to the image plot.
         """
         ax = plt.subplot()
-        plt.title('Is this tile correct?', fontsize=14)
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             legend_elements = []
             for i, shp in enumerate(self.labels):
@@ -256,13 +253,15 @@ class Labelizer():
         for b in buttons:
             b.on_click(self._handle_flag_buttons)
         if self.datapoint is not None:
+            plt.title('Is this tile correct?', fontsize=14)
             self._display_image()
             if self.mltype == 'object_detection':
                 self._display_obj_detection()
             if self.mltype == 'classification':
+                ax.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
                 self._display_classification()
             if self.mltype == 'segmentation':
-                self._display_segmentation()
+                ax._display_segmentation()
             print('Do you want to remove this tile?')
             display(HBox(buttons))
 
