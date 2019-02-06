@@ -209,6 +209,8 @@ class Labelizer():
                 positive_classes.append(self.classes[i])
         if title==True:
             plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
+        else:
+            plt.title('Tile contains: %s' % ', '.join(positive_classes), fontsize=14)
 
     def _display_segmentation(self, title=True):
         """
