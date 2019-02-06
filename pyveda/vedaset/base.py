@@ -2,8 +2,8 @@ from collections import namedtuple
 from pyveda.vedaset.abstract import *
 from pyveda.fetch.handlers import get_label_handler, bytes_to_array
 from pyveda.exceptions import NotSupportedException
+from pyveda.vedaset.props import VSPropMap, is_iterator, DATAGROUPS
 
-DATAGROUPS = ["train", "test", "validate"]
 
 class VirtualIndexManager(object):
     IndexObj = namedtuple("IndexObj", "name start stop allocated")
@@ -132,24 +132,31 @@ class BaseSampleArray(ABCSampleIterator):
         raise NotImplementedError
 
 
-class BaseDataSet(ABCDataSet, ABCMetaProps):
+class BaseDataSet(ABCDataSet):
     _vtyp = "BaseDataSet"
+    _groups = DATAGROUPS
+    _prop_map = VSPropMap
     _fetch_class = NotImplemented
     _sample_class = NotImplemented
     _variable_class = NotImplemented
 
-    def __init__(self, mltype=None, classes=[], image_shape=None,
-                 image_dtype=None, count=None, partition=[70, 20, 10],
-                 groups=DATAGROUPS):
-        self._mltype = mltype
-        self._classes = classes
-        self._image_shape = image_shape
-        self._image_dtype = image_dtype
-        self._count = count
-        self._partition = partition
-        self._groups = groups
+    def __init__(self, **kwargs):
+        # Set up vedasetprops from kwargs if given
+        # Otherwise enforce typeset to limit available methods TODO
+        # Define a call signature here using inspect TODO
+        for pname, pdesc in self._prop_map.items():
+            setattr(self, pname, pdesc.__init__())
+
+        for pname, val in kwargs.items():
+            if pname not in self._prop_map:
+                raise ValueError("Unexpected initialization argument!")
+            try:
+                setattr(self, pname, val)
+            except Exception as e:
+                if val is not None:
+                    raise
+
         self._configure_instance()
-        self._vim = VirtualIndexManager(partition, count, groups)
 
     def _configure_instance(self):
         self._train = None
@@ -157,41 +164,11 @@ class BaseDataSet(ABCDataSet, ABCMetaProps):
         self._valiate = None
         self._img_arr_ = None
         self._lbl_arr_ = None
-
-    @property
-    def mltype(self):
-        return self._mltype
-
-    @property
-    def classes(self):
-        return self._classes
-
-    @property
-    def image_shape(self):
-        return self._image_shape
-
-    @property
-    def image_dtype(self):
-        return self._image_dtype
-
-    @property
-    def count(self):
-        return self._vim.count
-
-    @count.setter
-    def count(self, count):
-        self._vim.count = count
-
-    @property
-    def partition(self):
-        return self._vim._partition
-
-    @partition.setter
-    def partition(self, partition):
-        assert(isinstance(partition, list))
-        assert(len(partition) == 3)
-        assert(sum(partition) == 100)
-        self._vim.partition = partition
+        self.__prop_hooks__ = [] # Register prop hooks here
+        try:
+            self._vim = VirtualIndexManager(partition, count, groups)
+        except AttributeError as ae:
+            self._vim = None
 
     @property
     def _img_handler_class(self):
