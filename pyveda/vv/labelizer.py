@@ -1,6 +1,6 @@
 try:
     import ipywidgets as widgets
-    from ipywidgets import Button, HBox, VBox, RadioButtons
+    from ipywidgets import Button, HBox, VBox, RadioButtons, interact
     has_ipywidgets = True
 except:
     has_ipywidgets = False
@@ -281,11 +281,12 @@ class Labelizer():
                 print("All tiles have been cleaned.")
 
     def preview(self):
-        if self.image is not None and self.index != self.count:
-            self._display_image()
-            if self.mltype == 'object_detection':
-                self._display_obj_detection()
-            if self.mltype == 'classification':
-                self._display_classification()
-            if self.mltype == 'segmentation':
-                self._display_segmentation()
+        interact(self._display_image, idx=widgets.IntSlider(min=0, max=self.count, step=1, value=0))
+        # if self.image is not None and self.index != self.count:
+        #     self._display_image()
+        #     if self.mltype == 'object_detection':
+        #         self._display_obj_detection()
+        #     if self.mltype == 'classification':
+        #         self._display_classification()
+        #     if self.mltype == 'segmentation':
+        #         self._display_segmentation()
