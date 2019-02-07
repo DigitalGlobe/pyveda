@@ -183,9 +183,9 @@ class Labelizer():
         b_max = np.max(img[:,:,2])
         for i in range(img.shape[0]):
             for j in range(img.shape[1]):
-                r = img[i,j][0]/(r_max+.001)
-                g = img[i,j][1]/(g_max+.001)
-                b = img[i,j][2]/(b_max+.001)
+                r = img[i,j][0]/(r_max)
+                g = img[i,j][1]/(g_max)
+                b = img[i,j][2]/(b_max)
                 img[i,j] = [r,g,b]
         return(img)
 
