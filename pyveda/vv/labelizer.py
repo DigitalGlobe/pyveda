@@ -57,6 +57,12 @@ class Labelizer():
         self.labels = self._create_labels()
         self.flagged_tiles = []
 
+    def _get_next(self):
+        self.index += 1
+        self.datapoint = self.vedaset[self.index]
+        self.image = self._create_images()
+        self.labels = self._create_labels()
+
     def _create_images(self):
         """
         Creates image tiles from a datapoint
@@ -104,7 +110,6 @@ class Labelizer():
             buttons.append(btn)
         return buttons
 
-
     def _create_flag_buttons(self):
         """
         Creates ipywidget widget buttons for tiles that have been flagged for review.
@@ -124,15 +129,10 @@ class Labelizer():
         """
         if b.description == 'Yes':
             self.index += 1
-            self.datapoint = self.vedaset[self.index]
-            self.image = self._create_images()
-            self.labels = self._create_labels()
+            self._get_next()
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
-            self.index += 1
-            self.datapoint = self.vedaset[self.index]
-            self.image = self._create_images()
-            self.labels = self._create_labels()
+            self._get_next()
         elif b.description == 'Exit':
             self.index = self.count
         self.clean()
@@ -143,7 +143,6 @@ class Labelizer():
         elif b.description == 'Exit':
             clear_output()
             return
-
 
     def _handle_flag_buttons(self, b):
         """
@@ -315,6 +314,7 @@ class Labelizer():
             b.on_click(self._handle_preview_buttons)
         display(HBox(buttons))
         for c in range(0, self.count):
+            plt.subplot(a, b, c+1)
             self._display_image()
             if self.mltype == 'object_detection':
                 self._display_obj_detection(title=False)
@@ -322,8 +322,5 @@ class Labelizer():
                 self._display_classification(title=False)
             if self.mltype == 'segmentation':
                 self._display_segmentation(title=False)
-            plt.show()
-            self.index += 1
-            self.datapoint = self.vedaset[self.index]
-            self.image = self._create_images()
-            self.labels = self._create_labels()
+        plt.show()
+        self._get_next()
