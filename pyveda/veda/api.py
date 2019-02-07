@@ -475,7 +475,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         mltype = self.mltype
         Labelizer(self, mltype, count, classes).clean()
 
-    def preview(self, count=None):
+    def preview(self, count=10):
         """
         Page through VedaCollection data and flag bad data.
         Params:
