@@ -167,16 +167,27 @@ class Labelizer():
         """
         Displays image tile for a given vedaset object.
         """
-        img = self.image
-        try:
-            img = img/np.amax(img)
-        except TypeError:
-            img = img
+        if self.image.dtype == 'uint16':
+            img = self._recolor_images()
+        else:
+            img = self.image
         plt.figure(figsize = (10, 10))
         ax = plt.subplot()
         ax.axis("off")
         ax.imshow(img)
-        # return(img)
+
+    def _recolor_images(self):
+        img = self.image.astype('float32')
+        r_max = np.max(img[:,:,0])
+        g_max = np.max(img[:,:,1])
+        b_max = np.max(img[:,:,2])
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                r = img[i,j][0]/(r_max+.001)
+                g = img[i,j][1]/(g_max+.001)
+                b = img[i,j][2]/(b_max+.001)
+                img[i,j] = [r,g,b]
+        return(img)
 
     def _display_obj_detection(self, title=True):
         """
