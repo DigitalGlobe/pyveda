@@ -240,7 +240,7 @@ class Labelizer():
                         ax.fill(x,y, color=face_color, alpha=0.4)
                         ax.plot(x,y, lw=3, color=face_color)
         else:
-            legend_colors = [(0.5,0.5,0.5)]
+            legend_colors = [(0.5,0.5,0.5,0)]
             cmap_name = 'segmentation_labels'
             for i, shp in enumerate(self.classes):
                 color = np.random.rand(3,)
