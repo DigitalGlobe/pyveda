@@ -178,15 +178,9 @@ class Labelizer():
 
     def _recolor_images(self):
         img = self.image.astype('float32')
-        r_max = np.max(img[:,:,0])
-        g_max = np.max(img[:,:,1])
-        b_max = np.max(img[:,:,2])
-        for i in range(img.shape[0]):
-            for j in range(img.shape[1]):
-                r = img[i,j][0]/(r_max)
-                g = img[i,j][1]/(g_max)
-                b = img[i,j][2]/(b_max)
-                img[i,j] = [r,g,b]
+        img[:,:,0] /= np.max(img[:,:,0])
+        img[:,:,1] /= np.max(img[:,:,1])
+        img[:,:,2] /= np.max(img[:,:,2])
         return(img)
 
     def _display_obj_detection(self, title=True):
