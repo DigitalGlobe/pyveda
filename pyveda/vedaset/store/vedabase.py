@@ -8,6 +8,7 @@ from pyveda.vedaset.base import BaseVariableArray, BaseSampleArray, BaseDataSet
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
 from pyveda.vedaset.store.arrays import get_array_handler, NDImageMixin
 from pyveda.fetch.aiohttp.client import VedaBaseFetcher
+from pyveda.vv.labelizer import Labelizer
 
 
 ignore_NaturalNameWarning = partial(ignore_warnings,
@@ -86,13 +87,21 @@ class HDF5PartitionedArray(BaseVariableArray):
 
 
 class WrappedSampleNode(BaseSampleArray):
-    def batch_generator(self, batch_size, shuffle, **kwargs):
+
+    def batch_generator(self, batch_size, shuffle=True, channels_last=False, rescale=False, flip_horizontal=False, flip_vertical=False, **kwargs):
         """
         Generatates Batch of Images/Lables on a VedaBase partition.
         #Arguments
             batch_size: int. batch size
-            shuffle: boolean.  """
-        return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle, **kwargs)
+            shuffle: Boolean.
+            channels_last: Boolean. To return image data as Height-Width-Depth, instead of the default Depth-Height-Width
+            rescale: boolean. Rescale image values between 0 and 1.
+            flip_horizontal: Boolean. Horizontally flip image and lables.
+            flip_vertical: Boolean. Vertically flip image and lables
+        """
+        return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle,
+                                channels_last=channels_last, rescale=rescale,
+                                flip_horizontal=flip_horizontal, flip_vertical=flip_vertical, **kwargs)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):
@@ -108,6 +117,16 @@ class WrappedSampleNode(BaseSampleArray):
 
     def __next__(self):
         return [self.images.__next__(), self.labels.__next__()]
+
+    def clean(self, count=None):
+        """
+        Page through VedaStream data and flag bad data.
+        Params:
+            count: the number of tiles to clean
+        """
+        classes = self._vset.classes
+        mltype = self._vset.mltype
+        Labelizer(self, mltype, count, classes).clean()
 
 
 class H5DataBase(BaseDataSet):

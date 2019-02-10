@@ -1,17 +1,15 @@
-Training Data
+Creating Data
 =============
 
-.. note:: This tutorial is a work in progress
+.. note:: This tutorial is a work in progress. While Veda is set in its functionality, the pyveda 
+interface is steadily evolving.
 
-Training Data Overview
-----------------------
-
-The Training Data API stores and fetches training data for modeling purposes. 
+The previous section looked at how to access data from Veda. Now we'll look at how to create your own training data.
 
 Creating New Training Data
 --------------------------
 
-Veda is a repository for machine learning data. Its focus is on generating and storing image and label pairs of spatial data. It can read spatial data and then generate the images from DigitalGlobe's catalog of satellite imagery.
+Veda is a repository for machine learning data.  It can also generate data. It can read spatial data and then generate the images from DigitalGlobe's catalog of satellite imagery. It can also use the spatial data's feature properties to generate labels.
 
 To generate data Veda needs to know three things:
 
@@ -38,6 +36,10 @@ All training data sets consist of image/label pairs. The training images are fix
     - Segmentation data are expected to be arrays of geojson features in the same projected units as the image.
     - These features are converted to pixel locations when saving into Veda and are served back to clients are ndarrays of segmentation data.  
 
+See the :ref:`Label Formats` for more information and examples.
+
+.. warning:: This is not totally set up to use like a tutorial yet, sorry!
+
 Sample Data
 --------------
 
@@ -46,72 +48,58 @@ The PyVeda git repository includes a sample geojson file to get started with. Th
 For a corresponding image to generate the chips from we'll use catalog ID '123456788' from DigitalGlobe's Worldview 2 satellite. To search for other images covering this area see the "Searching for images" section below.
 
 
-
-Creating a VedaCollection
------------------------------
+Creating a Collection from Spatial Data
+---------------------------------------------
 
 A VedaCollection stores machine learning data in the Veda system. As mentioned above, it needs the inputs of geojson features and an Image object. For the geojson we'll use the sample wind turbine data. We'll also need a gbdxtools Image object. This could be a CatalogImage or a complicated RDA output; gbdxtools gives you almost unlimited processing options for generating images. The images could be a custom mix of bands or have pansharpening applied, for instance. 
 
-For most cases we would like imagery that just has the three visible RGB bands, has been pansharpened for maximum detail, atmospheric effects removed, and dynamic range adjusted to an optimum range. These processing options are all included in PyVeda's MLImage class. Only a Catalog ID is needed to create an MLImage object.
+For most cases we would like imagery that just has the three visible RGB bands, has been pansharpened for maximum detail, atmospheric effects removed, and dynamic range adjusted to an optimum range. These processing options are all included in PyVeda's ``MLImage`` class. Only a Catalog ID is needed to create an MLImage object.
 
 First, let's get set up:
 
 .. code-block:: python
 
-    from pyveda import VedaCollection, DataSet, MLImage
+    import pyveda as pv
+    from pyveda.rda import MLImage
 
     catID = '123456789'
     geojson = 'path/to/data/turbines.geojson'
 
 Next, let's create our VedaCollection. It requires some basic parameters to get started:
 
-* A name for the collection
-* The type of machine learning algorithm, in this case image classification
-* A tile size to use for the images.
+* The geojson source to use
+* The gbdxtools image object to use for the source imagery
+* A name for the collection.
+
+There are other parameters to set like the size of the images, but to start we can use the default settings.
 
 .. code-block:: python
 
-    vc = VedaCollection('Wind Turbines', mlType="classification", tilesize=[256,256]
-
-This sets up the VedaCollection but it will not be created on the server until some data is loaded. So lets load some data:
-
-.. code-block:: python
-
+    name = 'Wind Turbines' # give this a more distinctive name
     image = MLImage(catID)
-    vc.load(geojson, image)
+    vc = pv.create_from_geojson(gojson, image, name)
+    
+It will take about 5 minutes for Veda to generate all the training data. You can check ``vc.status`` to track its progress. 
+
+The end result will be collection of 256x256 pixel image tiles extracted from catalog ID 123456. Each image will have a corresponding label of the class `turbine`. Because this analysis is classification (the default type), each label will be `1`.
+
+(more stuff about creating VCs)
 
 
-It will take about 5 minutes for Veda to generate all the training data. You can check `vc.status` to track its progress. 
+Creating a Collection from a Compressed Archive
+---------------------------------------------------
 
-The end result will be collection of 256x256 pixel image tiles extracted from catalog ID 123456. Each image will have a corresponding label of the class `turbine`. Because this analysis is classification, each label will be `1`.
-
-(more stuff about VCs)
-
-Working with DataSets
-------------------------
-
-A DataSet is a local copy of training data. You can specify the number of samples to load. DataSets also support internal partitions for training, validation, and testing data, so we can specify the percentage of points to put into each group.
-
-.. code-block:: python
-    ds = vc.store('path/to/my_test.h5', partition=[70,10,20], size=100)
-
-This will download 100 training points to a local file `my_test.h5`. 70 points will be assigned to the training group, 10 to the validation group, and 20 to the testing group. The partition is optional, and if not specified all the points are put into the training group.
-
-We'll use the training data to build a simple FOO model:
+If you would like to import existing image and label data, you can have Veda download and process a compressed version of the data:
 
 .. code-block:: python
 
-    from FOO import FOOMODEL
+    pv.create_from_tarball('s3://path/to/tarball', 'Collection Name')
 
-    model = FOOMODEL()
-    model.train(ds.train.images, ds.train.labels)
-    model.score(ds.test.images, ds.test.labels)
+The compressed archive needs to follow the pyveda Release format, as described in the :ref:`Releases for Importing` section. This will create a new collection in Veda and it can be accessed with the standard access methods of :meth:`pyveda.main.open` and :meth:`pyveda.main.store`.
 
-
-
+Adding Data to Existing Collections
+-------------------------------------
 
 
-Releases
---------
-
-Coming Soon...
+Creating Samples from Scratch
+--------------------------------

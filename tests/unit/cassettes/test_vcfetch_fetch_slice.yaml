@@ -1,0 +1,46 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      User-Agent: [python-requests/2.18.4]
+    method: GET
+    uri: https://veda-api-development.geobigdata.io/data/67a16de1-7baf-44bf-a779-2bf97a37c3bd/datapoints?includeLinks=True&classes=building&offset=5&limit=5
+  response:
+    body:
+      string: !!binary |
+        H4sIAAAAAAAAA82YW2/cNhCF/4ueJZuXIYf0c92nFshD+hQEBi9Dr1DtpbvaAEaQ/97RJt3UtRNT
+        wF6qB8uQzuocDalPI3743IxPG2ruml8pjPstNW3zSOsljdun5u548vf9MPbv1sPT43rFirReb3O/
+        CiPtmrsPvHUeb9BYowCtdd4AtFrcqOlfaaS1ig99bH8o86hACfTWO3WUGTR8zPAmzSxZpekzGW9f
+        2mazXW9oO/bTbX1ulsO3u09D2O360qcw9l/vP6QFZT4zbvdTxXIYw47Gh346ZjFIm0l2GEPpAGLp
+        AqLvVCweg8akY+bfxPV+lafy1eRr60rS5G+J9/1qdGwy9gM9HEZrcvIWWmk863aLwCodnEetMQpt
+        haCosrKhiIhFEihttPMxZio+eHDgsnMUM/pUZAjJgmSDv/a0nwwR0QjCxWK5mQqyzeFhpOVm4CnC
+        Zx06Y2PyzhAHJaBoskiIDhBlciUaKTFkJ12CVEgbMuSC4wvyHXIuvuKhtKIIS1nmrhhvOnAudt7n
+        1Em0xaeoyURg7RAiDdMIxn0/8Dx9bO4kj+5hGA8z9vsJrsXQr/48jPeOhjLtF1vifbMYx83u7vb2
+        E+XQhU3fZfpEw3qzpNV4w89I7B+ncb/p17fTfrPmmu9uqyJymEwDTbW5hF3b8PO8WE8V/OX+t/v3
+        91OA/SaHKwR498f7yb1fhsfLmN8erG7Gvky+42K/jKvQD5f03vBE+8Jbe0rYSuec5T9Goz2wAAV4
+        hobXUghvj+B7qZP8UBkvrBEa8btOMhoU7zW4ebpa3+e6qxP3jYBtZVneZK5qpTVH5tqAwmQTiBMC
+        SZNLVkWAZgraEEH6HGSOImXgcMkzhotElRjDVEgle3HmWvD8TqDM1UyqAwtcXCOgQzKgjPIJDV2Z
+        uVURT8fcyoqcj7lzA5yUuTXm52LuDO+zMFdZK5kO0oPQX/svBMGHNPdH/l+MfKlzEp3jiM4r437M
+        yGpdre9z3dWZ+0bAtrIsbzLXMnPhyFzMyvD7WPvATa7NRSMEC8a7YHKOshRbYmLu5ai1dDwjQfH7
+        vER0euI8XZy5WQalnAz8VOTYASXqHCjqDHffJSm0QeKVmVsV8XTMrazI+Zg7N8BJmVtjfi7mzvA+
+        B3NBKP60BYfgzbdvXiOcE8Z7TqWP/eZrOmf5Y5nbNQfyqNPeKP5+Zj13dTN1tb7PdNdm7lsB28qy
+        vMlc30onjsyNlLP0SSutuVlWWeRohCySuOPVUDDl6W0QwAVIDEAZCkBIUSUtlIvBX5y53JaDTZ7b
+        ChNdB+hsF0G5juuRkgVUvpgrM7cq4umYW1mR8zF3boCTMrfG/FzMneF9nrWF/370vr6m+lL26gqt
+        0MAYsBK1mqOqtPx/LeP+PF9bVZCaVVxrj6SlQOQ0/zimrNH5LPkTiUgnz/jN02yJKYRUAsmS+ZUN
+        3NPaUAJGP0W9/CouF4dfBzyn0RvRAXfgnXNJdGiBrxSiDSJdmbRVEU9H2sqKnI+0cwOclLQ15uci
+        7Qzvf0j78W9tLAcJNBsAAA==
+    headers:
+      Access-Control-Allow-Origin: ['*']
+      Connection: [keep-alive]
+      Content-Encoding: [gzip]
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Tue, 22 Jan 2019 20:44:22 GMT']
+      ETag: [W/"1b34-h81HS9As+VrctVeMo3npFjM9VsQ"]
+      Vary: [Accept-Encoding]
+      X-Powered-By: [Express]
+      transfer-encoding: [chunked]
+    status: {code: 200, message: OK}
+version: 1

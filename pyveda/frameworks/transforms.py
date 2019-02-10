@@ -63,38 +63,52 @@ def random_rotation_f(x, rg, row_index=1, col_index=2, channel_index=0,
     x = apply_transform(x, transform_matrix, channel_index, fill_mode, cval)
     return x
 
-def flip_labels_horizontal(shp, bbox_lst):
+
+def flipped_h(shp, bbox):
+    """
+    Horizontally flip one bounding box.
+    """
+    shp_center = (np.array(shp[1:])/2)[0]
+    if (shp_center - bbox[0]) < 0:
+        xmin_new = shp_center + (shp_center - bbox[0])
+    else:
+        xmin_new = shp_center - (shp_center - bbox[0])
+    if (shp_center - bbox[2]) < 0:
+        xmax_new = shp_center + (shp_center - bbox[2])
+    else:
+        xmax_new = shp_center - (shp_center - bbox[2])
+    return [(xmin_new), bbox[1], (xmax_new), bbox[3]]
+
+
+def flip_labels_horizontal(shp, klass_lst):
     """
     Adjust object detection image labels if image is horizontally rotated.
     """
-    bbox_flipped_h = []
-    shp_center = (np.array(shp[1:])/2)[0]
-    for x in bbox_lst[0]:
-        if (shp_center - x[0]) < 0:
-            xmin_new = shp_center + (shp_center - x[0])
-        else:
-            xmin_new = shp_center - (shp_center - x[0])
-        if (shp_center - x[2]) < 0:
-            xmax_new = shp_center + (shp_center - x[2])
-        else:
-            xmax_new = shp_center - (shp_center - x[2])
-        bbox_flipped_h.append([int(xmin_new), x[1], int(xmax_new), x[3]])
-    return bbox_flipped_h
+    def flipp_klass(feature_lst):
+        return [bbox if not bbox else flipped_h(shp, bbox) for bbox in feature_lst]
+    return [flipp_klass(klass) for klass in klass_lst]
 
-def flip_labels_vertical(shp, bbox):
+
+def flipped_v(shp, bbox):
     """
-    Adjust object detection image labels if the image is verically roated.
+    Vertically flip one bounding box.
     """
-    bbox_flipped_v = []
     shp_center = (np.array(shp[1:])/2)[0]
-    for x in bbox_lst[1]:
-        if (shp_center - x[0]) < 0:
-            ymin_new = shp_center + (shp_center - x[0])
-        else:
-            ymin_new = shp_center - (shp_center - x[0])
-        if (shp_center - x[3]) < 0:
-            ymax_new = shp_center + (shp_center - x[2])
-        else:
-            ymax_new = shp_center - (shp_center - x[2])
-        bbox_flipped_v.append([int(ymin_new), x[1], int(ymax_new), x[3]])
-    return bbox_flipped_v
+    if (shp_center - bbox[1]) < 0:
+        ymin_new = shp_center + (shp_center - bbox[1])
+    else:
+        ymin_new = shp_center - (shp_center - bbox[1])
+    if (shp_center - bbox[3]) < 0:
+        ymax_new = shp_center + (shp_center - bbox[3])
+    else:
+        ymax_new = shp_center - (shp_center - bbox[3])
+    return [bbox[0], int(ymin_new), bbox[2], int(ymax_new)]
+
+
+def flip_labels_vertical(shp, klass_lst):
+    """
+    Adjust object detection image labels if image is vertically rotated.
+    """
+    def flipp_klass(feature_lst):
+        return [bbox if not bbox else flipped_v(shp, bbox) for bbox in feature_lst]
+    return [flipp_klass(klass) for klass in klass_lst]

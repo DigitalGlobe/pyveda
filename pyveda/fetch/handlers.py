@@ -5,6 +5,7 @@ from tempfile import NamedTemporaryFile
 from shapely.geometry import shape, box
 from pyveda.utils import from_bounds
 import numpy as np
+
 from skimage.draw import polygon
 from skimage.io import imread
 
@@ -67,14 +68,15 @@ class SegmentationHandler(BaseLabelHandler):
         out_shape = self.vset.image_shape
         if len(out_shape) == 3:
             out_shape = out_shape[-2:]
-        out_array = np.zeros(out_shape)
-        value = 1
-        for klass in self.vset.classes:
+        out_array = np.zeros(out_shape, dtype=np.uint8)
+        for value, klass in enumerate(self.vset.classes):
+            value += 1
             shapes = payload[klass]
-            try:
-                out_array += rasterize(((shape(g), value) for g in shapes), out_shape=out_shape)
-            except Exception as e:
-                pass
+            if shapes:
+                try:
+                    out_array = SegmentationHandler._create_mask(shapes, value, out_array)
+                except Exception as e:
+                    pass
         return out_array
 
     @staticmethod
@@ -86,20 +88,28 @@ class SegmentationHandler(BaseLabelHandler):
         value = 1
         for k, features in item['data']['label'].items():
             try:
-                out_array += SegmentationHandler._create_mask(features, value, out_shape)
+                out_array = SegmentationHandler._create_mask(features, value, out_array)
                 value += 1
-            except Exception as e: # I think this is ValueError from rasterio but need check
+            except TypeError as e:
                 pass
         return out_array
 
     @staticmethod
-    def _create_mask(shapes, value, _shape):
-        mask = np.zeros(_shape, dtype=np.uint8)
-        for f in shapes:
-            coords = f['coordinates'][0]
-            r, c = zip(*[(x,y) for x,y in coords])
+    def _create_mask(shapes, value, mask):
+        def _apply(mask, coords):
+            c, r = zip(*[(x,y) for x,y in coords])
             rr, cc = polygon(np.array(r), np.array(c))
             mask[rr, cc] = value
+            return mask
+
+        for f in shapes:
+            if f['type'] == 'MultiPolygon':
+                for coords in f['coordinates']:
+                    mask = _apply(mask, coords[0])
+            else:
+                coords = f['coordinates'][0]
+                mask = _apply(mask, coords)
+        return mask
 
 
 class ObjDetectionHandler(BaseLabelHandler):

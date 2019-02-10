@@ -11,11 +11,16 @@ from skimage.io import imsave
 from PIL import Image
 import requests
 from tempfile import NamedTemporaryFile
+from shapely.geometry import box
 
-from pyveda.utils import features_to_pixels
+from pyveda.utils import features_to_pixels, url_to_array
 from pyveda.veda.props import prop_wrap, VEDAPROPS
 from pyveda.veda.loaders import from_geo, from_tarball
 from pyveda.config import VedaConfig
+
+from pyveda.vv.labelizer import Labelizer
+
+cfg = VedaConfig()
 
 VALID_MLTYPES = ['classification', 'object_detection', 'segmentation']
 VALID_MATCHTYPES = ['INSIDE', 'INTERSECT', 'ALL']
@@ -84,21 +89,12 @@ class DataSampleClient(BaseClient):
 
     @property
     def image(self):
-        return self._get_image(self.links['image']['href'])
+        url = self.links['image']['href']
+        return url_to_array(url, self.conn.access_token)
 
     @property
     def preview(self):
-        return self._get_image(self.links['thumbnail']['href'])
-
-    def _get_image(self, url):
-        """
-          gets an image, either a prview png or image chip tif
-
-          Args:
-            url (str): the url to the image to fetch
-          Returns:
-            image (ndarray): the image response as an array
-        """
+        url = self.links['thumbnail']['href']
         img = Image.open(self.conn.get(url, stream=True).raw)
         return np.array(img)
 
@@ -130,6 +126,11 @@ class DataSampleClient(BaseClient):
         data = self.data.copy()
         del data['links']
         return str(data)
+
+    @property
+    def __geo_interface__(self):
+        return box(*self.bounds).__geo_interface__
+
 
 
 class DataCollectionClient(BaseClient):
@@ -268,7 +269,9 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         qs = self._querystring(offset=idx, limit=num_points, includeLinks=include_links)
         resp = self.conn.get(self._datapoint_search_furl.format(base_url=self._base_url, qs=qs))
         resp.raise_for_status()
-        dps = [self._to_dp(p, **kwargs) for p in resp.json()]
+        dps = [self._to_dp(p, dtype=self.dtype, **kwargs) for p in resp.json()]
+        if len(dps) == 1:
+            return dps[0]
         return dps
 
     def fetch_sample_from_id(self, dp_id, include_links=True, **kwargs):
@@ -278,13 +281,13 @@ class VedaCollectionProxy(_VedaCollectionProxy):
                                                         datapoint_id=dp_id,
                                                         qs=qs))
         resp.raise_for_status()
-        return self._to_dp(resp.json(), **kwargs)
+        return self._to_dp(resp.json(), dtype=self.dtype, **kwargs)
 
     def fetch_samples_from_ids(self, dp_ids=[], **kwargs):
         return [self.fetch_sample_from_id(dp_id) for dp_id in dp_ids]
 
     def fetch_sample_from_index(self, idx, **kwargs):
-        return self.fetch_dps_from_slice(idx, **kwargs).pop()
+        return self.fetch_samples_from_slice(idx, **kwargs)
 
     def gen_sample_ids(self, count=None, page_size=100, get_urls=True, **kwargs):
         """ Creates a generator of Datapoint IDs or URLs for every datapoint in the VedaCollection
@@ -391,7 +394,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     @classmethod
     def from_id(cls, _id):
         """ Helper method that fetches an id into a VedaCollection """
-        r = self.conn.get("{}/data/{}".format(self.host, _id))
+        r = cfg.conn.get("{}/data/{}".format(cls.host, _id))
         r.raise_for_status()
         doc = r.json()
         doc['properties']['host'] = host
@@ -421,4 +424,63 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         return self.fetch_samples_from_slice(start, num_points=limit)
 
 
+    def __repr__(self):
+        desc = 'VedaCollectionProxy of {} ({})'.format(
+            self.name,
+            self.id
+        )
+        return desc
 
+    def __str__(self):
+        desc = '{} ({})\n'.format(
+            self.name,
+            self.id
+        )
+        desc +='\t- Bounds: {}\n'.format(
+            self.bounds,
+        )
+        desc +='\t- Count: {} samples, {}% cached\n'.format(
+            self.count,
+            self.percent_cached
+        )
+        desc += '\t- Chips: {}x{}, {} bands {}\n'.format(
+            self.imshape[1],
+            self.imshape[2],
+            self.imshape[0],
+            self.dtype
+        )
+        plural = 'es'
+        if len(self.classes) == 1:
+            plural = ''
+        desc += '\t- Labels: {} type, {} class{}'.format(
+            self.mltype.replace('_',' '),
+            len(self.classes),
+            plural
+        )
+        desc += '\n'
+        return desc
+
+
+    @property
+    def __geo_interface__(self):
+        return box(*self.bounds).__geo_interface__
+
+    def clean(self, count=None):
+        """
+        Page through VedaCollection data and flag bad data.
+        Params:
+            count: the number of tiles to clean
+        """
+        classes = self.classes
+        mltype = self.mltype
+        Labelizer(self, mltype, count, classes).clean()
+
+    def preview(self, count=None):
+        """
+        Page through VedaCollection data and flag bad data.
+        Params:
+            count: the number of tiles to clean
+        """
+        classes = self.classes
+        mltype = self.mltype
+        Labelizer(self, mltype, count, classes).preview()

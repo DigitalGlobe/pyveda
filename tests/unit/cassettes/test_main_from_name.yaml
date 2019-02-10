@@ -1,0 +1,66 @@
+interactions:
+- request:
+    body: '{}'
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate']
+      Connection: [keep-alive]
+      Content-Length: ['2']
+      Content-Type: [application/json]
+      User-Agent: [python-requests/2.18.4]
+    method: POST
+    uri: https://veda-api-development.geobigdata.io/search
+  response:
+    body:
+      string: !!binary |
+        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
+    headers:
+      Access-Control-Allow-Origin: ['*']
+      Connection: [keep-alive]
+      Content-Encoding: [gzip]
+      Content-Type: [application/json; charset=utf-8]
+      Date: ['Mon, 21 Jan 2019 15:57:38 GMT']
+      ETag: [W/"33a9-zLHqrd/td4IvFf7MHfnQrVw7qQU"]
+      Vary: [Accept-Encoding]
+      X-Powered-By: [Express]
+      transfer-encoding: [chunked]
+    status: {code: 200, message: OK}
+version: 1

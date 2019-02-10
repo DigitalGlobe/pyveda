@@ -7,7 +7,9 @@ from functools import partial
 import numpy as np
 
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
-from pyveda.vedaset.base import BaseVariableArray, BaseSampleArray, BaseDataSet
+from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
+from pyveda.frameworks.batch_generator import VedaStreamGenerator
+from pyveda.vv.labelizer import Labelizer
 
 
 class BufferedVariableArray(BaseVariableArray):
@@ -26,6 +28,7 @@ class BufferedSampleArray(BaseSampleArray):
         return self
 
     def __next__(self):
+        # Order needs to be [image, label]
         while self._n_consumed < self.allocated:
             try:
                 nreqs = next(self._vset._gen)
@@ -39,12 +42,34 @@ class BufferedSampleArray(BaseSampleArray):
             # the thread running the asyncio loop to fetch more data while the
             # source generator is not yet exhausted
             dps = self._vset._q.get()
-
+            label, image = dps
             self._n_consumed += 1
-            return dps
+            return [image, label]
 
         self.exhausted = True
         raise StopIteration
+
+    def batch_iter(self, batch_size):
+        while True:
+            batch = []
+            while len(batch) < batch_size:
+                batch.append(self.__next__())
+            yield batch
+
+    def batch_generator(self, batch_size, shuffle=True, channels_last=False, rescale=False, flip_horizontal=False, flip_vertical=False, **kwargs):
+        """
+        Generatates Batch of Images/Lables on a VedaStream partition.
+        #Arguments
+            batch_size: Int. batch size
+            shuffle: Boolean.
+            channels_last: Boolean. To return image data as Height-Width-Depth,instead of the default Depth-Height-Width
+            rescale: boolean. Rescale image values between 0 and 1.
+            flip_horizontal: Boolean. Horizontally flip image and lables.
+            flip_vertical: Boolean. Vertically flip image and lables
+        """
+        return VedaStreamGenerator(self, batch_size=batch_size, shuffle=shuffle,
+                                channels_last=channels_last, rescale=rescale,
+                                flip_horizontal=flip_horizontal, flip_vertical=flip_vertical, **kwargs)
 
     @property
     def exhausted(self):
@@ -56,6 +81,17 @@ class BufferedSampleArray(BaseSampleArray):
         self._exhausted = val
         if val:
             self._vset._on_group_exhausted()
+
+
+    def clean(self, count=None):
+        """
+        Page through VedaStream data and flag bad data.
+        Params:
+            count: the number of tiles to clean
+        """
+        classes = self._vset.classes
+        mltype = self._vset.mltype
+        Labelizer(self, mltype, count, classes).clean()
 
 def vb_write_fn(vb, data):
     label, image, _id = data
