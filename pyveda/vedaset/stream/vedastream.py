@@ -7,7 +7,7 @@ from functools import partial
 import numpy as np
 
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
-from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
+from pyveda.vedaset.base import BaseVariableArray, BaseSampleArray, BaseDataSet
 
 
 class BufferedVariableArray(BaseVariableArray):
@@ -56,6 +56,15 @@ class BufferedSampleArray(BaseSampleArray):
         self._exhausted = val
         if val:
             self._vset._on_group_exhausted()
+
+def vb_write_fn(vb, data):
+    label, image, _id = data
+    vb._img_arr.append(image)
+    vb._lbl_arr.append(label)
+    idx_row = vb._fileh.root.sample_index.row
+    idx_row['idx_cols'] = _id
+    idx_row.append()
+    vb._fileh.root.sample_index.flush()
 
 
 class BufferedDataStream(BaseDataSet):
@@ -129,6 +138,12 @@ class BufferedDataStream(BaseDataSet):
         img_py_h = self._img_handler_class._payload_handler
         lbl_py_h = partial(self._lbl_handler_class._payload_handler,
                            klasses=self.classes, out_shape=self.image_shape)
+
+        if self._write_h5:
+            vb = VedaBase.from_vtype("temp.h5", self._unpack())
+            write_fn = partial(vb_write_fn, vb=vb)
+            kwargs.update({"write_fn": write_fn})
+            self._vb = vb
 
         self._fetcher = VedaStreamFetcher(self,
                                           total_count=self.count,

@@ -8,11 +8,12 @@ from pyveda.vedaset.props import VSPropMap, is_iterator, DATAGROUPS
 class VirtualIndexManager(object):
     IndexObj = namedtuple("IndexObj", "name start stop allocated")
 
-    def __init__(self, partition, count, groups):
+    def __init__(self, partition=None, count=None, groups=DATAGROUPS):
         self._partition = partition
         self._count = count
         self._groups = groups # This prescribes allocation ordering
-        self.set_indexes()
+        if self.partition is not None and self.count is not None:
+            self.set_indexes()
 
     def __getitem__(self, key):
         if isinstance(key, int) and key in range(3):
@@ -40,7 +41,8 @@ class VirtualIndexManager(object):
     @partition.setter
     def partition(self, partition):
         self._partition = partition
-        self.set_indexes()
+        if self.count is not None:
+            self.set_indexes()
 
     @property
     def count(self):
@@ -49,7 +51,8 @@ class VirtualIndexManager(object):
     @count.setter
     def count(self, count):
         self._count = count
-        self.set_indexes()
+        if self.partition is not None:
+            self.set_indexes()
 
 
 class BaseVariableArray(ABCVariableIterator):
@@ -58,7 +61,7 @@ class BaseVariableArray(ABCVariableIterator):
     def __init__(self, vset, arr):
         self._vset = vset
         # TODO Check arr iterable/iterator container-like w append(write)
-        self._arr_ = arr
+        self._arr = arr
 
     @property
     def _arr(self):
@@ -66,7 +69,7 @@ class BaseVariableArray(ABCVariableIterator):
 
     @_arr.setter
     def _arr(self, arr):
-        if not isinstance(arr, self.__class__)
+        self._arr_ = iter(arr)
 
 
 class BaseSampleArray(ABCSampleIterator):
@@ -144,8 +147,9 @@ class BaseDataSet(ABCDataSet):
         # Set up vedasetprops from kwargs if given
         # Otherwise enforce typeset to limit available methods TODO
         # Define a call signature here using inspect TODO
+        self._vim = VirtualIndexManager()
         for pname, pdesc in self._prop_map.items():
-            setattr(self, pname, pdesc.__init__())
+            setattr(self, pname, pdesc())
 
         for pname, val in kwargs.items():
             if pname not in self._prop_map:
@@ -159,16 +163,13 @@ class BaseDataSet(ABCDataSet):
         self._configure_instance()
 
     def _configure_instance(self):
+        self._vim_ = None
         self._train = None
         self._test = None
         self._valiate = None
         self._img_arr_ = None
         self._lbl_arr_ = None
         self.__prop_hooks__ = [] # Register prop hooks here
-        try:
-            self._vim = VirtualIndexManager(partition, count, groups)
-        except AttributeError as ae:
-            self._vim = None
 
     @property
     def _img_handler_class(self):

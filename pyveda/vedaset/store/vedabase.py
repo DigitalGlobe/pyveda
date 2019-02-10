@@ -7,6 +7,7 @@ from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.base import BaseVariableArray, BaseSampleArray, BaseDataSet
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
 from pyveda.vedaset.store.arrays import get_array_handler, NDImageMixin
+from pyveda.fetch.aiohttp.client import VedaBaseFetcher
 
 
 ignore_NaturalNameWarning = partial(ignore_warnings,
@@ -18,7 +19,7 @@ class HDF5PartitionedArray(BaseVariableArray):
     by a contiguous index range given by two integers
     """
     def __init__(self, vset, arr):
-        super(VirtualSubArray, self).__init__(vset, arr)
+        super(HDF5PartitionedArray, self).__init__(vset, arr)
         self._start_ = None
         self._stop_ = None
         self._itr = None
@@ -114,9 +115,9 @@ class H5DataBase(BaseDataSet):
     An interface for consuming and reading local data intended to be used with
     machine learning training
     """
-    _fetch_class = VedaStoreFetcher
+    _fetch_class = VedaBaseFetcher
     _sample_class = WrappedSampleNode
-    _variable_class = PartitionedHDF5Array
+    _variable_class = HDF5PartitionedArray
 
     def __init__(self, fname, title="SBWM", overwrite=False, mode="a", **kwargs):
 
@@ -164,7 +165,7 @@ class H5DataBase(BaseDataSet):
         # Build main id index and feature tables on root
         self._fileh.create_table(self._root, "sample_index", idx_cols,
                                  "Constituent Datasample ID index", filters)
-        self._fileh.create_table(self._root, "feature_table" feature_cols,
+        self._fileh.create_table(self._root, "feature_table", feature_cols,
                                  "Datasample feature contexts", filters)
 
         # Build tables on groups that can be used for recording id logs during
@@ -215,4 +216,8 @@ class H5DataBase(BaseDataSet):
     def from_path(cls, fname, **kwargs):
         inst = cls(fname, **kwargs)
         return inst
+
+    @classmethod
+    def from_vtype(cls, fname, **vtype):
+        return cls(fname, **vtype)
 

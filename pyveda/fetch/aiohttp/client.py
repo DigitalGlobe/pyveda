@@ -106,6 +106,8 @@ class BaseVedaSetFetcher(BatchFetchTracer):
         self.img_payload_handler = functools.partial(self._payload_handler,
                                                      executor=self._img_payload_executor,
                                                      fn=img_payload_handler)
+        self._exc_callbacks = []
+
     @property
     def headers(self):
         if not self._token:

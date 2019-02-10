@@ -34,7 +34,7 @@ class NDImageMixin(IOImageMixin):
         shape = list(self._vset.image_shape)
         shape.insert(0,0)
         shape = tuple(shape)
-        self._vset._fileh.create_earray(group, "images", atom=atom, shape=shape))
+        self._vset._fileh.create_earray(group, "images", atom=atom, shape=shape)
 
 
 class ClassificationMixin(IOLabelMixin):
