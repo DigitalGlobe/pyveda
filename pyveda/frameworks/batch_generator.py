@@ -112,7 +112,8 @@ class BaseGenerator():
         self.indexes = np.arange(len(self.cache))
         if self.shuffle:
             np.random.shuffle(self.indexes)
-
+            
+    @threadsafe_generator
     def __iter__(self):
         """Create a generator that iterates over the Sequence."""
         for item in (self[i] for i in range(len(self))):
