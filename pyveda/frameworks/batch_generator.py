@@ -2,7 +2,9 @@ import numpy as np
 
 from random import randint, sample
 
+from pyveda.utils import threadsafe_generator
 from pyveda.frameworks.transforms import *
+
 
 class BaseGenerator():
     '''
@@ -98,6 +100,7 @@ class BaseGenerator():
     def __getitem__(self, index):
         return self.build_batch(index)
 
+    @threadsafe_generator
     def __next__(self):
         try:
             item = self[self.index]  # index???
@@ -112,8 +115,7 @@ class BaseGenerator():
         self.indexes = np.arange(len(self.cache))
         if self.shuffle:
             np.random.shuffle(self.indexes)
-            
-    @threadsafe_generator
+
     def __iter__(self):
         """Create a generator that iterates over the Sequence."""
         for item in (self[i] for i in range(len(self))):
