@@ -8,7 +8,7 @@ from pyveda.vedaset.base import BaseVariableArray, BaseSampleArray, BaseDataSet
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
 from pyveda.vedaset.store.arrays import get_array_handler, NDImageMixin
 from pyveda.fetch.aiohttp.client import VedaBaseFetcher
-from pyveda.vv.labelizer import Labelizer
+#from pyveda.vv.labelizer import Labelizer
 
 
 ignore_NaturalNameWarning = partial(ignore_warnings,
