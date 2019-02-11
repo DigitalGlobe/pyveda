@@ -146,7 +146,4 @@ def get_label_handler(vset):
     else:
         handler = ObjDetectionHandler(vset)
 
-    def fn(*args, **kwargs):
-        return handler._payload_handler(*args, **kwargs)
-
-    return fn
+    return handler._payload_handler
