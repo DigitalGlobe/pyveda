@@ -3,6 +3,20 @@ from pyveda.vedaset.abstract import *
 from pyveda.fetch.handlers import get_label_handler, bytes_to_array
 from pyveda.exceptions import NotSupportedException
 from pyveda.vedaset.props import VSPropMap, is_iterator, DATAGROUPS
+import numpy as np
+
+
+def slices_from_partition(total, partition):
+    # partition sums to 100
+    allocations = [np.rint(total * p * 0.01) for p in partition]
+    nparts = len(partition)
+    idxs = []
+    start = 0
+    for i, alloc in enumerate(allocations):
+        stop = start + alloc if i + 1 < nparts else total
+        idxs.append((start, stop))
+        start = stop
+    return idxs
 
 
 class VirtualIndexManager(object):
@@ -15,27 +29,34 @@ class VirtualIndexManager(object):
         self.set_indexes()
 
     def __getitem__(self, key):
-        if isinstance(key, int) and key in range(3):
-            return self.indexes[self._groups[key]]
-        if isinstance(key, str) and key in self._groups:
-            return self.indexes[key]
-        raise ValueError("Provide a data group name or order index")
+        if isinstance(key, int):
+            try:
+                return self.indexes[self.groups[key]]
+            except IndexError as e:
+                pass
+        if isinstance(key, str):
+            try:
+                return self.indexes[key]
+            except KeyError as e:
+                pass
+        else:
+            raise TypeError("Get keys are String or integer")
+        raise ValueError("Group name or index non existent") from e
 
     def set_indexes(self):
-        n0, n1, n2 = [round(self.count * (p * 0.01)) for p in self.partition]
-        idxs = [(0, n0, n0), (n0, n0 + n1, n1), (n0 + n1, self.count, n2)]
         # Set dict to proxy key val lookup access
         self.indexes = dict()
-        for group, (start, stop, allocated) in zip(self.groups, idxs):
+        idxs = slices_from_partition(self.count, self.partition)
+        for group, (start, stop) in zip(self.groups, idxs):
             self.indexes[group] = self.IndexObj(name=group, start=start,
-                                           stop=stop, allocated=allocated)
+                                           stop=stop, allocated=stop-start)
         # Set instance vars for attribute access
         for g, idx in self.indexes.items():
             setattr(self, g, idx)
 
     def update_spec(self, spec, val):
         if spec not in ["partition", "count"]:
-            raise ValueError("some message")
+            raise ValueError("arg[0] must be one of {partition, count}"))
         setattr(self, spec, val)
         self.set_indexes()
 
