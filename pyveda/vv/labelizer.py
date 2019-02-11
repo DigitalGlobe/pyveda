@@ -259,14 +259,13 @@ class Labelizer():
         for b in buttons:
             b.on_click(self._handle_flag_buttons)
         if self.datapoint is not None:
-            plt.title('Is this tile correct?', fontsize=14)
             self._display_image()
             if self.mltype == 'object_detection':
                 self._display_obj_detection()
             if self.mltype == 'classification':
                 self._display_classification()
             if self.mltype == 'segmentation':
-                ax._display_segmentation()
+                self._display_segmentation()
             print('Do you want to remove this tile?')
             display(HBox(buttons))
 
