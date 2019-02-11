@@ -29,5 +29,7 @@ For general information on the Veda platform and API visit http://github.com/Dig
    data_access
    training_data
    labels
+   training
+   models
    releases
    api
