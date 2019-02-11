@@ -1,163 +1,212 @@
 from weakref import WeakKeyDictionary
+from collections import defaultdict, OrderedDict
 import numpy as np
 import collections.abc
 from pyveda.vedaset.abstract import mltypes
 
-
 DATAGROUPS = ["train", "test", "validate"]
 
+### class wrapper for descriptor assignment on class creation
+def register_props(prop_map={}, exclude=[]):
+    def wrapped(cls):
+        props = prop_map.items() or getattr(cls, "_prop_map", {}).items():
+            for name, prop in props:
+                if name not in exclude:
+                    setattr(cls, name, prop(name))
+        return cls
+    return wrapped
 
-class GenericNamedDescriptor(object):
-    name = ""
+#### General data descriptor type system for all veda ml-accessors ####
+###
+class BaseDescriptor(object):
+    name = NotImplemented
 
-    def __get__(self, inst, owner):
-        if inst is None:
+    def __init__(self, **opts):
+        self.__dict__.update(opts)
+
+    def __get__(self, instance, owner):
+        if instance is None:
             return self
-        if self.name not in inst.__dict__:
-            raise AttributeError("Thing doesn't have {}".format(self.name))
-        return inst.__dict__[self.name]
+        try:
+            return instance.__dict__[self.name]
+        except KeyError as ke:
+            raise AttributeError("'{}' object has no attribute '{}'"
+                                 .format(type(self).__name__, self.name))
 
-    def __set__(self, inst, val):
-        inst.__dict__[self.name] = val
-
-
-class CallbackHookDescriptor(GenericNamedDescriptor):
-    def __set__(self, inst, val):
-        for cb in getattr(inst, "__prop_hooks__", []):
-            cb(val, self.name)
-        super().__set__(inst, val)
+    def __set__(self, instance, value):
+        instance.__dict__[self.name] = value
 
 
-class MLTypeDescriptor(CallbackHookDescriptor):
-    name = "mltype"
+# Descriptor for enforcing types
+class Typed(BaseDescriptor):
+    expected_type = type(None)
 
-    def __set__(self, inst, val):
-        if isinstance(val, str):
-            val = mltypes.from_string(val)
-        if mltypes.is_mltype(val):
-            super().__setitem__(inst, val)
-        raise AttributeError("MLType not valid or cannot be inferred")
+    def __set__(self, instance, value):
+        if not isinstance(value, self.expected_type):
+            raise TypeError('Expected ' + str(self.expected_type))
+        super().__set__(instance, value)
 
 
-class ImageShapeDescriptor(CallbackHookDescriptor):
-    name = "image_shape"
+class BoolTyped(Typed):
+    expected_type = bool
 
-    def __get__(self, inst, owner):
-        if inst is None:
-            return self
-        if self.name not in inst.__dict__:
+
+class IntTyped(Typed):
+    expected_type = int
+
+
+class StringTyped(Typed):
+    expected_type = str
+
+
+class SequenceTyped(Typed):
+    expected_type = collections.abc.Sequence
+
+
+class ListTyped(Typed):
+    expected_type = list
+
+
+class SizedMatched(SequenceTyped):
+    def __init__(self, **opts):
+        if not hasattr(self, size):
+            if "size" not in opts:
+                raise TypeError("Required input size option")
+            self.size = opts['size']
+        assert isinstance(self.size, (collections.abc.Sequence, int))
+        super().__init__(**opts)
+
+    def __set__(self, instance, value):
+        if isinstance(self.size):
+            if len(value) != self.size:
+                raise ValueError("Size '{}' must equal '{}'".format(len(value), self.size))
+        else:
+            if len(value) not in self.size: # size desc? lol
+                raise ValueError("Size '{}' must match '{}'".format(len(value), self.size))
+        super().__set__(instance, value)
+
+
+class UnityCheckedSum(SequenceTyped):
+    def __set__(self, instance, value):
+        if sum(value) != 100:
+            raise ValueError("Probability distribution must sum to 100")
+        super().__set__(instance, value)
+
+
+class CallbackExecutor(BaseDescriptor):
+    # This class should be mixed in last
+    def __init__(self, register=None, **opts):
+        self.register = register
+        if self.register is None: # try class attr
+            self.register = getattr(self, "register", None)
+        super().__init__(**opts)
+
+    def __set__(self, instance, value):
+        if self.register:
+            registry = getattr(instance, register, None)
+            if registery:
+                hooks = register[self.name].hooks
+                for hook in hooks:
+                    hook(instance, value)
+        super().__set__(instance, value)
+
+
+class NumpyDataTyped(CallbackExecutor):
+    # Normal instance checking doesn't work here so Typed desc not usable
+    def __set__(self, instance, value):
+        # This is the best way I could figure out how to check/cast np.dtypes
+        try:
+            d = np.dtype(value) # works on string identifiers and dtype instances
+            if d.name not in np.sctypeDict:
+                raise TypeError("Provided dtype must be one of np.sctypes")
+        except TypeError as te:
+            raise te
+        except Exception as e:
+            raise TypeError("Must provide np.dtype object or dtype castable str")  from e
+        super().__set__(instance, d)
+
+
+class NDArrayShaped(SizeMatched, CallbackExecutor):
+    size = [2, 3]
+    def __set__(self, instance, value):
+        value = tuple(value)
+        super().__setitem__(instance, value)
+
+
+class MLTyped(Typed, CallbackExecutor):
+    expected_type = mltypes.mltype
+
+    def __set__(self, instance, value):
+        if isinstance(value, str):
+            value = mltypes.from_string(value)
+        super().__set__(instance, value)
+
+
+class DataPartitionTyped(SizeMatched, UnityCheckedSum, CallbackExecutor):
+    size = 3
+
+
+class FeatureClassTyped(ListTyped, CallbackExecutor):
+    pass
+
+
+class DataCountTyped(IntTyped, CallbackExecutor):
+    pass
+
+#### End data descriptor type definitions ####
+
+#### Data type map configs for accessors ####
+BaseDataTypeMap = {
+                    "mltype": MLTyped,
+                    "image_shape": NDArrayShaped,
+                    "image_dtype": NumpyDataTyped,
+                    "partition": DataPartitionTyped,
+                    "count": DataCountTyped,
+                    "classes": FeatureClassTyped
+                  }
+
+
+#### Simple callback registry/catalog that can be utilized with CallbackExecutor
+#### on any accessor classes to register arbitrary callbacks on any
+#### descriptor.__set__ at global scale
+
+class CallbackRegister(object):
+    def __init__(self, d):
+        self._d = d
+
+    def register(self, fn, name=None):
+        assert callable(fn)
+        if name is None:
+            name = fn.__name__
+        self._d[name] = fn
+
+    def unregister(self, iden):
+        if callable(iden):
+            iden = iden.__name__
+        if isinstance(iden, str):
             try:
-                out = self._infer_shape(inst)
-                self.__set__(inst, out)
-                return out
-            except Exception as e:
-                raise AttributeError("Image shape not valid or cannot be inferred") from None
-        return inst.__dict__[self.name]
+                self._d.__delitem__(iden)
+            except KeyError:
+                pass
+            return
+        raise TypeError("dunno that")
 
-    def __set__(self, inst, val):
-        if not isinstance(val, collections.abc.Sequence):
-            raise TypeError("Has to be sequence-like")
-        if len(val) not in [2, 3]:
-            raise TypeError("Unsupported Image dimension size, rank must be 2 or 3")
-        val = tuple(val)
-        super().__setitem__(inst, val)
-
-    def _infer_shape(self, inst):
-        raise NotImplementedError
+    @property
+    def callbacks(self):
+        return self._d.values()
 
 
-class ImageDtypeDescriptor(CallbackHookDescriptor):
-    name = "image_dtype"
+class RegisteryCatalog(object):
+    def __init__(self, factory=OrderedDict, register=CallbackRegister):
+        self._cat = defaultdict(factory)
+        self._reg = register
 
-    def __get__(self, inst, owner):
-        if inst is None:
-            return self
-        if self.name not in inst.__dict__:
-            try:
-                out = self._infer_dtype(inst)
-                self.__set__(inst, out)
-                return out
-            except Exception as e:
-                raise AttributeError("Image dtype not valid or cannot be inferred") from None
-        return inst.__dict__[self.name]
-
-    def __set__(self, inst, val):
-        if isinstance(val, str):
-            val = np.dtype(val)
-        # Better checks here
-        super().__setitem__(inst, val)
-
-    def _infer_dtype(self, inst):
-        raise NotImplementedError
+    def __getattr__(self, key):
+        self.__dict__[key] = value = self._reg(self._cat[key])
+        return value
 
 
-class MLClassDescriptor(CallbackHookDescriptor):
-    name = "classes"
-
-    def __get__(self, inst, owner):
-        if inst is None:
-            return self
-        if self.name not in inst.__dict__:
-            raise AttributeError("Label feature classes not defined")
-        return inst.__dict__[self.name]
-
-    def __set__(self, inst, val):
-        if not isinstance(val, collections.abc.Sequence):
-            raise TypeError("Gotta be list-like")
-        if len(val) < 1:
-            raise TypeError("Gotta have at least one thing in there")
-        # Check that items are strings
-        if not all([isinstance(f, str) for f in val]):
-            raise TypeError("The things inside have to be strings come on")
-
-        super().__setitem__(inst, val)
-
-
-class DelegatedCountDescriptor(GenericNamedDescriptor):
-    name = "count"
-
-    # Delegates to VIM
-    def __get__(self, inst, owner):
-        if inst is None:
-            return self
-        return inst._vim.count
-
-    def __set__(self, inst, val):
-        assert isinstance(val, int)
-        assert val > 0
-        for cb in getattr(inst, "__prop_hooks__", []):
-            cb(val, self.name)
-        inst._vim.count = val
-
-
-class DelegatedPartitionDescriptor(GenericNamedDescriptor):
-    name = "partition"
-
-    # Delegates to VIM
-    def __get__(self, inst, owner):
-        if inst is None:
-            return self
-        return inst._vim.partition
-
-    def __set__(self, inst, val):
-        assert(isinstance(val, list))
-        assert(len(val) == 3)
-        assert(sum(val) == 100)
-        for cb in getattr(inst, "__prop_hooks__", []):
-            cb(val, self.name)
-        inst._vim.partition = partition
-
-
-_vds = [MLTypeDescriptor,
-        MLClassDescriptor,
-        ImageShapeDescriptor,
-        ImageDtypeDescriptor,
-        DelegatedCountDescriptor,
-        DelegatedPartitionDescriptor]
-
-VSPropMap = {klass.name: klass for klass in _vds}
-
-
+### Random utils, need a types api module maybe
 # Modified rom pandas
 def is_iterator(obj):
     """
