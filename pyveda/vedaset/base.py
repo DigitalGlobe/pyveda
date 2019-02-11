@@ -1,4 +1,4 @@
-from collections import namedtuple
+from collections import namedtuple, defaultdict, OrderedDict
 from pyveda.vedaset.abstract import *
 from pyveda.fetch.handlers import get_label_handler, bytes_to_array
 from pyveda.exceptions import NotSupportedException
@@ -8,12 +8,11 @@ from pyveda.vedaset.props import VSPropMap, is_iterator, DATAGROUPS
 class VirtualIndexManager(object):
     IndexObj = namedtuple("IndexObj", "name start stop allocated")
 
-    def __init__(self, partition=None, count=None, groups=DATAGROUPS):
-        self._partition = partition
-        self._count = count
-        self._groups = groups # This prescribes allocation ordering
-        if self.partition is not None and self.count is not None:
-            self.set_indexes()
+    def __init__(self, partition, count, groups):
+        self.partition = partition
+        self.count = count
+        self.groups = groups # This prescribes allocation ordering
+        self.set_indexes()
 
     def __getitem__(self, key):
         if isinstance(key, int) and key in range(3):
@@ -27,32 +26,18 @@ class VirtualIndexManager(object):
         idxs = [(0, n0, n0), (n0, n0 + n1, n1), (n0 + n1, self.count, n2)]
         # Set dict to proxy key val lookup access
         self.indexes = dict()
-        for group, (start, stop, allocated) in zip(self._groups, idxs):
+        for group, (start, stop, allocated) in zip(self.groups, idxs):
             self.indexes[group] = self.IndexObj(name=group, start=start,
                                            stop=stop, allocated=allocated)
         # Set instance vars for attribute access
         for g, idx in self.indexes.items():
             setattr(self, g, idx)
 
-    @property
-    def partition(self):
-        return self._partition
-
-    @partition.setter
-    def partition(self, partition):
-        self._partition = partition
-        if self.count is not None:
-            self.set_indexes()
-
-    @property
-    def count(self):
-        return self._count
-
-    @count.setter
-    def count(self, count):
-        self._count = count
-        if self.partition is not None:
-            self.set_indexes()
+    def update_spec(self, spec, val):
+        if spec not in ["partition", "count"]:
+            raise ValueError("some message")
+        setattr(self, spec, val)
+        self.set_indexes()
 
 
 class BaseVariableArray(ABCVariableIterator):
@@ -74,26 +59,16 @@ class BaseVariableArray(ABCVariableIterator):
 
 class BaseSampleArray(ABCSampleIterator):
     _vtyp = "BaseSampleArray"
+    _delegated = ["mltype", "classes", "image_shape", "image_dytpe"]
 
     def __init__(self, vset, group):
         self._vset = vset
         self._dgroup = group
 
-    @property
-    def mltype(self):
-        return self._vset.mltype
-
-    @property
-    def classes(self):
-        return self._vset.classes
-
-    @property
-    def image_shape(self):
-        return self._vset.image_shape
-
-    @property
-    def image_dtype(self):
-        return self._vset.image_dtype
+    def __getattr__(self, name):
+        if name in self._delegated:
+            return self._vset.__getattribute__(name)
+        raise AttributeError("this no have {}".format(name))
 
     @property
     def allocated(self):
@@ -135,48 +110,64 @@ class BaseSampleArray(ABCSampleIterator):
         raise NotImplementedError
 
 
+@delegate_metadata_props()
 class BaseDataSet(ABCDataSet):
     _vtyp = "BaseDataSet"
     _groups = DATAGROUPS
-    _prop_map = VSPropMap
+    _mdprops = VSPropMap
     _fetch_class = NotImplemented
     _sample_class = NotImplemented
     _variable_class = NotImplemented
 
     def __init__(self, **kwargs):
-        # Set up vedasetprops from kwargs if given
-        # Otherwise enforce typeset to limit available methods TODO
         # Define a call signature here using inspect TODO
-        self._vim = VirtualIndexManager()
-        for pname, pdesc in self._prop_map.items():
-            setattr(self, pname, pdesc())
-
-        for pname, val in kwargs.items():
-            if pname not in self._prop_map:
-                raise ValueError("Unexpected initialization argument!")
-            try:
-                setattr(self, pname, val)
-            except Exception as e:
-                if val is not None:
-                    raise
-
-        self._configure_instance()
-
-    def _configure_instance(self):
         self._vim_ = None
         self._train = None
         self._test = None
         self._valiate = None
         self._img_arr_ = None
         self._lbl_arr_ = None
-        self.__prop_hooks__ = [] # Register prop hooks here
+        self._configure_instance()
+
+        for k, v in kwargs.items():
+            if k not in self._mdprops:
+                raise ValueError("Unexpected initialization argument!")
+            self._set_dprop(self, k, v)
+
+    @classmethod
+    def _set_dprop(cls, obj, dname, dval):
+        try:
+            p = getattr(cls, dname)
+            p.__set__(obj, dval)
+        except Exception as e:
+            if val is not None:
+                raise
+
+    def _configure_instance(self):
+        # do things like register callbacks etc here
+        pass
 
     @property
-    def _img_handler_class(self):
+    def _vim(self):
+        if self._vim_ is None:
+            try:
+                prt = self.partition
+                cnt = self.count
+                grps = self._groups
+            except AttributeError as ae:
+                raise AttributeError("Data attrs {count, partition, _groups} must be set to access VIM") from None
+            vim = VirtualIndexManager(prt, cnt, grps)
+            self._mdhooks.partition.register(vim.update_spec)
+            self._mdhooks.count.register(vim.update_spec)
+            self._vim_ = vim
+        return self._vim_
+
+    @property
+    def _img_handler_fn(self):
         return bytes_to_array
 
     @property
-    def _lbl_handler_class(self):
+    def _lbl_handler_fn(self):
         return get_label_handler(self)
 
     @property
@@ -220,5 +211,5 @@ class BaseDataSet(ABCDataSet):
         into a map that can be used for initializing other Vedatype-like things
         """
         return dict([(pname, getattr(self, pname)) for pname
-                     in self._props.keys()])
+                     in self._mdprops.keys()])
 
