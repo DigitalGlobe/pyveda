@@ -81,7 +81,7 @@ def features_to_pixels(image, features, mltype):
       Each feature is converted using the bounds of the givein image.
 
       Args:
-          image (rda image): The rda image to use for pixel transformations 
+          image (rda image): The rda image to use for pixel transformations
           features (list): a list of geojson feature geometries
           mytype (str): the mltype of data that should be returned
     """
@@ -220,4 +220,26 @@ class StoppableThread(threading.Thread):
     def stopped(self):
         return self._stopper.is_set()
 
+class threadsafe_iter:
+    """Takes an iterator/generator and makes it thread-safe by
+    serializing call to the `next` method of given iterator/generator.
+    Code from: https://anandology.com/blog/using-iterators-and-generators/
+    """
+    def __init__(self, it):
+        self.it = it
+        self.lock = threading.Lock()
 
+    def __iter__(self):
+        return self
+
+    def next(self):
+        with self.lock:
+            return self.it.next()
+
+def threadsafe_generator(f):
+    """A decorator that takes a generator function and makes it thread-safe.
+    Code from: https://anandology.com/blog/using-iterators-and-generators/
+    """
+    def g(*a, **kw):
+        return threadsafe_iter(f(*a, **kw))
+    return g
