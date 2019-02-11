@@ -103,11 +103,11 @@ class CallbackExecutor(BaseDescriptor):
 
     def __set__(self, instance, value):
         if self.register:
-            registry = getattr(instance, register, None)
+            registry = getattr(instance, self.register, None)
             if registery:
-                hooks = register[self.name].hooks
-                for hook in hooks:
-                    hook(instance, value)
+                callbacks = registery[self.name].callbacks
+                for cb in callbacks:
+                    cb(instance, value)
         super().__set__(instance, value)
 
 
