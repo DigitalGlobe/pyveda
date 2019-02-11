@@ -16,7 +16,6 @@ class ABCDataSample(ABC):
 
 class ABCVariableIterator(ABC):
     """Low level data access api to homogeneous sequences of data in PyVeda"""
-    _vtyp = "ABCVariableIterator"
 
     @abstractmethod
     def __len__(self):
@@ -33,7 +32,6 @@ class ABCVariableIterator(ABC):
 
 class ABCSampleIterator(ABC):
     """Pair-wise access patterns defined on a group of BaseVedaSequences"""
-    _vtyp = "ABCSampleIterator"
 
     @abstractmethod
     def __len__(self):
@@ -64,7 +62,6 @@ class ABCSampleIterator(ABC):
 
 class ABCDataSet(ABC):
     """Core representation of partitioned Machine-Learning datasets in PyVeda"""
-    _vtyp = "ABCDataSet"
 
     @abstractmethod
     def __len__(self):
@@ -86,7 +83,7 @@ class ABCDataSet(ABC):
         pass
 
 
-class ABCMLType(type):
+class MetaMLtype(type):
     def __subclasscheck__(cls, C):
         if super().__subclasscheck__(C.__class__):
             return True
@@ -105,7 +102,7 @@ class ABCMLType(type):
     __instancecheck__ = __subclasscheck__
 
 
-class MLType(metaclass=ABCMLType):
+class MLtype(metaclass=MetaMLtype):
     @classmethod
     def _match_from_string(cls, mlstr):
         if mlstr.lower() == cls.__name__.lower():
@@ -115,22 +112,37 @@ class MLType(metaclass=ABCMLType):
         return False
 
 
-class ClassificationType(MLType):
-    _mltype = "Classification"
+class ClassificationType(MLtype):
+    _mltype = "classification"
 
 
-class SegmentationType(MLType):
-    _mltype = "Segmentation"
+class SegmentationType(MLtype):
+    _mltype = "segmentation"
 
 
-class ObjectDetectionType(MLType):
-    _mltype = "ObjDetection"
+class ObjectDetectionType(MLtype):
+    _mltype = "objdetection"
 
+
+_metatype_map = dict([(meta._mltype, meta) for meta in
+                      [ClassificationMLtype,
+                       SegmentationMLtype,
+                       ObjectDetectionMLtype]])
 
 class mltypes:
-    Classification = ClassificationType
-    Segmentation = SegmentationType
-    ObjectDetection = ObjectDetectionType
+    """
+    Intended for usage as main mltype api framework
+    """
+    mltype = MLtype
+    metatype_map = _metatype_map
 
+    @classmethod
+    def from_string(cls, s):
+        typname = s.lower()
+        try:
+            metatype = cls.metatype_map[typname]
+        except KeyError:
+            raise MltypeError("Cast error: unrecognized mltype string name '{}'".format(typname))
+        return metatype()
 
 
