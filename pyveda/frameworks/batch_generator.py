@@ -3,6 +3,7 @@ import numpy as np
 from random import randint, sample
 
 from pyveda.utils import threadsafe_generator
+from pyveda.utils import threadsafe_iter
 from pyveda.frameworks.transforms import *
 
 
@@ -131,6 +132,8 @@ class VedaStoreGenerator(BaseGenerator):
     '''
     Generator for VedaBase partition, either train, test or validate.
     '''
+    def __init__():
+        self.cache = threadsafe_generator(cache)
 
     def build_batch(self, index):
         '''Generate one batch of data'''
@@ -178,6 +181,7 @@ class VedaStreamGenerator(BaseGenerator):
         x, y = self._data_generation()
         return x, y
 
+    #@threadsafe_generator errors
     def _data_generation(self):
         '''Generates data containing batch_size samples
         optionally pre-processes the data'''
