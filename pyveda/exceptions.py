@@ -9,3 +9,6 @@ class RemoteCollectionNotFound(Exception):
 
 class NotSupportedException(Exception):
     pass
+
+class MLTypeError(TypeError):
+    pass
