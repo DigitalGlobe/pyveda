@@ -96,9 +96,9 @@ class UnityCheckedSum(SequenceTyped):
 class CallbackExecutor(BaseDescriptor):
     # This class should be mixed in last
     def __init__(self, register=None, **opts):
+        if not register:
+            register = getattr(self, "register", None) # try class attr
         self.register = register
-        if self.register is None: # try class attr
-            self.register = getattr(self, "register", None)
         super().__init__(**opts)
 
     def __set__(self, instance, value):

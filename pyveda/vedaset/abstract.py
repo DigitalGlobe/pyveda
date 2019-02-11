@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from pyveda.exceptions import MLTypeError
 
 
 class ABCDataVariable(ABC):
@@ -142,7 +143,7 @@ class mltypes:
         try:
             metatype = cls.metatype_map[typname]
         except KeyError:
-            raise MltypeError("Cast error: unrecognized mltype string name '{}'".format(typname))
+            raise MLTypeError("Cast error: unrecognized mltype string name '{}'".format(typname))
         return metatype()
 
 
