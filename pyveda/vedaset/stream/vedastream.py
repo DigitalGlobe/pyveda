@@ -7,9 +7,9 @@ from functools import partial
 import numpy as np
 
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
-from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseDataSet
+from pyveda.vedaset.base import BaseVariableArray, BaseSampleArray, BaseDataSet
 from pyveda.frameworks.batch_generator import VedaStreamGenerator
-from pyveda.vv.labelizer import Labelizer
+#from pyveda.vv.labelizer import Labelizer
 
 
 class BufferedVariableArray(BaseVariableArray):
@@ -56,7 +56,9 @@ class BufferedSampleArray(BaseSampleArray):
                 batch.append(self.__next__())
             yield batch
 
-    def batch_generator(self, batch_size, shuffle=True, channels_last=False, rescale=False, flip_horizontal=False, flip_vertical=False, **kwargs):
+    def batch_generator(self, batch_size, shuffle=True, channels_last=False,
+                        rescale=False, flip_horizontal=False, flip_vertical=False,
+                        **kwargs):
         """
         Generatates Batch of Images/Lables on a VedaStream partition.
         #Arguments
@@ -68,8 +70,9 @@ class BufferedSampleArray(BaseSampleArray):
             flip_vertical: Boolean. Vertically flip image and lables
         """
         return VedaStreamGenerator(self, batch_size=batch_size, shuffle=shuffle,
-                                channels_last=channels_last, rescale=rescale,
-                                flip_horizontal=flip_horizontal, flip_vertical=flip_vertical, **kwargs)
+                                   channels_last=channels_last, rescale=rescale,
+                                   flip_horizontal=flip_horizontal,
+                                   flip_vertical=flip_vertical, **kwargs)
 
     @property
     def exhausted(self):
@@ -171,9 +174,6 @@ class BufferedDataStream(BaseDataSet):
         f.result()
 
     def _configure_fetcher(self, **kwargs):
-        img_py_h = self._img_handler_class._payload_handler
-        lbl_py_h = partial(self._lbl_handler_class._payload_handler,
-                           klasses=self.classes, out_shape=self.image_shape)
 
         if self._write_h5:
             vb = VedaBase.from_vtype("temp.h5", self._unpack())
@@ -181,10 +181,13 @@ class BufferedDataStream(BaseDataSet):
             kwargs.update({"write_fn": write_fn})
             self._vb = vb
 
+        img_h = self._img_handler_class
+        lbl_h = self._lbl_handler_class
+
         self._fetcher = VedaStreamFetcher(self,
                                           total_count=self.count,
-                                          img_payload_handler=img_py_h,
-                                          lbl_payload_handler=lbl_py_h,
+                                          img_payload_handler=img_h,
+                                          lbl_payload_handler=lbl_h,
                                           **kwargs)
 
     def _configure_worker(self, fetcher=None, loop=None):
