@@ -30,6 +30,7 @@ class MLImage(RDAImage):
         img = rda.Format(rgb, dataType=0)
         self = super(MLImage, cls).__new__(cls, img)
         self.cat_id = cat_id
+        self.options = {}
         return self
 
     @property
