@@ -95,19 +95,18 @@ class UnityCheckedSum(SequenceTyped):
 
 class CallbackExecutor(BaseDescriptor):
     # This class should be mixed in last
-    def __init__(self, register=None, **opts):
-        if not register:
-            register = getattr(self, "register", None) # try class attr
-        self.register = register
+    target_attr = "_desc_registry"
+    def __init__(self, target_attr=None, **opts):
+        if target_attr:
+            self.target_attr = target_attr
         super().__init__(**opts)
 
     def __set__(self, instance, value):
-        if self.register:
-            registry = getattr(instance, self.register, None)
-            if registery:
-                callbacks = registery[self.name].callbacks
-                for cb in callbacks:
-                    cb(instance, value)
+        registry = getattr(instance, self.target_attr, None)
+        if registery:
+            callbacks = registery[self.name].callbacks
+            for cb in callbacks:
+                cb(instance, value)
         super().__set__(instance, value)
 
 
