@@ -7,37 +7,36 @@ from pyveda.vedaset.abstract import mltypes
 DATAGROUPS = ["train", "test", "validate"]
 
 ### class wrapper for descriptor assignment on class creation
-def register_props(prop_map={}, exclude=[]):
+def register_vprops(vprops=[], fallback="_vprops", exclude=[],):
     def wrapped(cls):
-        props = prop_map.items() or getattr(cls, "_prop_map", {}).items():
-            for name, prop in props:
-                if name not in exclude:
-                    setattr(cls, name, prop(name))
+        for prop in props or getattr(cls, fallback, []):
+            if prop.__vname__ not in exclude:
+                setattr(cls, prop.__vname__, prop())
         return cls
     return wrapped
 
 #### General data descriptor type system for all veda ml-accessors ####
-###
 class BaseDescriptor(object):
-    name = NotImplemented
+    __vname__ = NotImplemented
 
-    def __init__(self, **opts):
-        self.__dict__.update(opts)
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        if not getattr(self, name, None):
+            self.name = type(self).__vname__
 
-    def __get__(self, instance, owner):
+    def __get__(self, instance, klass):
         if instance is None:
             return self
         try:
             return instance.__dict__[self.name]
         except KeyError as ke:
             raise AttributeError("'{}' object has no attribute '{}'"
-                                 .format(type(self).__name__, self.name))
+                                 .format(type(instance).__name__, self.name)) from None
 
     def __set__(self, instance, value):
         instance.__dict__[self.name] = value
 
 
-# Descriptor for enforcing types
 class Typed(BaseDescriptor):
     expected_type = type(None)
 
@@ -68,21 +67,11 @@ class ListTyped(Typed):
 
 
 class SizedMatched(SequenceTyped):
-    def __init__(self, **opts):
-        if not hasattr(self, size):
-            if "size" not in opts:
-                raise TypeError("Required input size option")
-            self.size = opts['size']
-        assert isinstance(self.size, (collections.abc.Sequence, int))
-        super().__init__(**opts)
+    allowed_sizes = []
 
     def __set__(self, instance, value):
-        if isinstance(self.size):
-            if len(value) != self.size:
-                raise ValueError("Size '{}' must equal '{}'".format(len(value), self.size))
-        else:
-            if len(value) not in self.size: # size desc? lol
-                raise ValueError("Size '{}' must match '{}'".format(len(value), self.size))
+        if len(value) not in self.allowed_sizes: # size desc? lol
+            raise ValueError("Size '{}' must match '{}'".format(len(value), self.allowed_sizes))
         super().__set__(instance, value)
 
 
@@ -95,44 +84,39 @@ class UnityCheckedSum(SequenceTyped):
 
 class CallbackExecutor(BaseDescriptor):
     # This class should be mixed in last
-    target_attr = "_desc_registry"
-    def __init__(self, target_attr=None, **opts):
-        if target_attr:
-            self.target_attr = target_attr
-        super().__init__(**opts)
+    registry_target = "_prop_registry"
 
     def __set__(self, instance, value):
-        registry = getattr(instance, self.target_attr, None)
+        registry = getattr(instance, self.registry_target, None)
         if registery:
-            callbacks = registery[self.name].callbacks
-            for cb in callbacks:
+            for cb in registery[self.name].callbacks:
                 cb(instance, value)
         super().__set__(instance, value)
 
 
 class NumpyDataTyped(CallbackExecutor):
+    __vname__ = "image_dtype"
     # Normal instance checking doesn't work here so Typed desc not usable
     def __set__(self, instance, value):
-        # This is the best way I could figure out how to check/cast np.dtypes
         try:
             d = np.dtype(value) # works on string identifiers and dtype instances
-            if d.name not in np.sctypeDict:
-                raise TypeError("Provided dtype must be one of np.sctypes")
-        except TypeError as te:
-            raise te
+            assert d.name in np.sctypeDict
         except Exception as e:
-            raise TypeError("Must provide np.dtype object or dtype castable str")  from e
+            raise TypeError("Must provide np.dtype object or dtype castable str") from None
         super().__set__(instance, d)
 
 
-class NDArrayShaped(SizeMatched, CallbackExecutor):
-    size = [2, 3]
+class ImageShapedTyped(SizeMatched, CallbackExecutor):
+    __vname__ = "image_shape"
+    allowed_sizes = [2, 3]
+
     def __set__(self, instance, value):
         value = tuple(value)
         super().__setitem__(instance, value)
 
 
-class MLTyped(Typed, CallbackExecutor):
+class MLtypeTyped(Typed, CallbackExecutor):
+    __vname__ = "mltype"
     expected_type = mltypes.mltype
 
     def __set__(self, instance, value):
@@ -141,28 +125,17 @@ class MLTyped(Typed, CallbackExecutor):
         super().__set__(instance, value)
 
 
-class DataPartitionTyped(SizeMatched, UnityCheckedSum, CallbackExecutor):
-    size = 3
+class PartitionTyped(SizeMatched, UnityCheckedSum, CallbackExecutor):
+    __vname__ = "partition"
+    size = [3]
 
 
 class FeatureClassTyped(ListTyped, CallbackExecutor):
-    pass
+    __vname__ = "classes"
 
 
-class DataCountTyped(IntTyped, CallbackExecutor):
-    pass
-
-#### End data descriptor type definitions ####
-
-#### Data type map configs for accessors ####
-BaseDataTypeMap = {
-                    "mltype": MLTyped,
-                    "image_shape": NDArrayShaped,
-                    "image_dtype": NumpyDataTyped,
-                    "partition": DataPartitionTyped,
-                    "count": DataCountTyped,
-                    "classes": FeatureClassTyped
-                  }
+class SampleSizeTyped(IntTyped, CallbackExecutor):
+    __vname__ = "count"
 
 
 #### Simple callback registry/catalog that can be utilized with CallbackExecutor
