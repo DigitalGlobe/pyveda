@@ -57,6 +57,12 @@ class Labelizer():
         self.labels = self._create_labels()
         self.flagged_tiles = []
 
+    def _get_next(self):
+        self.index += 1
+        self.datapoint = self.vedaset[self.index]
+        self.image = self._create_images()
+        self.labels = self._create_labels()
+
     def _create_images(self):
         """
         Creates image tiles from a datapoint
@@ -104,7 +110,6 @@ class Labelizer():
             buttons.append(btn)
         return buttons
 
-
     def _create_flag_buttons(self):
         """
         Creates ipywidget widget buttons for tiles that have been flagged for review.
@@ -124,15 +129,10 @@ class Labelizer():
         """
         if b.description == 'Yes':
             self.index += 1
-            self.datapoint = self.vedaset[self.index]
-            self.image = self._create_images()
-            self.labels = self._create_labels()
+            self._get_next()
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
-            self.index += 1
-            self.datapoint = self.vedaset[self.index]
-            self.image = self._create_images()
-            self.labels = self._create_labels()
+            self._get_next()
         elif b.description == 'Exit':
             self.index = self.count
         self.clean()
@@ -143,7 +143,6 @@ class Labelizer():
         elif b.description == 'Exit':
             clear_output()
             return
-
 
     def _handle_flag_buttons(self, b):
         """
@@ -163,15 +162,21 @@ class Labelizer():
         except StopIteration:
             print("All flagged tiles have been cleaned.")
 
+    def _recolor_images(self):
+        img = self.image.astype('float32')
+        img[:,:,0] /= np.max(img[:,:,0])
+        img[:,:,1] /= np.max(img[:,:,1])
+        img[:,:,2] /= np.max(img[:,:,2])
+        return(img)
+
     def _display_image(self):
         """
         Displays image tile for a given vedaset object.
         """
-        img = self.image
-        try:
-            img = img/np.amax(img)
-        except TypeError:
-            img = img
+        if self.image.dtype == 'uint16':
+            img = self._recolor_images()
+        else:
+            img = self.image
         plt.figure(figsize = (10, 10))
         self.ax = plt.subplot()
         self.ax.axis("off")
@@ -232,7 +237,7 @@ class Labelizer():
                         self.ax.fill(x,y, color=face_color, alpha=0.4)
                         self.ax.plot(x,y, lw=3, color=face_color)
         else:
-            legend_colors = [(0.5,0.5,0.5)]
+            legend_colors = [(0.5,0.5,0.5,0)]
             cmap_name = 'segmentation_labels'
             for i, shp in enumerate(self.classes):
                 color = np.random.rand(3,)
@@ -313,8 +318,5 @@ class Labelizer():
                 self._display_classification(title=False)
             if self.mltype == 'segmentation':
                 self._display_segmentation(title=False)
-            plt.show()
-            self.index += 1
-            self.datapoint = self.vedaset[self.index]
-            self.image = self._create_images()
-            self.labels = self._create_labels()
+        plt.show()
+        self._get_next()
