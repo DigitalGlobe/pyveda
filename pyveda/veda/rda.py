@@ -29,13 +29,10 @@ class MLImage(RDAImage):
         rgb = rda.SmartBandSelect(dra, bandSelection="RGB")
         img = rda.Format(rgb, dataType=0)
         self = super(MLImage, cls).__new__(cls, img)
-        self.cat_id = cat_id
+        self.__dict__.update({'cat_id': cat_id, 'options': {}})
         return self
 
     @property
     def _rgb_bands(self):
         return [0,1,2]
 
-    @property
-    def options(self):
-        return {}
