@@ -75,26 +75,26 @@ class SizedMatched(SequenceTyped):
         super().__set__(instance, value)
 
 
-class UnityCheckedSum(SequenceTyped):
+class ProbabilityDistTyped(SequenceTyped):
     def __set__(self, instance, value):
         if sum(value) != 100:
             raise ValueError("Probability distribution must sum to 100")
         super().__set__(instance, value)
 
 
-class CallbackExecutor(BaseDescriptor):
+class PropCallbackExecutor(BaseDescriptor):
     # This class should be mixed in last
-    registry_target = "_prop_registry"
+    registry_target = "_prc"
 
     def __set__(self, instance, value):
         registry = getattr(instance, self.registry_target, None)
         if registery:
-            for cb in registery[self.name].callbacks:
+            for cb in registry[self.name].callbacks:
                 cb(instance, value)
         super().__set__(instance, value)
 
 
-class NumpyDataTyped(CallbackExecutor):
+class NumpyDataTyped(PropCallbackExecutor):
     __vname__ = "image_dtype"
     # Normal instance checking doesn't work here so Typed desc not usable
     def __set__(self, instance, value):
@@ -106,7 +106,7 @@ class NumpyDataTyped(CallbackExecutor):
         super().__set__(instance, d)
 
 
-class ImageShapedTyped(SizeMatched, CallbackExecutor):
+class ImageShapedTyped(SizeMatched, PropCallbackExecutor):
     __vname__ = "image_shape"
     allowed_sizes = [2, 3]
 
@@ -115,7 +115,7 @@ class ImageShapedTyped(SizeMatched, CallbackExecutor):
         super().__setitem__(instance, value)
 
 
-class MLtypeTyped(Typed, CallbackExecutor):
+class MLtypeTyped(Typed, PropCallbackExecutor):
     __vname__ = "mltype"
     expected_type = mltypes.mltype
 
@@ -125,16 +125,16 @@ class MLtypeTyped(Typed, CallbackExecutor):
         super().__set__(instance, value)
 
 
-class PartitionTyped(SizeMatched, UnityCheckedSum, CallbackExecutor):
+class PartitionedTyped(SizeMatched, ProbabilityDistTyped, PropCallbackExecutor):
     __vname__ = "partition"
     size = [3]
 
 
-class FeatureClassTyped(ListTyped, CallbackExecutor):
+class FeatureClassTyped(ListTyped, PropCallbackExecutor):
     __vname__ = "classes"
 
 
-class SampleSizeTyped(IntTyped, CallbackExecutor):
+class SampleCountTyped(IntTyped, PropCallbackExecutor):
     __vname__ = "count"
 
 
@@ -168,13 +168,13 @@ class CallbackRegister(object):
         return self._d.values()
 
 
-class RegisteryCatalog(object):
-    def __init__(self, factory=OrderedDict, register=CallbackRegister):
-        self._cat = defaultdict(factory)
-        self._reg = register
+class PropCallbackRegistery(object):
+    def __init__(self, factory=OrderedDict, register=CallbackRegister, factory=OrderedDict):
+        self._register = register
+        self._cbindex = defaultdict(factory)
 
     def __getattr__(self, key):
-        self.__dict__[key] = value = self._reg(self._cat[key])
+        self.__dict__[key] = value = self._register(self._cbindex[key])
         return value
 
 
