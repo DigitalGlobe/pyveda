@@ -10,7 +10,8 @@ except:
 class MLImageDriver(RDADaskImageDriver):
     __default_options__ = {
         "proj": "EPSG:4326",
-        "gsd": None
+        "gsd": None,
+        "pansharpen": False
         }
     image_option_support = ('proj', 'gsd')
 
@@ -18,14 +19,15 @@ class MLImageDriver(RDADaskImageDriver):
 class MLImage(RDABaseImage):
     __Driver__ = MLImageDriver
     ''' Standard image to use for RDA imagery
-        - pansharpened if possible
         - acomped
-        - RGB bands adjusted with Histogram DRA '''
+        - adjusted with Histogram DRA 
+        - 8 bit RGB
+        - pass `pansharped=True` for pansharp imagery '''
 
     @classmethod
-    def _build_graph(cls, cat_id, PANSHARPEN=False, **kwargs):
+    def _build_graph(cls, cat_id, pansharpen=False, **kwargs):
         assert has_gbdxtools, 'To use MLImage gbdxtools must be installed'
-        if 'PANSHARPEN': 
+        if 'pansharpen': 
             bands = "PANSHARP"
         else:
             bands = "MS"
