@@ -13,7 +13,7 @@ class MLImageDriver(RDADaskImageDriver):
         "gsd": None,
         "pansharpen": False
         }
-    image_option_support = ('proj', 'gsd')
+    image_option_support = ('proj', 'gsd', 'pansharpen')
 
 
 class MLImage(RDABaseImage):
