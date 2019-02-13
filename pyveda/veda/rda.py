@@ -27,7 +27,7 @@ class MLImage(RDABaseImage):
     @classmethod
     def _build_graph(cls, cat_id, pansharpen=False, **kwargs):
         assert has_gbdxtools, 'To use MLImage gbdxtools must be installed'
-        if 'pansharpen': 
+        if pansharpen: 
             bands = "PANSHARP"
         else:
             bands = "MS"
