@@ -93,7 +93,39 @@ class Model(object):
             return conn.post(self.links["deploy"]["href"], json={"id": self.id}).json()
         else:
             print('Model already deployed.')
+    
+    def predict(self, aoi, image, **kwargs):
+        ''' run prediction on an image within an aoi '''
+        assert self.deployed is not None, "Model no deployed, please call deploy() before running predictions"
+        # check aoi is legit
+        # check aoi is in image?
+        bounds = box(*aoi) #?
+        rda_node = image.rda.graph()['nodes'][0]['id']
+        meta = {
+            "name": self.name,
+            "description": kwargs.get("description", None),
+            "dtype": self.dtype, 
+            "imshape": self.shape,
+            "mlType": self.mlType,
+            "public": kwargs.get("public", False),
+            "partition": kwargs.get("partition", False),
+            "sensors": [],
+            "classes": [],
+            "bounds": bounds,
+        }
+        options = {
+        'graph': image.rda_id,
+        'node': rda_node,
+        }
 
+        payload = {
+            "id": self.id,
+            "aoi": aoi,
+            "options": options
+        }
+        return conn.post(self.links["predict"]["href"], json=payload).json()
+
+        
     def update(self, new_data, save=True):
         self.meta.update(new_data)
         if save:
