@@ -2,86 +2,26 @@ from abc import ABC, abstractmethod
 from pyveda.exceptions import MLTypeError
 
 
-class ABCDataVariable(ABC):
-
-    _vtyp = "ABCDataVariale"
-    pass
-
-
-class ABCDataSample(ABC):
-
-    _vtyp = "ABCDataSample"
-    pass
+class MetaDataSchema(type):
+    def __instancecheck__(cls, obj):
+        for dsc in cls._descriptors:
+            try:
+                v = cls.__getattribute__(obj)
+            except Exception:
+                return False
+        return True
 
 
-
-class ABCVariableIterator(ABC):
-    """Low level data access api to homogeneous sequences of data in PyVeda"""
-
-    @abstractmethod
-    def __len__(self):
-        pass
-
-    @abstractmethod
-    def __getitem__(self, item):
-        pass
-
-    @abstractmethod
-    def __iter__(self):
-        pass
+class BaseDataSchema(metaclass=MetaBaseSchema): pass
 
 
-class ABCSampleIterator(ABC):
-    """Pair-wise access patterns defined on a group of BaseVedaSequences"""
-
-    @abstractmethod
-    def __len__(self):
-        pass
-
-    @abstractmethod
-    def __getitem__(self, item):
-        pass
-
-    @abstractmethod
-    def __iter__(self, spec):
-        pass
-
-    @abstractmethod
-    def __next__(self):
-        pass
-
-    @property
-    @abstractmethod
-    def images(self):
-        pass
-
-    @property
-    @abstractmethod
-    def labels(self):
-        pass
-
-
-class ABCDataSet(ABC):
-    """Core representation of partitioned Machine-Learning datasets in PyVeda"""
-
-    @abstractmethod
-    def __len__(self):
-        pass
-
-    @property
-    @abstractmethod
-    def train(self):
-        pass
-
-    @property
-    @abstractmethod
-    def test(self):
-        pass
-
-    @property
-    @abstractmethod
-    def validate(self):
-        pass
+class DataSampleSchema(BaseDataSchema):
+    _descriptors = ["count",
+                    "mltype",
+                    "classes",
+                    "partition",
+                    "image_shape",
+                    "image_dtype"]
 
 
 class MetaMLtype(type):
@@ -95,11 +35,6 @@ class MetaMLtype(type):
                 return cls._match_from_string(C.mltype)
         return False
 
-    @classmethod
-    @abstractmethod
-    def _match_from_string(cls, strobj):
-        pass
-
     __instancecheck__ = __subclasscheck__
 
 
@@ -108,27 +43,27 @@ class MLtype(metaclass=MetaMLtype):
     def _match_from_string(cls, mlstr):
         if mlstr.lower() == cls.__name__.lower():
             return True
-        if mlstr.lower() == getattr(cls, "_mltype", "").lower():
+        if mlstr.lower() == getattr(cls, "name", "").lower():
             return True
         return False
 
 
-class ClassificationType(MLtype):
-    _mltype = "classification"
+class BinaryClassificationType(MLtype):
+    name = "classification"
 
 
-class SegmentationType(MLtype):
-    _mltype = "segmentation"
+class InstanceSegmentationType(MLtype):
+    name = "segmentation"
 
 
 class ObjectDetectionType(MLtype):
-    _mltype = "objdetection"
+    name = "obj_detection"
 
 
-_metatype_map = dict([(meta._mltype, meta) for meta in
-                      [ClassificationMLtype,
-                       SegmentationMLtype,
-                       ObjectDetectionMLtype]])
+_metatype_map = dict([(meta.name, meta) for meta in
+                      [BinaryClassificationType,
+                       InstanceSegmentationType,
+                       ObjectDetectionType]])
 
 class mltypes:
     """
@@ -138,12 +73,12 @@ class mltypes:
     metatype_map = _metatype_map
 
     @classmethod
-    def from_string(cls, s):
+    def from_string(cls, s, *args, **kwargs):
         typname = s.lower()
         try:
             metatype = cls.metatype_map[typname]
         except KeyError:
             raise MLTypeError("Cast error: unrecognized mltype string name '{}'".format(typname))
-        return metatype()
+        return metatype(*args, **kwargs)
 
 
