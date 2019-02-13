@@ -11,25 +11,25 @@ from skimage.io import imsave
 from PIL import Image
 import requests
 from tempfile import NamedTemporaryFile
+from shapely.geometry import box
 
-from pyveda.utils import features_to_pixels
+from pyveda.utils import features_to_pixels, url_to_array
 from pyveda.veda.props import prop_wrap, VEDAPROPS
 from pyveda.veda.loaders import from_geo, from_tarball
-from pyveda.auth import Auth
+from pyveda.config import VedaConfig
+
+from pyveda.vv.labelizer import Labelizer
+
+cfg = VedaConfig()
 
 VALID_MLTYPES = ['classification', 'object_detection', 'segmentation']
 VALID_MATCHTYPES = ['INSIDE', 'INTERSECT', 'ALL']
-
-HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
-gbdx = Auth()
-conn = gbdx.gbdx_connection
-
 
 
 class VedaUploadError(Exception):
     pass
 
-class BaseEndpointConstructor(object):
+class BaseEndpointConstructor(VedaConfig):
     """ Builds Veda API endpoints for Collection and Point access methods """
 
     _veda_load_furl = "{host_url}/data"
@@ -42,24 +42,13 @@ class BaseEndpointConstructor(object):
     _datapoint_search_furl = "{base_url}/datapoints?{qs}"
     _datapoint_fetch_furl = _datapoint_base_furl + "?{qs}"
 
-    def __init__(self, host):
-        self._host_ = host
-
-    @property
-    def _host(self):
-        return self._host_
-
-    @_host.setter
-    def _host(self, host):
-        self._host_ = host
-
     @property
     def _load_geo_url(self):
-        return self._veda_load_furl.format(host_url=self._host)
+        return self._veda_load_furl.format(host_url=self.host)
 
     @property
     def _load_tarball_url(self):
-        return self._veda_bulk_load_furl.format(host_url=self._host)
+        return self._veda_bulk_load_furl.format(host_url=self.host)
 
 
 
@@ -67,11 +56,11 @@ class BaseClient(BaseEndpointConstructor):
 
     @property
     def _data_url(self):
-        return self._veda_load_furl.format(host_url=self._host)
+        return self._veda_load_furl.format(host_url=self.host)
 
     @property
     def _base_url(self):
-        return self._dataset_base_furl.format(host_url=self._host,
+        return self._dataset_base_furl.format(host_url=self.host,
                                                dataset_id=self._dataset_id)
 
     def _querystring(self, params={}, enc_classes=True, **kwargs):
@@ -88,37 +77,25 @@ _bec = BaseEndpointConstructor
 class DataSampleClient(BaseClient):
     """ Veda API wrapper for remote DataSample-relevant methods """
     _accessors = ["update", "remove"]
-    def __init__(self, payload, host=HOST, conn=conn, **kwargs):
+    def __init__(self, payload, **kwargs):
         self.data = payload['properties']
         self.links = payload["properties"].get("links")
-        self._conn = conn
-        self._host = host
-        super(DataSampleClient, self).__init__(host=host)
         for k,v in self.data.items():
             setattr(self, k, v)
 
     @property
     def _url(self):
-        return self._datapoint_base_furl.format(host_url=self._host, datapoint_id=self.id)
+        return self._datapoint_base_furl.format(host_url=self.host, datapoint_id=self.id)
 
     @property
     def image(self):
-        return self._get_image(self.links['image']['href'])
+        url = self.links['image']['href']
+        return url_to_array(url, self.conn.access_token)
 
     @property
     def preview(self):
-        return self._get_image(self.links['thumbnail']['href'])
-
-    def _get_image(self, url):
-        """
-          gets an image, either a prview png or image chip tif
-
-          Args:
-            url (str): the url to the image to fetch
-          Returns: 
-            image (ndarray): the image response as an array
-        """
-        img = Image.open(self._conn.get(url, stream=True).raw)
+        url = self.links['thumbnail']['href']
+        img = Image.open(self.conn.get(url, stream=True).raw)
         return np.array(img)
 
     def _map_data_props(self):
@@ -134,34 +111,34 @@ class DataSampleClient(BaseClient):
         """
         self.data.update(new_data)
         self._map_data_props()
-        r = self._conn.put(self._url, json=new_data)
+        r = self.conn.put(self._url, json=new_data)
         r.raise_for_status()
         return r.json()
-        
+
     def remove(self):
         """
           Removes the sample from Veda
         """
-        r = self._conn.delete(self._url)
+        r = self.conn.delete(self._url)
         r.raise_for_status()
-        return None
 
     def __repr__(self):
         data = self.data.copy()
         del data['links']
         return str(data)
 
+    @property
+    def __geo_interface__(self):
+        return box(*self.bounds).__geo_interface__
+
+
 
 class DataCollectionClient(BaseClient):
     """ Veda API wrapper for remote DataCollection-relevant methods """
 
-    def __init__(self, host, conn):
-        super(DataCollectionClient, self).__init__(host)
-        self.conn = conn
-
     @property
     def _create_url(self):
-        return self._dataset_create_furl.format(host_url=self._host, dataset_id=self.id)
+        return self._dataset_create_furl.format(host_url=self.host, dataset_id=self.id)
 
     @property
     def _update_url(self):
@@ -173,7 +150,8 @@ class DataCollectionClient(BaseClient):
 
     @property
     def _release_url(self):
-        return self._base_url
+        return self._dataset_release_furl.format(host_url=self.host,
+                                                 dataset_id=self.id)
 
     @property
     def _remove_url(self):
@@ -187,12 +165,28 @@ class DataCollectionClient(BaseClient):
     def update(self, data):
         r = self.conn.put(self._update_url, json=data)
         r.raise_for_status()
+        self.refresh()
         return r.json()
 
     def release(self, version):
         r = self.conn.post(self._release_url, json={"version": version})
         r.raise_for_status()
-        return r.json()
+        doc = r.json()
+        return doc['properties']['releases'][version]
+
+    def download_release(self, version, path=None):
+        self.refresh()
+        assert version in self.releases, 'Release version not found'
+        assert self.releases[version]['status'] == 'complete', 'You can only download completed releases.'
+        path = path if path is not None else './{}-{}.tar.gz'.format(self.id, version)
+        try:
+            os.makedirs(os.path.dirname(path))
+        except Exception as err:
+            pass
+        r = self.conn.get(os.path.join(self._release_url, version))
+        with open(path, 'wb') as fh:
+            fh.write(r.content)
+        return path
 
     def publish(self):
         r = self.conn.put(self._publish_url, json={"public": True})
@@ -206,12 +200,18 @@ class DataCollectionClient(BaseClient):
         r = self.conn.delete(self._remove_url)
         r.raise_for_status()
 
+    def refresh(self):
+        r = self.conn.get(self._base_url)
+        r.raise_for_status()
+        meta = {k: v for k, v in r.json()['properties'].items() if k in self._metaprops}
+        self._meta.update(meta)
+
     @classmethod
-    def _from_links(cls, links, conn=None):
+    def _from_links(cls, links):
         parts = urlparse(links["self"]["href"])
         host = "{}://{}".format(parts.scheme, parts.netloc)
         dataset_id = parts.path.split("/")[-1] # Use re.match
-        return cls(host, dataset_id, conn=conn)
+        return cls(dataset_id)
 
 
 _VedaCollectionProxy = prop_wrap(DataCollectionClient, VEDAPROPS)
@@ -221,11 +221,10 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     _metaprops = VEDAPROPS
     _data_sample_client = DataSampleClient
 
-    def __init__(self, dataset_id, host=HOST, conn=conn, **kwargs):
+    def __init__(self, dataset_id, **kwargs):
         self._meta = {k: v for k, v in kwargs.items() if k in self._metaprops}
         self.id = dataset_id
         self._dataset_id = dataset_id
-        super(VedaCollectionProxy, self).__init__(host, conn)
 
     @property
     def id(self):
@@ -270,29 +269,25 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         qs = self._querystring(offset=idx, limit=num_points, includeLinks=include_links)
         resp = self.conn.get(self._datapoint_search_furl.format(base_url=self._base_url, qs=qs))
         resp.raise_for_status()
-        dps = [self._to_dp(p, **kwargs) for p in resp.json()]
+        dps = [self._to_dp(p, dtype=self.dtype, **kwargs) for p in resp.json()]
+        if len(dps) == 1:
+            return dps[0]
         return dps
 
     def fetch_sample_from_id(self, dp_id, include_links=True, **kwargs):
         """ Fetch a point for a given ID """
         qs = self._querystring(includeLinks=include_links)
-        resp = self.conn.get(self._datapoint_fetch_furl.format(host_url=self._host, 
-                                                        datapoint_id=dp_id, 
+        resp = self.conn.get(self._datapoint_fetch_furl.format(host_url=self.host,
+                                                        datapoint_id=dp_id,
                                                         qs=qs))
         resp.raise_for_status()
-        return self._to_dp(resp.json(), **kwargs)
+        return self._to_dp(resp.json(), dtype=self.dtype, **kwargs)
 
     def fetch_samples_from_ids(self, dp_ids=[], **kwargs):
         return [self.fetch_sample_from_id(dp_id) for dp_id in dp_ids]
-    
-    def fetch_sample_from_index(self, idx, **kwargs):
-        return self.fetch_dps_from_slice(idx, **kwargs).pop()
 
-    def refresh(self):
-        r = self.conn.get(self._base_url)
-        r.raise_for_status()
-        meta = {k: v for k, v in r.json()['properties'].items() if k in self._metaprops}
-        self._meta.update(meta)
+    def fetch_sample_from_index(self, idx, **kwargs):
+        return self.fetch_samples_from_slice(idx, **kwargs)
 
     def gen_sample_ids(self, count=None, page_size=100, get_urls=True, **kwargs):
         """ Creates a generator of Datapoint IDs or URLs for every datapoint in the VedaCollection
@@ -327,13 +322,13 @@ class VedaCollectionProxy(_VedaCollectionProxy):
 
     def _sample_urls_from_id(self, _id):
         qs = self._querystring(includeLinks=False)
-        label_url = "{}/datapoints/{}?{}".format(self._host, _id, qs)
-        image_url = "{}/datapoints/{}/image.tif".format(self._host, _id)
+        label_url = "{}/datapoints/{}?{}".format(self.host, _id, qs)
+        image_url = "{}/datapoints/{}/image.tif".format(self.host, _id)
         #return (_id, [label_url, image_url])
         return (label_url, image_url)
 
     def append_from_geojson(self, geojson, image, **kwargs):
-        """ 
+        """
           Appends new samples to the collection from an image and geojson features.
         """
         if image.dtype is not self.dtype:
@@ -341,12 +336,11 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         image = np.squeeze(image)
         if self.status == "BUILDING":
             raise VedaUploadError("Cannot load while server-side caching active")
-        params = dict(self.meta, url=self._base_url, conn=self.conn, sensors=self.sensors, **kwargs)
+        params = dict(self.meta, sensors=self.sensors, **kwargs)
         doc = from_geo(geojson, image, **params)
-        return self
 
     def append_from_tarball(self, s3path, **kwargs):
-        """ 
+        """
           Appends new samples to the collection from an image and geojson features.
         """
         from_tarball(s3path, self.meta, conn=self.conn,
@@ -355,7 +349,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def add_sample(self, image, label):
         """
           Adds a sample (image/label pair) to the collection
-        
+
           Args:
             image (rda image): The image to use as the sample image. Must match existing dtype and shapes
             label (dict): Depending on the mltype of the collection is either a dict of ints or a dict of arrays (geojson geometries)
@@ -370,7 +364,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
 
         with NamedTemporaryFile(prefix="veda", suffix='.tif', delete=True) as temp:
             imsave(temp.name, image.read())
-            mfile = mmap.mmap(temp.fileno(), 0, access=mmap.ACCESS_READ) 
+            mfile = mmap.mmap(temp.fileno(), 0, access=mmap.ACCESS_READ)
             meta = {
                 "bounds": image.bounds,
                 "label": label,
@@ -398,9 +392,9 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         return cls(**doc['properties'])
 
     @classmethod
-    def from_id(cls, _id, host=HOST):
+    def from_id(cls, _id):
         """ Helper method that fetches an id into a VedaCollection """
-        r = conn.get("{}/data/{}".format(host, _id))
+        r = cfg.conn.get("{}/data/{}".format(cls.host, _id))
         r.raise_for_status()
         doc = r.json()
         doc['properties']['host'] = host
@@ -430,4 +424,63 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         return self.fetch_samples_from_slice(start, num_points=limit)
 
 
+    def __repr__(self):
+        desc = 'VedaCollectionProxy of {} ({})'.format(
+            self.name,
+            self.id
+        )
+        return desc
 
+    def __str__(self):
+        desc = '{} ({})\n'.format(
+            self.name,
+            self.id
+        )
+        desc +='\t- Bounds: {}\n'.format(
+            self.bounds,
+        )
+        desc +='\t- Count: {} samples, {}% cached\n'.format(
+            self.count,
+            self.percent_cached
+        )
+        desc += '\t- Chips: {}x{}, {} bands {}\n'.format(
+            self.imshape[1],
+            self.imshape[2],
+            self.imshape[0],
+            self.dtype
+        )
+        plural = 'es'
+        if len(self.classes) == 1:
+            plural = ''
+        desc += '\t- Labels: {} type, {} class{}'.format(
+            self.mltype.replace('_',' '),
+            len(self.classes),
+            plural
+        )
+        desc += '\n'
+        return desc
+
+
+    @property
+    def __geo_interface__(self):
+        return box(*self.bounds).__geo_interface__
+
+    def clean(self, count=None):
+        """
+        Page through VedaCollection data and flag bad data.
+        Params:
+            count: the number of tiles to clean
+        """
+        classes = self.classes
+        mltype = self.mltype
+        Labelizer(self, mltype, count, classes).clean()
+
+    def preview(self, count=None):
+        """
+        Page through VedaCollection data and flag bad data.
+        Params:
+            count: the number of tiles to clean
+        """
+        classes = self.classes
+        mltype = self.mltype
+        Labelizer(self, mltype, count, classes).preview()

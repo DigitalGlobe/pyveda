@@ -1,34 +1,35 @@
 Getting started
 ===============
 
-Getting access to GBDX
+**Veda is a library of object knowledge for machine learning**.
+
+Veda stores organized collections of images and their labels. It is integrated with the GBDX library of imagery and can access almost 20 petabytes of satellite images to use for generating image chips. Data sets and models can be published and shared with others.
+
+**Veda is spatially aware.**
+
+Veda "speaks" geojson and can convert spatial data into machine learning data and back. Use spatially-targeted training sets to develop location-specific models.
+
+**Pyveda is the bridge between Veda and machine learning platforms**
+
+Pyveda is a Python access library that lets you generate and manage machine learning data. When you're ready to train or test your model with that data, pyveda supplies the data to your algorithms in efficient formats that are ready to analyze. When your model is trained, you can also use pyveda to upload the model to Veda.
+
+**Veda does not train or run models - your choice of library and platform is up to you.**
+
+Getting access to Veda
 -----------------------
 
-All operations on GBDX require credentials. You can sign up for a GBDX account at https://gbdx.geobigdata.io.
+Access to Veda requires GBDX credentials. You can sign up for a GBDX account at https://gbdx.geobigdata.io.
+
 Your GBDX credentials are found under your account profile.
 
-All auth is performed via gbdxtools' auth tools and gbdxtools expects a config file to exist at ~/.gbdx-config with your credentials.
+PyVeda's authorization tools expect a config file to exist at ~/.gbdx-config with your credentials.
 (See formatting for this file here:  https://github.com/tdg-platform/gbdx-auth#ini-file.)
-
-Instantiating an Interface object automatically logs you in:
-
-.. code-block:: pycon
-
-   >>> from gbdxtools import Interface
-   >>> gbdx = Interface()
 
 For questions or troubleshooting email GBDX-Support@digitalglobe.com.
 
-Overall Concepts 
----------------------------
+Installing pyveda
+-------------------
 
-Veda is designed to store training data and models related to Machine Learning from satellite imagery. 
-The general concept is to use Veda to either find/search for existing training datasets or 
-be used to create new training datasets. These training sets consist of image/label pairs for that are stored
-inside veda and made available via its API. Additionally Veda supports the same pattern for save/fetching trained models.  
+.. code-block:: python
 
-The goal is to provide a ML system for making access to training data and models as easy as possible. Additionally its goals are 
-to provide ways for users to enhance models and training data through model iteration (verification & validation of model results).
-
-Veda does NOT support training your models. It provides storage, discovery and access.  
-
+    pip install pyveda

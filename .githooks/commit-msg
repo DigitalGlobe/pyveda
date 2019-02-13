@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# Add git branch if relevant
+parse_git_branch() {
+  git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/'
+}
+
+# Extract tracker abbreviation and ticket number (e.g. DS-123)
+parse_git_tracker_and_ticket() {
+  parse_git_branch | grep -e '[A-Z]\+-[0-9]\+' -o
+}
+
+if [ -d ./.git ]; then
+  MSGPATH=./.git
+else
+  MSGPATH=`cat ./.git | awk '{print $2}'`
+fi
+
+MESSAGE="$(cat $MSGPATH/COMMIT_EDITMSG)"
+TICKET=`parse_git_tracker_and_ticket`
+
+if [ -n "$TICKET" ]
+then
+   echo "New commit message: $TICKET $MESSAGE"
+   echo "$TICKET $MESSAGE" > $MSGPATH/COMMIT_EDITMSG
+else
+  # regex to validate in commit msg
+  commit_regex='([A-Z]{2,5}-[0-9]+|merge|FIX)'
+  error_msg="Aborting commit. Your commit message is missing either a JIRA Issue ('MLT-123') or 'Merge' or FIX"
+
+  if ! grep -iqE "$commit_regex" "$MSGPATH/COMMIT_EDITMSG"; then
+      echo "$error_msg" >&2
+      exit 1
+  fi
+fi
+
