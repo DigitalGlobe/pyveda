@@ -104,7 +104,7 @@ class BufferedSampleArray(BaseSampleArray):
                 batch.append(self.__next__())
             yield batch
 
-    def batch_generator(self, batch_size, shuffle=True, channels_last=False, rescale=False, flip_horizontal=False, flip_vertical=False, **kwargs):
+    def batch_generator(self, batch_size, shuffle=True, channels_last=False, expand_dims=False, rescale=False, flip_horizontal=False, flip_vertical=False, **kwargs):
         """
         Generatates Batch of Images/Lables on a VedaStream partition.
         #Arguments
@@ -116,7 +116,7 @@ class BufferedSampleArray(BaseSampleArray):
             flip_vertical: Boolean. Vertically flip image and lables
         """
         return VedaStreamGenerator(self, batch_size=batch_size, shuffle=shuffle,
-                                channels_last=channels_last, rescale=rescale,
+                                channels_last=channels_last, expand_dims = expand_dims,rescale=rescale,
                                 flip_horizontal=flip_horizontal, flip_vertical=flip_vertical, **kwargs)
 
     @property

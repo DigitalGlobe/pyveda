@@ -17,13 +17,14 @@ class BaseGenerator():
     flip_vertical: boolean. Vertically flip image and lables
     '''
 
-    def __init__(self, cache, batch_size=32, shuffle=True, channels_last=False, rescale=False,
+    def __init__(self, cache, batch_size=32, shuffle=True, channels_last=False, expand_dims=False rescale=False,
                     flip_horizontal=False, flip_vertical=False):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
         self.shuffle = shuffle
         self.channels_last = channels_last
+        self.expand_dims = expand_dims
         self.rescale = rescale
         self.on_epoch_end()
         self.flip_h = flip_horizontal
@@ -156,6 +157,9 @@ class VedaStoreGenerator(BaseGenerator):
             if self.channels_last:
                 x_img = x_img.T
             x[i, ] = x_img
+
+            if self.expand_dims:
+                y_img = np.expand_dims(y_img, 2)
             y.append(y_img)
 
         #rescale after entire bactch is collected
@@ -194,6 +198,9 @@ class VedaStreamGenerator(BaseGenerator):
             if self.channels_last:
                 x_img = x_img.T
             x[len(y), ] = x_img
+
+            if self.expand_dims:
+                y_img = np.expand_dims(y_img, 2)
             y.append(y_img)
 
         if self.rescale:
