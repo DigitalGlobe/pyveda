@@ -38,6 +38,9 @@ When ready to make changes to pyveda, do the following:
    directory. All code outside that pyveda submodule is part of Veda source
    control.
 
+1. Note that if you're working in a notebook where you've imported pyveda you
+   may need to restart the notebook kernel in order to see your pyveda changes.
+
 ### Branches
 
 Our standard branching flow goes like this:
