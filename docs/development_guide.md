@@ -18,6 +18,27 @@ with the team and app.
 
 ## Git Workflows
 
+### Working on [pyveda](https://github.com/DigitalGlobe/pyveda/) inside
+[Veda](https://github.com/DigitalGlobe/veda/)
+
+pyveda should've been checked out as a submodule
+in Veda when you went through the set-up process.
+
+When ready to make changes to pyveda, do the following:
+
+1. Navigate to the pyveda directory inside the Veda repo.
+
+1. Checkout or create the branch you want to work on. Note that as long as
+   you're in the pyveda directory, you'll be working on/with only pyveda
+   branches, separate from whatever branch you're on in Veda.
+
+1. Make whatever changes to pyveda code, commit them, and push them up if
+   ready.
+
+1. When/if you want to work on Veda code, just `cd` out of the pyveda root
+   directory. All code outside that pyveda submodule is part of Veda source
+   control.
+
 ### Branches
 
 Our standard branching flow goes like this:
