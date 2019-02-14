@@ -318,5 +318,5 @@ class Labelizer():
                 self._display_classification(title=False)
             if self.mltype == 'segmentation':
                 self._display_segmentation(title=False)
-        plt.show()
-        self._get_next()
+            plt.show()
+            self._get_next()
