@@ -17,7 +17,7 @@ class BaseGenerator():
     flip_vertical: boolean. Vertically flip image and lables
     '''
 
-    def __init__(self, cache, batch_size=32, shuffle=True, channels_last=False, expand_dims=False rescale=False,
+    def __init__(self, cache, batch_size=32, shuffle=True, channels_last=False, expand_dims=False, rescale=False,
                     flip_horizontal=False, flip_vertical=False):
         self.cache = cache
         self.batch_size = batch_size
