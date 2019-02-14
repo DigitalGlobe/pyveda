@@ -18,8 +18,7 @@ with the team and app.
 
 ## Git Workflows
 
-### Working on [pyveda](https://github.com/DigitalGlobe/pyveda/) inside
-[Veda](https://github.com/DigitalGlobe/veda/)
+### Working on [pyveda](https://github.com/DigitalGlobe/pyveda/) inside [Veda](https://github.com/DigitalGlobe/veda/)
 
 pyveda should've been checked out as a submodule
 in Veda when you went through the set-up process.
