@@ -1,6 +1,7 @@
 import aiohttp
 import collections
 
+
 class BatchFetchTracer(object):
     def __init__(self, cache=None):
         if not cache:
@@ -39,14 +40,18 @@ class BatchFetchTracer(object):
 
     def _configure_tracer(self):
         trace_config = aiohttp.TraceConfig()
-        trace_config.on_dns_resolvehost_start.append(self.on_dns_resolvehost_start)
+        trace_config.on_dns_resolvehost_start.append(
+            self.on_dns_resolvehost_start)
         trace_config.on_dns_resolvehost_end.append(self.on_dns_resolvehost_end)
         trace_config.on_request_start.append(self.on_request_start)
         trace_config.on_request_end.append(self.on_request_end)
         trace_config.on_request_exception.append(self.on_request_exception)
-        trace_config.on_connection_queued_start.append(self.on_connection_queued_start)
-        trace_config.on_connection_queued_end.append(self.on_connection_queued_end)
-        trace_config.on_connection_create_start.append(self.on_connection_create_start)
-        trace_config.on_connection_create_end.append(self.on_connection_create_end)
+        trace_config.on_connection_queued_start.append(
+            self.on_connection_queued_start)
+        trace_config.on_connection_queued_end.append(
+            self.on_connection_queued_end)
+        trace_config.on_connection_create_start.append(
+            self.on_connection_create_start)
+        trace_config.on_connection_create_end.append(
+            self.on_connection_create_end)
         return trace_config
-

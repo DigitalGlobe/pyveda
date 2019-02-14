@@ -25,24 +25,27 @@ def url_to_array(url, token):
     _curl.setopt(pycurl.NOSIGNAL, 1)
     _curl.setopt(pycurl.HTTPHEADER, ['Authorization: Bearer {}'.format(token)])
     with NamedTemporaryFile(prefix="veda", suffix=".tif", delete=False) as temp:
-      try:
-          _curl.setopt(_curl.WRITEDATA, temp.file)
-          _curl.perform()
-          code = _curl.getinfo(pycurl.HTTP_CODE)
-          if code != 200:
-             raise TypeError("Request for {} returned unexpected error code: {}".format(url, code))
-          temp.file.flush()
-          temp.close()
-          _curl.close()
-          return imread(temp.name)
-      except Exception as err:
-          print('Error fetching image...', err)
+        try:
+            _curl.setopt(_curl.WRITEDATA, temp.file)
+            _curl.perform()
+            code = _curl.getinfo(pycurl.HTTP_CODE)
+            if code != 200:
+                raise TypeError(
+                    "Request for {} returned unexpected error code: {}".format(
+                        url, code))
+            temp.file.flush()
+            temp.close()
+            _curl.close()
+            return imread(temp.name)
+        except Exception as err:
+            print('Error fetching image...', err)
 
 
 def check_unexpected_kwargs(kwargs, **unexpected):
     for key, message in unexpected.items():
         if key in kwargs:
             raise ValueError(message)
+
 
 def parse_kwargs(kwargs, *name_and_values, **unexpected):
     values = [kwargs.pop(name, default_value)
@@ -56,12 +59,15 @@ def parse_kwargs(kwargs, *name_and_values, **unexpected):
         raise TypeError(message)
     return tuple(values)
 
+
 def assert_kwargs_empty(kwargs):
     # It only checks if kwargs is empty.
     parse_kwargs(kwargs)
 
+
 def transform_to_int(tfm, x, y):
     return tuple(map(int, tfm * (x, y)))
+
 
 def from_bounds(west, south, east, north, width, height):
     """Return an Affine transformation given bounds, width and height.
@@ -75,13 +81,14 @@ def from_bounds(west, south, east, north, width, height):
     return Affine.translation(west, north) * Affine.scale(
         (east - west) / width, (south - north) / height)
 
+
 def features_to_pixels(image, features, mltype):
     """
       Converts geometries to pixels coords for object detection and segmentation
       Each feature is converted using the bounds of the givein image.
 
       Args:
-          image (rda image): The rda image to use for pixel transformations 
+          image (rda image): The rda image to use for pixel transformations
           features (list): a list of geojson feature geometries
           mytype (str): the mltype of data that should be returned
     """
@@ -95,19 +102,22 @@ def features_to_pixels(image, features, mltype):
         for f in features:
             if mltype == 'object_detection':
                 geom = box(*shape(f).bounds).intersection(shape(image))
-                converted.append(list(map(int, ops.transform(xfm, geom).bounds)))
+                converted.append(
+                    list(map(int, ops.transform(xfm, geom).bounds)))
             elif mltype == 'segmentation':
                 geom = shape(f).intersection(shape(image))
                 converted.append(mapping(ops.transform(xfm, geom)))
         return converted
 
+
 def mklogfilename(prefix, suffix="json", path=None):
     timestamp = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
-    basename = "_".join([prefix, timestamp]) # e.g. 'mylogfile_120508_171442'
+    basename = "_".join([prefix, timestamp])  # e.g. 'mylogfile_120508_171442'
     filename = ".".join([basename, suffix])
     if path:
         filename = os.path.join(path, filename)
     return filename
+
 
 def mktempfilename(prefix, suffix="h5", path=None):
     idstr = str(uuid.uuid4())
@@ -117,6 +127,7 @@ def mktempfilename(prefix, suffix="h5", path=None):
         filename = os.path.join(path, filename)
     return filename
 
+
 def write_trace_profile(fname, nreqs, trace_cache):
     basepath, inputfile = os.path.split(fname)
     basename = "_".join([inputfile.split(".")[0], "n{}".format(nreqs)])
@@ -124,6 +135,7 @@ def write_trace_profile(fname, nreqs, trace_cache):
     with open(filename, "w") as f:
         json.dump(trace_cache, f)
     return filename
+
 
 class NamedTemporaryHDF5File(object):
     def __init__(self, prefix="veda", suffix="h5", path=None, delete=True):
@@ -147,6 +159,7 @@ class NamedTemporaryHDF5File(object):
             os.remove(self.name)
         except Exception:
             pass
+
 
 class NamedTemporaryHDF5Generator(object):
     def __init__(self, dirpath=None, delete=True, delete_files=True):
@@ -174,17 +187,19 @@ class NamedTemporaryHDF5Generator(object):
 
     def mktemp(self, prefix="veda", suffix="h5", delete=True):
         h5 = NamedTemporaryHDF5File(prefix=prefix, suffix=suffix,
-                                                path=self.dirpath, delete=delete)
+                                    path=self.dirpath, delete=delete)
         self._fps.append(h5)
         return h5._fh, h5.name
 
     def mktempfilename(self, prefix="veda", suffix="h5"):
         return mktempfilename(prefix, suffix=suffix, path=self.dirpath)
 
+
 def _atom_from_dtype(_type):
     if isinstance(_type, np.dtype):
         return tables.Atom.from_dtype(_type)
     return tables.Atom.from_dtype(np.dtype(_type))
+
 
 def ignore_warnings(fn, _warning=None):
     def wrapper(*args, **kwargs):
@@ -195,6 +210,7 @@ def ignore_warnings(fn, _warning=None):
                 warnings.simplefilter("ignore", _warning)
             return fn(*args, **kwargs)
     return wrapper
+
 
 def in_ipython_runtime_env():
     try:
@@ -219,5 +235,3 @@ class StoppableThread(threading.Thread):
 
     def stopped(self):
         return self._stopper.is_set()
-
-

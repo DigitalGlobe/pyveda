@@ -1,23 +1,26 @@
 import os
 import json
 
+
 class Release():
-    ''' Access to file-based Releases ''' 
+    ''' Access to file-based Releases '''
+
     def init(self, source):
         self.source = source
         images = os.path.join(self.source, 'images')
         labels = os.path.join(self.source, 'labels')
         meta = os.path.join(self.source, 'meta.json')
         bounds = os.path.join(self.source, 'bounds.json')
-        if not (os.path.exists(images) or os.path.exists(labels) or os.path.exists(meta)):
+        if not (os.path.exists(images) or os.path.exists(
+                labels) or os.path.exists(meta)):
             raise ValueError('{} is not a valid release'.format(self.source))
         with open(meta, 'r') as meta_file:
             self.meta = json.load(meta_file)
-        try: 
+        try:
             with open(bounds, 'r') as bounds_file:
                 self.bounds = json.load(bounds_file)
                 self.__geo_interface__ = self.bounds
-        except:
+        except BaseException:
             # the release stores ungeoreferenced imagery
             self.bounds = None
 

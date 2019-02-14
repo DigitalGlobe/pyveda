@@ -1,8 +1,8 @@
 classification_item = {
     'properties': {
         'label': {
-            'house':1, 'car':1, 'boat':0
-            }
+            'house': 1, 'car': 1, 'boat': 0
+        }
     }
 }
 

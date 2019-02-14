@@ -32,14 +32,16 @@ except ImportError:
 
 log_fh = ".{}.log".format(__name__)
 logger = logging.getLogger(__name__)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger.setLevel(logging.DEBUG)
 handler = logging.handlers.RotatingFileHandler(
-            log_fh, mode="w", maxBytes=10485760, backupCount=1)
+    log_fh, mode="w", maxBytes=10485760, backupCount=1)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 cfg = VedaConfig()
+
 
 class ThreadedAsyncioRunner(object):
     def __init__(self, run_method, call_method, loop=None):
@@ -47,7 +49,9 @@ class ThreadedAsyncioRunner(object):
             loop = asyncio.new_event_loop()
         self._loop = loop
         self._method = call_method
-        self._thread = threading.Thread(target=functools.partial(run_method, loop=loop))
+        self._thread = threading.Thread(
+            target=functools.partial(
+                run_method, loop=loop))
         self._thread.start()
 
     def __enter__(self):
@@ -59,21 +63,38 @@ class ThreadedAsyncioRunner(object):
         self._loop.close()
 
     def __call__(self, *args, **kwargs):
-        f = asyncio.run_coroutine_threadsafe(self._method(*args, **kwargs), self._loop)
+        f = asyncio.run_coroutine_threadsafe(
+            self._method(*args, **kwargs), self._loop)
         return f.result()
 
 
 class BaseVedaSetFetcher(BatchFetchTracer):
-    def __init__(self, total_count=0, session=None, token=None, max_retries=5, timeout=20,
-                 session_limit=30, max_concurrent_requests=200, max_memarrays=100,  connector=aiohttp.TCPConnector,
-                 lbl_payload_handler=lambda x: x, img_payload_handler=lambda x: x, write_fn=lambda x: x,
-                 img_batch_transform=lambda x: x, lbl_batch_transform=lambda x: x,
-                 num_lbl_payload_threads=1, num_img_payload_threads=10, num_write_workers=1, num_write_threads=1,
-                 lbl_payload_executor=concurrent.futures.ThreadPoolExecutor,
-                 img_payload_executor=concurrent.futures.ThreadPoolExecutor,
-                 write_executor=concurrent.futures.ThreadPoolExecutor,
-                 run_tracer=False, *args, **kwargs):
-
+    def __init__(
+            self,
+            total_count=0,
+            session=None,
+            token=None,
+            max_retries=5,
+            timeout=20,
+            session_limit=30,
+            max_concurrent_requests=200,
+            max_memarrays=100,
+            connector=aiohttp.TCPConnector,
+            lbl_payload_handler=lambda x: x,
+            img_payload_handler=lambda x: x,
+            write_fn=lambda x: x,
+            img_batch_transform=lambda x: x,
+            lbl_batch_transform=lambda x: x,
+            num_lbl_payload_threads=1,
+            num_img_payload_threads=10,
+            num_write_workers=1,
+            num_write_threads=1,
+            lbl_payload_executor=concurrent.futures.ThreadPoolExecutor,
+            img_payload_executor=concurrent.futures.ThreadPoolExecutor,
+            write_executor=concurrent.futures.ThreadPoolExecutor,
+            run_tracer=False,
+            *args,
+            **kwargs):
 
         self.max_concurrent_reqs = min(total_count, max_concurrent_requests)
         self.max_retries = max_retries
@@ -95,18 +116,23 @@ class BaseVedaSetFetcher(BatchFetchTracer):
         self._img_batch_transform = img_batch_transform
         self._n_lbl_payload_threads = num_lbl_payload_threads
         self._n_img_payload_threads = num_img_payload_threads
-        self._lbl_payload_executor = lbl_payload_executor(max_workers=num_lbl_payload_threads)
-        self._img_payload_executor = img_payload_executor(max_workers=num_img_payload_threads)
+        self._lbl_payload_executor = lbl_payload_executor(
+            max_workers=num_lbl_payload_threads)
+        self._img_payload_executor = img_payload_executor(
+            max_workers=num_img_payload_threads)
         self._n_write_workers = num_write_workers
         self._n_write_threads = num_write_threads
         self._write_executor = write_executor(max_workers=num_write_threads)
 
-        self.lbl_payload_handler = functools.partial(self._payload_handler,
-                                                     executor=self._lbl_payload_executor,
-                                                     fn=lbl_payload_handler)
-        self.img_payload_handler = functools.partial(self._payload_handler,
-                                                     executor=self._img_payload_executor,
-                                                     fn=img_payload_handler)
+        self.lbl_payload_handler = functools.partial(
+            self._payload_handler,
+            executor=self._lbl_payload_executor,
+            fn=lbl_payload_handler)
+        self.img_payload_handler = functools.partial(
+            self._payload_handler,
+            executor=self._img_payload_executor,
+            fn=img_payload_handler)
+
     @property
     def headers(self):
         if not self._token:
@@ -154,14 +180,19 @@ class BaseVedaSetFetcher(BatchFetchTracer):
             logger.info("BATCH FETCH COMPLETE")
             return results
 
-
     async def consume_reqs(self):
         while True:
             try:
                 label_url, image_url = await self._qreq.get()
-                flbl = asyncio.ensure_future(self.fetch_with_retries(label_url, callback=self.lbl_payload_handler))
-                fimg = asyncio.ensure_future(self.fetch_with_retries(image_url, json=False, callback=self.img_payload_handler))
-                label, image = await asyncio.gather(flbl,fimg)
+                flbl = asyncio.ensure_future(
+                    self.fetch_with_retries(
+                        label_url, callback=self.lbl_payload_handler))
+                fimg = asyncio.ensure_future(
+                    self.fetch_with_retries(
+                        image_url,
+                        json=False,
+                        callback=self.img_payload_handler))
+                label, image = await asyncio.gather(flbl, fimg)
                 await self._qwrite.put([label, image])
             except CancelledError:
                 break
@@ -173,8 +204,16 @@ class BaseVedaSetFetcher(BatchFetchTracer):
         self._qreq = asyncio.Queue(maxsize=self.max_concurrent_reqs, loop=loop)
         self._qwrite = asyncio.Queue(loop=loop)
         self._write_lock = asyncio.Lock(loop=loop)
-        self._consumers = [asyncio.ensure_future(self.consume_reqs(), loop=loop) for _ in range(self.max_concurrent_reqs)]
-        self._writers = [asyncio.ensure_future(self.write_stack(), loop=loop) for _ in range(self._n_write_workers)]
+        self._consumers = [
+            asyncio.ensure_future(
+                self.consume_reqs(),
+                loop=loop) for _ in range(
+                self.max_concurrent_reqs)]
+        self._writers = [
+            asyncio.ensure_future(
+                self.write_stack(),
+                loop=loop) for _ in range(
+                self._n_write_workers)]
 
     async def kill_workers(self):
         await self._qwrite.join()
@@ -219,21 +258,28 @@ class VedaBaseFetcher(BaseVedaSetFetcher):
                 labels.append(label)
                 images.append(image)
                 if len(images) == self.max_memarrs:
-                    data = [self._img_batch_transform(images), self._lbl_batch_transform(labels)]
+                    data = [
+                        self._img_batch_transform(images),
+                        self._lbl_batch_transform(labels)]
                     async with self._write_lock:
                         try:
                             await self.loop.run_in_executor(self._write_executor, self.write_fn, data)
-                            logger.info("SUCCESS WRITE {} DATAPOINTS".format(len(images)))
+                            logger.info(
+                                "SUCCESS WRITE {} DATAPOINTS".format(
+                                    len(images)))
                         except Exception as e:
-                            logger.info("Exception is WRITE_STACK: {}".format(e))
+                            logger.info(
+                                "Exception is WRITE_STACK: {}".format(e))
                     labels, images = [], []
                 self._qreq.task_done()
                 self._qwrite.task_done()
                 if self._pbar:
                     self._pbar.update(1)
-            except CancelledError: # write out anything remaining
+            except CancelledError:  # write out anything remaining
                 if images:
-                    data = [self._img_batch_transform(images), self._lbl_batch_transform(labels)]
+                    data = [
+                        self._img_batch_transform(images),
+                        self._lbl_batch_transform(labels)]
                     async with self._write_lock:
                         await self.loop.run_in_executor(self._write_executor, self.write_fn, data)
                 break

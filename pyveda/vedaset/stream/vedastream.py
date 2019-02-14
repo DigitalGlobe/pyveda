@@ -14,6 +14,7 @@ from pyveda.vedaset.abstract import BaseVariableArray, BaseSampleArray, BaseData
 from pyveda.frameworks.batch_generator import VedaStreamGenerator
 from pyveda.vv.labelizer import Labelizer
 
+
 class VSGenWrapper(object):
     def __init__(self, vs, _iter):
         self.vs = vs
@@ -38,7 +39,7 @@ class VSGenWrapper(object):
         if self.stored:
             self.stored = False
             return self.value
-        val =  next(self.source)
+        val = next(self.source)
         self._n += 1
         return val
 
@@ -83,8 +84,9 @@ class BufferedSampleArray(BaseSampleArray):
             except StopIteration:
                 pass
             else:
-                asyncio.run_coroutine_threadsafe(self._vset._fetcher.produce_reqs(reqs=[nreqs]),
-                                                 loop=self._vset._loop)
+                asyncio.run_coroutine_threadsafe(
+                    self._vset._fetcher.produce_reqs(
+                        reqs=[nreqs]), loop=self._vset._loop)
 
             # The following get() blocks, as it should, when we're waiting for
             # the thread running the asyncio loop to fetch more data while the
@@ -104,7 +106,15 @@ class BufferedSampleArray(BaseSampleArray):
                 batch.append(self.__next__())
             yield batch
 
-    def batch_generator(self, batch_size, shuffle=True, channels_last=False, rescale=False, flip_horizontal=False, flip_vertical=False, **kwargs):
+    def batch_generator(
+            self,
+            batch_size,
+            shuffle=True,
+            channels_last=False,
+            rescale=False,
+            flip_horizontal=False,
+            flip_vertical=False,
+            **kwargs):
         """
         Generatates Batch of Images/Lables on a VedaStream partition.
         #Arguments
@@ -115,9 +125,15 @@ class BufferedSampleArray(BaseSampleArray):
             flip_horizontal: Boolean. Horizontally flip image and lables.
             flip_vertical: Boolean. Vertically flip image and lables
         """
-        return VedaStreamGenerator(self, batch_size=batch_size, shuffle=shuffle,
-                                channels_last=channels_last, rescale=rescale,
-                                flip_horizontal=flip_horizontal, flip_vertical=flip_vertical, **kwargs)
+        return VedaStreamGenerator(
+            self,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            channels_last=channels_last,
+            rescale=rescale,
+            flip_horizontal=flip_horizontal,
+            flip_vertical=flip_vertical,
+            **kwargs)
 
     @property
     def exhausted(self):
@@ -159,12 +175,27 @@ class BufferedSampleArray(BaseSampleArray):
 
 class BufferedDataStream(BaseDataSet):
     _lbl_handler_map = {"classification": ClassificationHandler,
-                       "segmentation": SegmentationHandler,
-                       "object_detection": ObjDetectionHandler}
+                        "segmentation": SegmentationHandler,
+                        "object_detection": ObjDetectionHandler}
 
-    def __init__(self, mltype, classes, _count, gen, image_shape,
-                 partition=[70, 20, 10], bufsize=100, cachetype=collections.deque,
-                 auto_startup=False, auto_shutdown=False, fetcher=None, loop=None, **kwargs):
+    def __init__(
+            self,
+            mltype,
+            classes,
+            _count,
+            gen,
+            image_shape,
+            partition=[
+                70,
+                20,
+                10],
+            bufsize=100,
+            cachetype=collections.deque,
+            auto_startup=False,
+            auto_shutdown=False,
+            fetcher=None,
+            loop=None,
+            **kwargs):
         self.partition = partition
         self.count = _count
         self.image_shape = image_shape
@@ -191,7 +222,6 @@ class BufferedDataStream(BaseDataSet):
         if auto_startup:
             self._start_consumer()
 
-
     def __len__(self):
         return self.count
 
@@ -206,19 +236,22 @@ class BufferedDataStream(BaseDataSet):
     @property
     def train(self):
         if not self._train:
-            self._train = BufferedSampleArray(round(self.count*self.partition[0]*0.01), self)
+            self._train = BufferedSampleArray(
+                round(self.count * self.partition[0] * 0.01), self)
         return self._train
 
     @property
     def test(self):
         if not self._test:
-            self._test = BufferedSampleArray(round(self.count*self.partition[1]*0.01), self)
+            self._test = BufferedSampleArray(
+                round(self.count * self.partition[1] * 0.01), self)
         return self._test
 
     @property
     def validate(self):
         if not self._validate:
-            self._validate = BufferedSampleArray(round(self.count*self.partition[2]*0.01), self)
+            self._validate = BufferedSampleArray(
+                round(self.count * self.partition[2] * 0.01), self)
         return self._validate
 
     @property
@@ -233,7 +266,9 @@ class BufferedDataStream(BaseDataSet):
         self._exhausted = val
 
     def _on_group_exhausted(self):
-        if all([self.train.exhausted, self.test.exhausted, self.validate.exhausted]):
+        if all([self.train.exhausted,
+                self.test.exhausted,
+                self.validate.exhausted]):
             self.exhausted = True
 
     def _on_exhausted(self):
@@ -248,7 +283,9 @@ class BufferedDataStream(BaseDataSet):
             except StopIteration:
                 break
 
-        f = asyncio.run_coroutine_threadsafe(self._fetcher.produce_reqs(reqs=reqs), loop=self._loop)
+        f = asyncio.run_coroutine_threadsafe(
+            self._fetcher.produce_reqs(
+                reqs=reqs), loop=self._loop)
         f.result()
 
     def _configure_fetcher(self, **kwargs):
@@ -268,7 +305,10 @@ class BufferedDataStream(BaseDataSet):
         if not loop:
             loop = asyncio.new_event_loop()
         self._loop = loop
-        self._thread = threading.Thread(target=partial(self._fetcher.run_loop, loop=loop))
+        self._thread = threading.Thread(
+            target=partial(
+                self._fetcher.run_loop,
+                loop=loop))
 
     def _start_consumer(self, init_buff=True):
         if not self._fetcher:
@@ -278,15 +318,16 @@ class BufferedDataStream(BaseDataSet):
 
         self._thread.start()
         time.sleep(0.5)
-        self._consumer_fut = asyncio.run_coroutine_threadsafe(self._fetcher.start_fetch(self._loop),
-                                                              loop=self._loop)
+        self._consumer_fut = asyncio.run_coroutine_threadsafe(
+            self._fetcher.start_fetch(self._loop), loop=self._loop)
         if init_buff:
-            self._initialize_buffer() # Fill the buffer and block until full
+            self._initialize_buffer()  # Fill the buffer and block until full
 
     def _stop_consumer(self):
         self._consumer_fut.cancel()
-        f = asyncio.run_coroutine_threadsafe(self._fetcher.kill_workers(), loop=self._loop)
-        f.result() # Wait for workers to shutdown gracefully
+        f = asyncio.run_coroutine_threadsafe(
+            self._fetcher.kill_workers(), loop=self._loop)
+        f.result()  # Wait for workers to shutdown gracefully
         for task in asyncio.Task.all_tasks():
             task.cancel()
         self._loop.create_task(self._fetcher.session.close())
@@ -296,8 +337,14 @@ class BufferedDataStream(BaseDataSet):
 
     @classmethod
     def from_vc(cls, vc, **kwargs):
-        return cls(vc.mltype, vc.classes, vc.count, vc.gen_sample_ids(**kwargs),
-                   vc.imshape, **kwargs)
+        return cls(
+            vc.mltype,
+            vc.classes,
+            vc.count,
+            vc.gen_sample_ids(
+                **kwargs),
+            vc.imshape,
+            **kwargs)
 
     def __enter__(self):
         self._start_consumer()
