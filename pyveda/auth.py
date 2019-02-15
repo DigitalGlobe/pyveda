@@ -7,11 +7,13 @@ import logging
 HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
 auth = None
 
+
 def Auth(**kwargs):
     global auth
     if auth is None or len(kwargs) > 0:
         auth = _Auth(**kwargs)
     return auth
+
 
 def localhost(_conn):
     token = _conn.token
@@ -22,6 +24,7 @@ def localhost(_conn):
     conn.headers.update(headers)
     return conn
 
+
 class _Auth(object):
     gbdx_connection = None
     root_url = HOST
@@ -31,7 +34,8 @@ class _Auth(object):
         self.logger.setLevel(logging.ERROR)
         self.console_handler = logging.StreamHandler()
         self.console_handler.setLevel(logging.ERROR)
-        self.formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        self.formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         self.console_handler.setFormatter(self.formatter)
         self.logger.addHandler(self.console_handler)
         self.logger.info('Logger initialized')
@@ -44,8 +48,10 @@ class _Auth(object):
         elif kwargs.get('gbdx_connection'):
             self.gbdx_connection = kwargs.get('gbdx_connection')
         elif self.gbdx_connection is None:
-            # This will throw an exception if your .ini file is not set properly
-            self.gbdx_connection = gbdx_auth.get_session(kwargs.get('config_file'))
+            # This will throw an exception if your .ini file is not set
+            # properly
+            self.gbdx_connection = gbdx_auth.get_session(
+                kwargs.get('config_file'))
 
         # for local dev, cant use oauth2
         if HOST == 'http://host.docker.internal:3002':
@@ -67,21 +73,23 @@ class _Auth(object):
                     gbdx_auth.expire_token(token_to_expire=self.gbdx_connection.token,
                                            config_file=kwargs.get('config_file'))
                     # re-init the session
-                    self.gbdx_connection = gbdx_auth.get_session(kwargs.get('config_file'))
+                    self.gbdx_connection = gbdx_auth.get_session(
+                        kwargs.get('config_file'))
                     if HOST == 'http://host.docker.internal:3002':
                         self.gbdx_connection = localhost(self.gbdx_connection)
 
                     # make original request, triggers new token request first
-                    res = self.gbdx_connection.request(method=r.request.method, url=r.request.url)
+                    res = self.gbdx_connection.request(
+                        method=r.request.method, url=r.request.url)
 
-                    # re-add the hook to refresh in the future 
+                    # re-add the hook to refresh in the future
                     self.gbdx_connection.hooks['response'].append(expire_token)
-                    return res  
-                  
+                    return res
 
                 except Exception as e:
                     r.request.hooks = None
-                    print("Error expiring token from session, Reason {}".format(e))
+                    print(
+                        "Error expiring token from session, Reason {}".format(e))
 
         if self.gbdx_connection is not None:
             self.gbdx_connection.hooks['response'].append(expire_token)

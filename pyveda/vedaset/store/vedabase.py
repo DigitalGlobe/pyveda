@@ -20,7 +20,9 @@ DATA_GROUPS = {"TRAIN": "Data designated for model training",
                "TEST": "Data designated for model testing",
                "VALIDATE": "Data designated for model validation"}
 
-ignore_NaturalNameWarning = partial(ignore_warnings, _warning=tables.NaturalNameWarning)
+ignore_NaturalNameWarning = partial(
+    ignore_warnings,
+    _warning=tables.NaturalNameWarning)
 
 
 class WrappedDataNode(object):
@@ -30,13 +32,16 @@ class WrappedDataNode(object):
 
     @property
     def images(self):
-        return self._vset._image_array_factory(self._node.images, self._vset, output_transform = self._vset._fw_loader)
+        return self._vset._image_array_factory(
+            self._node.images, self._vset, output_transform=self._vset._fw_loader)
 
     @property
     def labels(self):
-        return self._vset._label_array_factory(self._node.hit_table, self._node.labels,  self._vset)
+        return self._vset._label_array_factory(
+            self._node.hit_table, self._node.labels, self._vset)
 
-    def batch_generator(self, batch_size, shuffle=True, channels_last=False, rescale=False, flip_horizontal=False, flip_vertical=False, **kwargs):
+    def batch_generator(self, batch_size, shuffle=True, channels_last=False,
+                        rescale=False, flip_horizontal=False, flip_vertical=False, **kwargs):
         """
         Generatates Batch of Images/Lables on a VedaBase partition.
         #Arguments
@@ -48,8 +53,8 @@ class WrappedDataNode(object):
             flip_vertical: Boolean. Vertically flip image and lables
         """
         return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle,
-                                channels_last=channels_last, rescale=rescale,
-                                flip_horizontal=flip_horizontal, flip_vertical=flip_vertical, **kwargs)
+                                  channels_last=channels_last, rescale=rescale,
+                                  flip_horizontal=flip_horizontal, flip_vertical=flip_vertical, **kwargs)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):
@@ -83,6 +88,7 @@ class H5DataBase(BaseDataSet):
     """
     An interface for consuming and reading local data intended to be used with machine learning training
     """
+
     def __init__(self, fname, mltype=None, klasses=None, image_shape=None,
                  image_dtype=None, title="NoTitle", framework=None,
                  overwrite=False, mode="a"):
@@ -108,14 +114,17 @@ class H5DataBase(BaseDataSet):
 
     def _load_existing(self, fname, mode="a"):
         if mode == "w":
-            raise ValueError("Opening the file in write mode will overwrite the file")
+            raise ValueError(
+                "Opening the file in write mode will overwrite the file")
         self._fileh = tables.open_file(fname, mode=mode)
         self._configure_instance()
 
     def _configure_instance(self, *args, **kwargs):
         self._image_klass = NDImageArray
         self._label_klass = MLTYPE_MAP[self.mltype]
-        self._classifications = dict([(klass, tables.UInt8Col(pos=idx + 1)) for idx, klass in enumerate(self.classes)])
+        self._classifications = dict([(klass,
+                                       tables.UInt8Col(pos=idx + 1)) for idx,
+                                      klass in enumerate(self.classes)])
 
     def _build_filetree(self, dg=DATA_GROUPS):
         # Build group nodes
@@ -164,7 +173,8 @@ class H5DataBase(BaseDataSet):
 
     @property
     def _groups(self):
-        return {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
+        return {
+            group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
 
     @property
     def framework(self):
@@ -173,9 +183,10 @@ class H5DataBase(BaseDataSet):
     @framework.setter
     def framework(self, fw):
         if fw and fw not in FRAMEWORKS:
-            raise FrameworkNotSupported("Image adaptor not supported for {}".format(fw))
+            raise FrameworkNotSupported(
+                "Image adaptor not supported for {}".format(fw))
         self._framework = fw
-        self._fw_loader = lambda x: x # TODO: Custom loaders here
+        self._fw_loader = lambda x: x  # TODO: Custom loaders here
 
     @property
     def train(self):
@@ -218,6 +229,6 @@ class H5DataBase(BaseDataSet):
         inst = cls(fname, **kwargs)
         return inst
 
-    #@classmethod
-    #def from_vc(cls, vc, **kwargs):
+    # @classmethod
+    # def from_vc(cls, vc, **kwargs):
     #    # Load an empty H5DataBase from a VC

@@ -41,7 +41,8 @@ class DtypeMappedProp(GenericMappedProp):
         return dtype
 
     def __set__(self, obj, val):
-        if not isinstance(val, str): # What's the best way to check for dtype again?
+        if not isinstance(
+                val, str):  # What's the best way to check for dtype again?
             val = val.__name__
         obj._meta[self.name] = val
 

@@ -1,7 +1,8 @@
 import numpy as np
 import dask.array as da
 from dask import delayed
-import random, json
+import random
+import json
 
 import os
 from collections import defaultdict
@@ -13,7 +14,7 @@ except ImportError:
     from urllib.parse import urlparse
 
 try:
-    from functools import lru_cache # python 3
+    from functools import lru_cache  # python 3
 except ImportError:
     from cachetools.func import lru_cache
 
@@ -23,6 +24,7 @@ import pycurl
 
 MAX_RETRIES = 2
 _curl_pool = defaultdict(pycurl.Curl)
+
 
 @delayed
 def load_image(url, token, shape, dtype=np.float32):
@@ -34,14 +36,19 @@ def load_image(url, token, shape, dtype=np.float32):
         _curl = _curl_pool[thread_id]
         _curl.setopt(_curl.URL, url)
         _curl.setopt(pycurl.NOSIGNAL, 1)
-        _curl.setopt(pycurl.HTTPHEADER, ['Authorization: Bearer {}'.format(token)])
-        with NamedTemporaryFile(prefix="sandman", suffix=ext, delete=False) as temp: # TODO: apply correct file extension
+        _curl.setopt(
+            pycurl.HTTPHEADER, [
+                'Authorization: Bearer {}'.format(token)])
+        # TODO: apply correct file extension
+        with NamedTemporaryFile(prefix="sandman", suffix=ext, delete=False) as temp:
             _curl.setopt(_curl.WRITEDATA, temp.file)
             _curl.perform()
             code = _curl.getinfo(pycurl.HTTP_CODE)
             try:
                 if(code != 200):
-                    raise TypeError("Request for {} returned unexpected error code: {}".format(url, code))
+                    raise TypeError(
+                        "Request for {} returned unexpected error code: {}".format(
+                            url, code))
                 temp.file.flush()
                 temp.close()
                 arr = imread(temp.name)

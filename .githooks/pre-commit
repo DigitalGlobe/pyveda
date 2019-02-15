@@ -9,4 +9,4 @@
 exec 1>&2
 
 echo "Validating PEP8 compliance..."
-pycodestyle --ignore=W504,E501 pyveda
+pycodestyle --ignore=W504,E501,E265,E131,E712 pyveda

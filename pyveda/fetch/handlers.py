@@ -84,7 +84,8 @@ class SegmentationHandler(BaseLabelHandler):
             shapes = payload[klass]
             if shapes:
                 try:
-                    out_array = SegmentationHandler._create_mask(shapes, value, out_array)
+                    out_array = SegmentationHandler._create_mask(
+                        shapes, value, out_array)
                 except Exception as e:
                     pass
         return out_array
@@ -98,7 +99,8 @@ class SegmentationHandler(BaseLabelHandler):
         value = 1
         for k, features in item['data']['label'].items():
             try:
-                out_array = SegmentationHandler._create_mask(features, value, out_array)
+                out_array = SegmentationHandler._create_mask(
+                    features, value, out_array)
                 value += 1
             except TypeError as e:
                 pass
@@ -107,13 +109,13 @@ class SegmentationHandler(BaseLabelHandler):
     @staticmethod
     def _create_mask(shapes, value, mask):
         def _apply(mask, coords):
-            c, r = zip(*[(x,y) for x,y in coords])
+            c, r = zip(*[(x, y) for x, y in coords])
             rr, cc = polygon(np.array(r), np.array(c))
             mask[rr, cc] = value
             return mask
 
         for f in shapes:
-            if f['type'] == 'MultiPolygon': 
+            if f['type'] == 'MultiPolygon':
                 for coords in f['coordinates']:
                     mask = _apply(mask, coords[0])
             else:
@@ -139,13 +141,14 @@ class ObjDetectionHandler(BaseLabelHandler):
         out_shape = imshape
         if len(imshape) == 3:
             out_shape = imshape[-2:]
-        xfm = BaseLabelHandler._get_transform(item['data']['bounds'], *out_shape)
+        xfm = BaseLabelHandler._get_transform(
+            item['data']['bounds'], *out_shape)
         labels = []
         for k, features in item['data']['label'].items():
             class_labels = []
             for i, f in enumerate(features):
                 b = shape(f).bounds
-                ll, ur = ~xfm * (b[0],b[1]), ~xfm * (b[2],b[3])
+                ll, ur = ~xfm * (b[0], b[1]), ~xfm * (b[2], b[3])
                 class_labels.append([*ll, *ur])
             labels.append(class_labels)
         return labels

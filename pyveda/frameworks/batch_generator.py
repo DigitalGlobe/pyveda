@@ -4,6 +4,7 @@ from random import randint, sample
 
 from pyveda.frameworks.transforms import *
 
+
 class BaseGenerator():
     '''
     Parent Class for Generator
@@ -18,7 +19,7 @@ class BaseGenerator():
     '''
 
     def __init__(self, cache, batch_size=32, shuffle=True, channels_last=False, rescale=False,
-                    flip_horizontal=False, flip_vertical=False):
+                 flip_horizontal=False, flip_vertical=False):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
@@ -52,7 +53,9 @@ class BaseGenerator():
             return augmentation_list
         else:
             # randomly select augmentations to perform
-            randomly_selected_functions_lst = sample(augmentation_list, k=randint(0, len(augmentation_list)))
+            randomly_selected_functions_lst = sample(
+                augmentation_list, k=randint(
+                    0, len(augmentation_list)))
         return randomly_selected_functions_lst
 
     def apply_transforms(self, x, y):
@@ -67,9 +70,9 @@ class BaseGenerator():
 
         # User selects no augmentation functions
         if len(transforms) == 0:
-                if self.mltype == 'object_detection':
-                    return x, y
+            if self.mltype == 'object_detection':
                 return x, y
+            return x, y
 
         # Make Augmentations
         if self.mltype == 'classification':
@@ -108,7 +111,8 @@ class BaseGenerator():
 
     def on_epoch_end(self):
         '''update index for each epoch'''
-        # self.indexes = np.arange(len(self.list_ids)) self.list_ids not defined in baseclass
+        # self.indexes = np.arange(len(self.list_ids)) self.list_ids not
+        # defined in baseclass
         self.indexes = np.arange(len(self.cache))
         if self.shuffle:
             np.random.shuffle(self.indexes)
@@ -121,7 +125,7 @@ class BaseGenerator():
 
     def __len__(self):
         '''Denotes the number of batches per epoch'''
-        return int(np.floor(len(self.cache)/self.batch_size))
+        return int(np.floor(len(self.cache) / self.batch_size))
 
 
 class VedaStoreGenerator(BaseGenerator):
@@ -132,8 +136,10 @@ class VedaStoreGenerator(BaseGenerator):
     def build_batch(self, index):
         '''Generate one batch of data'''
         if index > len(self):
-            raise IndexError("Index is invalid because batch generator is exhausted.")
-        indexes = self.indexes[index*self.batch_size:(index+1)*self.batch_size]
+            raise IndexError(
+                "Index is invalid because batch generator is exhausted.")
+        indexes = self.indexes[index *
+                               self.batch_size:(index + 1) * self.batch_size]
         list_ids_temp = [self.list_ids[k] for k in indexes]
         x, y = self._data_generation(list_ids_temp)
         return x, y
@@ -158,10 +164,11 @@ class VedaStoreGenerator(BaseGenerator):
             x[i, ] = x_img
             y.append(y_img)
 
-        #rescale after entire bactch is collected
+        # rescale after entire bactch is collected
         if self.rescale:
             x /= x.max()
         return x, np.array(y)
+
 
 class VedaStreamGenerator(BaseGenerator):
     '''
@@ -171,7 +178,8 @@ class VedaStreamGenerator(BaseGenerator):
     def build_batch(self, index):
         '''Generate one batch of data'''
         if index > len(self):
-            raise IndexError("Index is invalid because batch generator is exhausted.")
+            raise IndexError(
+                "Index is invalid because batch generator is exhausted.")
         x, y = self._data_generation()
         return x, y
 
