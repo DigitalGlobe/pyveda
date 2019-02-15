@@ -91,36 +91,37 @@ class Model(object):
         else:
             print('Model already deployed.')
     
-    def predict(self, aoi, image, **kwargs):
-        ''' run prediction on an image within an aoi '''
+    def predict(self, bounds, image, **kwargs):
+        ''' 
+          Run predictions for an AOI within an RDA image based image. 
+
+          Args:
+            bounds (list): bounding box AOI
+            image (RDAImage): An ERDA based image to use for streaming tiles
+        '''
         assert self.deployed is not None, "Model no deployed, please call deploy() before running predictions"
-        # check aoi is legit
-        # check aoi is in image?
-        bounds = box(*aoi) #?
         rda_node = image.rda.graph()['nodes'][0]['id']
         meta = {
             "name": self.name,
             "description": kwargs.get("description", None),
             "dtype": self.dtype, 
             "imshape": self.shape,
-            "mlType": self.mlType,
-            "public": kwargs.get("public", False),
-            "partition": kwargs.get("partition", False),
-            "sensors": [],
-            "classes": [],
+            "mltype": self.mltype,
+            "imshape": list(self.shape),
+            "public": False,
             "bounds": bounds,
-        }
-        options = {
-        'graph': image.rda_id,
-        'node': rda_node,
+            "deployed_model": self.deployed['id']
         }
 
         payload = {
             "id": self.id,
-            "aoi": aoi,
-            "options": options
+            "metadata": meta,
+            "options": {
+              "graph": image.rda_id,
+              "node": rda_node
+            }
         }
-        return conn.post(self.links["predict"]["href"], json=payload).json()
+        return cfg.conn.post(self.links["predict"]["href"], json=payload).json()
 
         
     def update(self, new_data, save=True):
@@ -164,3 +165,43 @@ class Model(object):
 
     def __repr__(self):
         return json.dumps(self.meta)
+
+
+class PredictionSet(object):
+    """ Methods for accessing training data pairs """
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('id', None)
+        self.links = kwargs.get('links')
+        self.meta = **kwargs
+        for k,v in self.meta.items():
+            setattr(self, k, v)
+
+    def update(self, new_data):
+        self.meta.update(new_data)
+        return cfg.conn.put(self.links["update"]["href"], json=self.meta).json()
+
+    def remove(self):
+        self.id = None
+        cfg.conn.delete(self.links["delete"]["href"])
+
+    def publish(self):
+        assert self.id is not None, 'You can only publish a saved Model. Call the save method first.'
+        return cfg.conn.put(self.links["update"]["href"], json={"public": True}).json()
+
+    def unpublish(self):
+        assert self.id is not None, 'You can only unpublish a saved Model. Call the save method first.'
+        return cfg.conn.put(self.links["update"]["href"], json={"public": False}).json() 
+
+    @classmethod
+    def from_doc(cls, doc):
+        """ Helper method that converts a db doc to a PredictionSet """
+        return cls(**doc)
+
+    @classmethod
+    def from_id(cls, _id):
+        """ Helper method that fetches an id into a predictionset """
+        url = "{}//{}".format(cfg.host, _id)
+        r = cfg.conn.get(url)
+        r.raise_for_status()
+        return cls.from_doc(r.json())
+
