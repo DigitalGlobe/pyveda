@@ -9,9 +9,11 @@ from pyveda.auth import Auth
 gbdx = Auth()
 conn = gbdx.gbdx_connection
 
+
 class DataPoint(object):
     """ Methods for accessing training data pairs """
-    def __init__(self, item, shape=(3,256,256), dtype='uint8', **kwargs):
+
+    def __init__(self, item, shape=(3, 256, 256), dtype='uint8', **kwargs):
         self.conn = conn
         self.links = item["properties"].get("links")
         self.imshape = list(shape)
@@ -63,7 +65,8 @@ class DataPoint(object):
     def image(self):
         """ Returns a delayed dask call for fetching the image for a data point """
         token = gbdx.gbdx_connection.access_token
-        load = load_image(self.links["image"]["href"], token, self.imshape, dtype=self.dtype)
+        load = load_image(self.links["image"]["href"],
+                          token, self.imshape, dtype=self.dtype)
         return da.from_delayed(load, shape=self.imshape, dtype=self.dtype)
 
     def save(self, data):
@@ -74,7 +77,7 @@ class DataPoint(object):
         """ Updates data for the datapoint in the database """
         self.data.update(new_data)
         if save:
-           self.save(new_data)
+            self.save(new_data)
 
     def remove(self):
         """ Removes the datapoint from the set"""

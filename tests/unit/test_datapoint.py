@@ -1,25 +1,25 @@
+import unittest
+from shapely.geometry.polygon import Polygon
+from shapely.geometry import shape
+import json
+from pyveda.veda.api import DataSampleClient
 '''
 Tests for DataPoint that don't rely on the server
 '''
-import os, sys
+import os
+import sys
 from auth_mock import conn, my_vcr
 import pyveda as pv
 pv.config.set_dev()
 pv.config.set_conn(conn)
 
-from pyveda.veda.api import DataSampleClient
-import json
-from shapely.geometry import shape
-from shapely.geometry.polygon import Polygon
-
-import unittest
 
 test_dir = os.path.dirname(__file__)
 test_json = os.path.join(test_dir, 'responses', 'datapoint.json')
 
 
 class DataSampleTest(unittest.TestCase):
-    @classmethod 
+    @classmethod
     def setUpClass(self):
         with open(test_json) as source:
             self.json = json.load(source)
@@ -43,14 +43,14 @@ class DataSampleTest(unittest.TestCase):
         # public properties
         self.assertEqual(vc.id, vc_id)
         self.assertEqual(dp.mltype, vc.mltype)
-        self.assertEqual(dp.dtype, vc.dtype) # should inherit
+        self.assertEqual(dp.dtype, vc.dtype)  # should inherit
         self.assertEqual(dp.dataset_id, vc_id)
         self.assertEqual(dp.tile_coords, [965, 167])
         # geo interface
         self.assertEqual(dp.bounds, [
-            -97.7503432361732, 
-            30.268178825289258, 
-            -97.74957054483292, 
+            -97.7503432361732,
+            30.268178825289258,
+            -97.74957054483292,
             30.26895151662954
         ])
         self.assertTrue(isinstance(shape(vc), Polygon))

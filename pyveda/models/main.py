@@ -1,10 +1,11 @@
-import os 
+import os
 import mmap
 import json
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 from pyveda.config import VedaConfig
 
 cfg = VedaConfig()
+
 
 def search(params={}):
     r = cfg.conn.post('{}/models/search'.format(cfg.host), json=params)
@@ -18,7 +19,8 @@ def search(params={}):
 
 class Model(object):
     """ Methods for accessing training data pairs """
-    def __init__(self, name, model_path=None, mltype="classification", bounds=[], shape=(3,256,256), dtype="uint8", **kwargs):
+
+    def __init__(self, name, model_path=None, mltype="classification", bounds=[], shape=(3, 256, 256), dtype="uint8", **kwargs):
         self.id = kwargs.get('id', None)
         self.links = kwargs.get('links')
         self.shape = tuple(shape)
@@ -38,7 +40,7 @@ class Model(object):
             "location": kwargs.get("location", None)
         }
 
-        for k,v in self.meta.items():
+        for k, v in self.meta.items():
             setattr(self, k, v)
 
     @classmethod
@@ -69,7 +71,8 @@ class Model(object):
             #files["metadata"] = (None, json.dumps(meta), 'application/json')
         else:
             url = "{}/models".format(cfg.host)
-        r = cfg.conn.post(url, data=payload, headers={'Content-Type': payload.content_type})
+        r = cfg.conn.post(url, data=payload, headers={
+                          'Content-Type': payload.content_type})
         r.raise_for_status()
         doc = r.json()
         self.id = doc["properties"]["id"]
@@ -87,7 +90,7 @@ class Model(object):
         if self.deployed is None or self.deployed["id"] is None:
             cfg.conn.post(self.links["deploy"]["href"], json={"id": self.id})
             self.refresh()
-            return self.deployed 
+            return self.deployed
         else:
             print('Model already deployed.')
 
@@ -125,10 +128,8 @@ class Model(object):
         r.raise_for_status()
         meta = {k: v for k, v in r.json()['properties'].items()}
         self.meta.update(meta)
-        for k,v in self.meta.items():
+        for k, v in self.meta.items():
             setattr(self, k, v)
-
-
 
     def __repr__(self):
         return json.dumps(self.meta)

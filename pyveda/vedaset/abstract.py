@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class ABCDataVariable(ABC):
 
     _vtyp = "ABCDataVariale"
@@ -10,7 +11,6 @@ class ABCDataSample(ABC):
 
     _vtyp = "ABCDataSample"
     pass
-
 
 
 class ABCVariableIterator(ABC):
@@ -29,8 +29,8 @@ class ABCVariableIterator(ABC):
     def __iter__(self):
         raise NotImplementedError
 
-    #@abstractmethod
-    #def __next__(self):
+    # @abstractmethod
+    # def __next__(self):
     #    raise NotImplementedError
 
 
@@ -117,6 +117,3 @@ class BaseSampleArray(ABCSampleIterator):
 class BaseDataSet(ABCDataSet, ABCMetaProps):
 
     _vtyp = "BaseDataSet"
-
-
-

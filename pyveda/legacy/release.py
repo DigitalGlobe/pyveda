@@ -1,8 +1,10 @@
 import os
 import json
 
+
 class Release():
-    ''' Access to file-based Releases ''' 
+    ''' Access to file-based Releases '''
+
     def init(self, source):
         self.source = source
         images = os.path.join(self.source, 'images')
@@ -13,7 +15,7 @@ class Release():
             raise ValueError('{} is not a valid release'.format(self.source))
         with open(meta, 'r') as meta_file:
             self.meta = json.load(meta_file)
-        try: 
+        try:
             with open(bounds, 'r') as bounds_file:
                 self.bounds = json.load(bounds_file)
                 self.__geo_interface__ = self.bounds

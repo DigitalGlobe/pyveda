@@ -29,6 +29,7 @@ VALID_MATCHTYPES = ['INSIDE', 'INTERSECT', 'ALL']
 class VedaUploadError(Exception):
     pass
 
+
 class BaseEndpointConstructor(VedaConfig):
     """ Builds Veda API endpoints for Collection and Point access methods """
 
@@ -51,7 +52,6 @@ class BaseEndpointConstructor(VedaConfig):
         return self._veda_bulk_load_furl.format(host_url=self.host)
 
 
-
 class BaseClient(BaseEndpointConstructor):
 
     @property
@@ -61,7 +61,7 @@ class BaseClient(BaseEndpointConstructor):
     @property
     def _base_url(self):
         return self._dataset_base_furl.format(host_url=self.host,
-                                               dataset_id=self._dataset_id)
+                                              dataset_id=self._dataset_id)
 
     def _querystring(self, params={}, enc_classes=True, **kwargs):
         """ Builds a query string from kwargs for fetching points """
@@ -71,16 +71,17 @@ class BaseClient(BaseEndpointConstructor):
         return urlencode(params)
 
 
-
 _bec = BaseEndpointConstructor
+
 
 class DataSampleClient(BaseClient):
     """ Veda API wrapper for remote DataSample-relevant methods """
     _accessors = ["update", "remove"]
+
     def __init__(self, payload, **kwargs):
         self.data = payload['properties']
         self.links = payload["properties"].get("links")
-        for k,v in self.data.items():
+        for k, v in self.data.items():
             setattr(self, k, v)
 
     @property
@@ -102,7 +103,7 @@ class DataSampleClient(BaseClient):
         """
           Lifts everything in self.data to a property on the class
         """
-        for k,v in self.data.items():
+        for k, v in self.data.items():
             setattr(self, k, v)
 
     def update(self, new_data):
@@ -130,7 +131,6 @@ class DataSampleClient(BaseClient):
     @property
     def __geo_interface__(self):
         return box(*self.bounds).__geo_interface__
-
 
 
 class DataCollectionClient(BaseClient):
@@ -178,7 +178,8 @@ class DataCollectionClient(BaseClient):
         self.refresh()
         assert version in self.releases, 'Release version not found'
         assert self.releases[version]['status'] == 'complete', 'You can only download completed releases.'
-        path = path if path is not None else './{}-{}.tar.gz'.format(self.id, version)
+        path = path if path is not None else './{}-{}.tar.gz'.format(
+            self.id, version)
         try:
             os.makedirs(os.path.dirname(path))
         except Exception as err:
@@ -203,18 +204,20 @@ class DataCollectionClient(BaseClient):
     def refresh(self):
         r = self.conn.get(self._base_url)
         r.raise_for_status()
-        meta = {k: v for k, v in r.json()['properties'].items() if k in self._metaprops}
+        meta = {k: v for k, v in r.json(
+        )['properties'].items() if k in self._metaprops}
         self._meta.update(meta)
 
     @classmethod
     def _from_links(cls, links):
         parts = urlparse(links["self"]["href"])
         host = "{}://{}".format(parts.scheme, parts.netloc)
-        dataset_id = parts.path.split("/")[-1] # Use re.match
+        dataset_id = parts.path.split("/")[-1]  # Use re.match
         return cls(dataset_id)
 
 
 _VedaCollectionProxy = prop_wrap(DataCollectionClient, VEDAPROPS)
+
 
 class VedaCollectionProxy(_VedaCollectionProxy):
     """ Base class for handling all API interactions on sets."""
@@ -242,11 +245,11 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def status(self):
         self.refresh()
         if self.percent_cached == None:
-            return {'status':'EMPTY'}
+            return {'status': 'EMPTY'}
         elif self.percent_cached == 100:
-            return {'status':'COMPLETE'}
+            return {'status': 'COMPLETE'}
         else:
-            return {'status':'BUILDING'}
+            return {'status': 'BUILDING'}
 
     def _to_dp(self, payload, shape=None, dtype=None, mltype=None, **kwargs):
         if not shape:
@@ -259,15 +262,18 @@ class VedaCollectionProxy(_VedaCollectionProxy):
 
     def _page_sample_ids(self, page_size=100, page_id=None):
         """ Fetch a batch of datapoint ids """
-        resp = self.conn.get("{}/{}/ids?pageSize={}&pageId={}".format(self._data_url, self.id, page_size, page_id))
+        resp = self.conn.get(
+            "{}/{}/ids?pageSize={}&pageId={}".format(self._data_url, self.id, page_size, page_id))
         resp.raise_for_status()
         data = resp.json()
         return data['ids'], data['nextPageId']
 
     def fetch_samples_from_slice(self, idx, num_points=1, include_links=True, **kwargs):
         """ Fetch a single data point at a given index in the dataset """
-        qs = self._querystring(offset=idx, limit=num_points, includeLinks=include_links)
-        resp = self.conn.get(self._datapoint_search_furl.format(base_url=self._base_url, qs=qs))
+        qs = self._querystring(
+            offset=idx, limit=num_points, includeLinks=include_links)
+        resp = self.conn.get(self._datapoint_search_furl.format(
+            base_url=self._base_url, qs=qs))
         resp.raise_for_status()
         dps = [self._to_dp(p, dtype=self.dtype, **kwargs) for p in resp.json()]
         if len(dps) == 1:
@@ -278,8 +284,8 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         """ Fetch a point for a given ID """
         qs = self._querystring(includeLinks=include_links)
         resp = self.conn.get(self._datapoint_fetch_furl.format(host_url=self.host,
-                                                        datapoint_id=dp_id,
-                                                        qs=qs))
+                                                               datapoint_id=dp_id,
+                                                               qs=qs))
         resp.raise_for_status()
         return self._to_dp(resp.json(), dtype=self.dtype, **kwargs)
 
@@ -307,7 +313,8 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         def get(pages):
             next_page = None
             for p in range(0, pages):
-                ids, next_page = self._page_sample_ids(page_size, page_id=next_page)
+                ids, next_page = self._page_sample_ids(
+                    page_size, page_id=next_page)
                 yield ids, next_page
 
         _count = 0
@@ -324,7 +331,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         qs = self._querystring(includeLinks=False)
         label_url = "{}/datapoints/{}?{}".format(self.host, _id, qs)
         image_url = "{}/datapoints/{}/image.tif".format(self.host, _id)
-        #return (_id, [label_url, image_url])
+        # return (_id, [label_url, image_url])
         return (label_url, image_url)
 
     def append_from_geojson(self, geojson, image, **kwargs):
@@ -332,10 +339,12 @@ class VedaCollectionProxy(_VedaCollectionProxy):
           Appends new samples to the collection from an image and geojson features.
         """
         if image.dtype is not self.dtype:
-            raise ValueError("Image dtype must be {} to match collection".format(self.dtype))
+            raise ValueError(
+                "Image dtype must be {} to match collection".format(self.dtype))
         image = np.squeeze(image)
         if self.status == "BUILDING":
-            raise VedaUploadError("Cannot load while server-side caching active")
+            raise VedaUploadError(
+                "Cannot load while server-side caching active")
         params = dict(self.meta, sensors=self.sensors, **kwargs)
         doc = from_geo(geojson, image, **params)
 
@@ -344,7 +353,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
           Appends new samples to the collection from an image and geojson features.
         """
         from_tarball(s3path, self.meta, conn=self.conn,
-                                      url=self._base_url, **kwargs)
+                     url=self._base_url, **kwargs)
 
     def add_sample(self, image, label):
         """
@@ -355,7 +364,8 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             label (dict): Depending on the mltype of the collection is either a dict of ints or a dict of arrays (geojson geometries)
         """
         if image.shape != tuple(self.imshape):
-            raise ValueError("Image shape must be {} to match collection".format(self.imshape))
+            raise ValueError(
+                "Image shape must be {} to match collection".format(self.imshape))
         image = np.squeeze(image)
 
         # converts labels to pixel coords for obj_detect and segmentation
@@ -381,7 +391,6 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             }
             doc = self._add_sample(payload)
             return self._to_dp(doc)
-
 
     @classmethod
     def from_doc(cls, doc):
@@ -423,7 +432,6 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             limit = (stop-1) - start
         return self.fetch_samples_from_slice(start, num_points=limit)
 
-
     def __repr__(self):
         desc = 'VedaCollectionProxy of {} ({})'.format(
             self.name,
@@ -436,10 +444,10 @@ class VedaCollectionProxy(_VedaCollectionProxy):
             self.name,
             self.id
         )
-        desc +='\t- Bounds: {}\n'.format(
+        desc += '\t- Bounds: {}\n'.format(
             self.bounds,
         )
-        desc +='\t- Count: {} samples, {}% cached\n'.format(
+        desc += '\t- Count: {} samples, {}% cached\n'.format(
             self.count,
             self.percent_cached
         )
@@ -453,13 +461,12 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         if len(self.classes) == 1:
             plural = ''
         desc += '\t- Labels: {} type, {} class{}'.format(
-            self.mltype.replace('_',' '),
+            self.mltype.replace('_', ' '),
             len(self.classes),
             plural
         )
         desc += '\n'
         return desc
-
 
     @property
     def __geo_interface__(self):

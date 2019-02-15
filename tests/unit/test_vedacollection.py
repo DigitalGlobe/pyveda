@@ -1,18 +1,19 @@
+from unittest import skip
+import unittest
+from shapely.geometry.polygon import Polygon
+from shapely.geometry import shape, box
+import json
+from pyveda.veda.api import DataSampleClient, VedaCollectionProxy
 '''
 Tests for VedaCollection that don't rely on the server
 '''
-import os, sys
+import os
+import sys
 from auth_mock import conn, my_vcr
 import pyveda as pv
 pv.config.set_dev()
 pv.config.set_conn(conn)
 
-from pyveda.veda.api import DataSampleClient, VedaCollectionProxy
-import json
-from shapely.geometry import shape, box
-from shapely.geometry.polygon import Polygon
-import unittest
-from unittest import skip
 
 test_dir = os.path.dirname(__file__)
 test_json = os.path.join(test_dir, 'responses', 'vc.json')
@@ -21,6 +22,7 @@ test_json = os.path.join(test_dir, 'responses', 'vc.json')
 VC_ID = '67a16de1-7baf-44bf-a779-2bf97a37c3bd'
 # a valid datapoint from the above
 DP_ID = '7f30b1ef-1622-41ca-ab21-9b66d23d87fc'
+
 
 class VedaCollectionTest(unittest.TestCase):
     def setUp(self):
@@ -32,10 +34,11 @@ class VedaCollectionTest(unittest.TestCase):
         self.assertTrue(isinstance(vc, VedaCollectionProxy))
         self.assertEqual(vc.mltype, 'classification')
         self.assertEqual(vc.percent_cached, 100)
-        self.assertEqual(vc.name,'Austin Buildings Classification')
+        self.assertEqual(vc.name, 'Austin Buildings Classification')
         self.assertEqual(vc.dtype, 'int8')
         self.assertEqual(vc.count, 250)
-        self.assertEqual(vc.__geo_interface__, box(*vc.bounds).__geo_interface__)
+        self.assertEqual(vc.__geo_interface__, box(
+            *vc.bounds).__geo_interface__)
 
 
 class VCFetchTest(unittest.TestCase):
@@ -74,7 +77,6 @@ class VCFetchTest(unittest.TestCase):
         self.assertEqual(len(nid), 2)
         self.assertEqual(nid[0][:5], 'https')
 
-
     @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_getatr.yaml', filter_headers=['authorization'])
     def test_getitem(self):
         dp = self.vc[0]
@@ -82,4 +84,3 @@ class VCFetchTest(unittest.TestCase):
         dps = self.vc[0:3]
         self.assertTrue(isinstance(dps[0], DataSampleClient))
         self.assertEqual(len(dps), 2)
-

@@ -10,36 +10,38 @@ from pyveda.config import VedaConfig
 
 cfg = VedaConfig()
 
+
 def args_to_meta(name, description, dtype, imshape,
                  mltype, partition, public, sensors):
     """
       Helper method for just building a dict of meta fields to pass to the API
     """
     return {
-      'name': name,
-      'description': description,
-      'dtype': dtype.name,
-      'imshape': imshape,
-      'mltype': mltype,
-      'public': public,
-      'partition': partition,
-      'sensors': sensors,
-      'classes': [],
-      'bounds': None
+        'name': name,
+        'description': description,
+        'dtype': dtype.name,
+        'imshape': imshape,
+        'mltype': mltype,
+        'public': public,
+        'partition': partition,
+        'sensors': sensors,
+        'classes': [],
+        'bounds': None
     }
 
 
 def from_tarball(s3path, name=None, dtype='uint8',
-                                    imshape=[3,256,256],
-                                    label_field=None,
-                                    default_label=None,
-                                    mltype="classification",
-                                    description="",
-                                    public=False,
-                                    sensors=[],
-                                    partition=[100,0,0]):
+                 imshape=[3, 256, 256],
+                 label_field=None,
+                 default_label=None,
+                 mltype="classification",
+                 description="",
+                 public=False,
+                 sensors=[],
+                 partition=[100, 0, 0]):
     dtype = np.dtype(dtype)
-    meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors)
+    meta = args_to_meta(name, description, dtype, imshape,
+                        mltype, partition, public, sensors)
     options = {
         'default_label': default_label,
         'label_field':  label_field,
@@ -54,13 +56,13 @@ def from_tarball(s3path, name=None, dtype='uint8',
     return doc
 
 
-def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
-                              default_label=None, label_field=None,
-                              workers=1, cache_type="stream",
-                              dtype=None, description='',
-                              mltype="classification", public=False,
-                              partition=[100,0,0], sensors=[],
-                              **kwargs):
+def from_geo(geojson, image, name=None, tilesize=[256, 256], match="INTERSECT",
+             default_label=None, label_field=None,
+             workers=1, cache_type="stream",
+             dtype=None, description='',
+             mltype="classification", public=False,
+             partition=[100, 0, 0], sensors=[],
+             **kwargs):
     """
         Loads a geojson file into the collection
 
@@ -95,16 +97,18 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
         geojson = temp.name
 
     if dtype is None:
-       dtype = image.dtype
+        dtype = image.dtype
     else:
-       dtype = np.dtype(dtype)
+        dtype = np.dtype(dtype)
 
     if dtype.name != image.dtype.name:
-        warnings.warn('Image dtype ({}) and given dtype ({}) do not match.'.format(image.dtype, dtype))
+        warnings.warn('Image dtype ({}) and given dtype ({}) do not match.'.format(
+            image.dtype, dtype))
     #   raise ValueError('Image dtype ({}) and given dtype ({}) must match.'.format(image.dtype, dtype))
 
     imshape = [image.shape[0]] + list(tilesize)
-    meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors)
+    meta = args_to_meta(name, description, dtype, imshape,
+                        mltype, partition, public, sensors)
 
     rda_node = image.rda.graph()['nodes'][0]['id']
     options = {

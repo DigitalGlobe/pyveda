@@ -7,12 +7,13 @@ try:
 except:
     has_gbdxtools = False
 
+
 class MLImageDriver(RDADaskImageDriver):
     __default_options__ = {
         "proj": "EPSG:4326",
         "gsd": None,
         "pansharpen": False
-        }
+    }
     image_option_support = ('proj', 'gsd', 'pansharpen')
 
 
@@ -27,11 +28,11 @@ class MLImage(RDABaseImage):
     @classmethod
     def _build_graph(cls, cat_id, pansharpen=False, **kwargs):
         assert has_gbdxtools, 'To use MLImage gbdxtools must be installed'
-        if pansharpen: 
+        if pansharpen:
             bands = "PANSHARP"
         else:
             bands = "MS"
-        strip = rda.DigitalGlobeStrip(catId=cat_id, CRS=kwargs.get("proj","EPSG:4326"), GSD=kwargs.get("gsd",""),
+        strip = rda.DigitalGlobeStrip(catId=cat_id, CRS=kwargs.get("proj", "EPSG:4326"), GSD=kwargs.get("gsd", ""),
                                       correctionType="ACOMP",
                                       bands=bands,
                                       fallbackToTOA=True)
@@ -42,10 +43,8 @@ class MLImage(RDABaseImage):
 
     @property
     def _rgb_bands(self):
-        return [0,1,2]
+        return [0, 1, 2]
 
     @property
     def cat_id(self):
         return self.__rda_id__
-
-

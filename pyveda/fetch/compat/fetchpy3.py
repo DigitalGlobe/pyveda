@@ -3,6 +3,7 @@ import os
 import numpy as np
 from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, VedaBaseFetcher
 
+
 def vedabase_batch_write(data, database=None, partition=[70, 20, 10]):
     trainp, testp, valp = partition
     images, labels = data
@@ -23,9 +24,11 @@ def vedabase_batch_write(data, database=None, partition=[70, 20, 10]):
     database.validate.images.append_batch(images[ntrain + ntest:])
     database.validate.labels.append_batch(labels[ntrain + ntest:])
 
+
 def build_vedabase(database, source, partition, total, token, label_threads=1, image_threads=10):
     abf = VedaBaseFetcher(source, total_count=total, token=token,
-                          write_fn=partial(vedabase_batch_write, database=database, partition=partition),
+                          write_fn=partial(
+                              vedabase_batch_write, database=database, partition=partition),
                           img_batch_transform=database._image_klass._batch_transform,
                           lbl_batch_transform=database._label_klass._batch_transform,
                           img_payload_handler=database._image_klass._payload_handler,
@@ -36,5 +39,3 @@ def build_vedabase(database, source, partition, total, token, label_threads=1, i
 
     with ThreadedAsyncioRunner(abf.run_loop, abf.start_fetch) as tar:
         tar(loop=tar._loop)
-
-

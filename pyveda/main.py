@@ -18,6 +18,7 @@ __all__ = ["search",
            "create_from_geojson",
            "create_from_tarball"]
 
+
 def _map_contains_submap(mmap, submap, hard_match=True):
     """ Checks if a submap is contained in a master map.
     Map values must define __eq__.
@@ -55,6 +56,7 @@ def search(params={}, filters={}, **kwargs):
     return [VedaCollectionProxy.from_doc(s) for s in results
             if _map_contains_submap(s["properties"], filters, **kwargs)]
 
+
 def from_id(dataset_id):
     ''' Returns the dataset as a VedaCollectionProxy from an ID if it exists.
 
@@ -65,30 +67,32 @@ def from_id(dataset_id):
     '''
 
     r = cfg.conn.get(_bec._dataset_base_furl.format(host_url=cfg.host,
-                                                dataset_id=dataset_id))
+                                                    dataset_id=dataset_id))
     r.raise_for_status()
     if r.status_code == 200:
         return VedaCollectionProxy.from_doc(r.json())
     else:
         raise Exception('Invalid dataset id, does not exist in the database.')
 
+
 def from_name(dataset_name):
-        ''' Returns the dataset as a VedaCollectionProxy from a name if it exists.
+    ''' Returns the dataset as a VedaCollectionProxy from a name if it exists.
 
-        Args:
-            dataset_name (str): name of the dataset to check
-            conn (Oauth2 connection): server connection to use
+    Args:
+        dataset_name (str): name of the dataset to check
+        conn (Oauth2 connection): server connection to use
 
-        Returns:
-            VedaCollectionProxy: the dataset
-        '''
-        results = search(filters={"name": dataset_name})
-        if results:
-            return results[0]
-        else:
-            raise ValueError("Must provide dataset_id or dataset_name arguments")
+    Returns:
+        VedaCollectionProxy: the dataset
+    '''
+    results = search(filters={"name": dataset_name})
+    if results:
+        return results[0]
+    else:
+        raise ValueError("Must provide dataset_id or dataset_name arguments")
 
-def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10], **kwargs):
+
+def open(dataset_id=None, dataset_name=None, filename=None, partition=[70, 20, 10], **kwargs):
     """
     Main interface to access to remote, local and synced datasets
 
@@ -103,7 +107,8 @@ def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10]
     """
 
     if all(v is None for v in [dataset_id, dataset_name, filename]):
-        raise ValueError("When calling pyveda.open, specify one of: dataset_id, dataset_name, or filename")
+        raise ValueError(
+            "When calling pyveda.open, specify one of: dataset_id, dataset_name, or filename")
     # Check for dataset on veda
     vcp = False
     if dataset_id:
@@ -116,11 +121,12 @@ def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10]
         return _load_stream(vcp, partition=partition, **kwargs)
     if filename:
         return _load_store(filename, **kwargs)
-    raise RemoteCollectionNotFound("No Collection found on Veda for identifier: {}".format(dataset_id or dataset_name))
+    raise RemoteCollectionNotFound(
+        "No Collection found on Veda for identifier: {}".format(dataset_id or dataset_name))
 
 
 def store(filename, dataset_id=None, dataset_name=None, count=None,
-          partition=[70,20,10], **kwargs):
+          partition=[70, 20, 10], **kwargs):
     """ Download a collection locally into a VedaBase hdf5 store
 
     Args:
@@ -135,23 +141,24 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
     """
 
     if all(v is None for v in [dataset_id, dataset_name]):
-        raise ValueError("When calling pyveda.store, specify one of: dataset_id, dataset_name")
+        raise ValueError(
+            "When calling pyveda.store, specify one of: dataset_id, dataset_name")
     if dataset_id:
         coll = from_id(dataset_id=dataset_id)
     if dataset_name:
-        coll = from_name(dataset_name = dataset_name)
+        coll = from_name(dataset_name=dataset_name)
     vb = VedaBase.from_path(filename,
-                          mltype=coll.mltype,
-                          klasses=coll.classes,
-                          image_shape=coll.imshape,
-                          image_dtype=coll.dtype,
-                          **kwargs)
+                            mltype=coll.mltype,
+                            klasses=coll.classes,
+                            image_shape=coll.imshape,
+                            image_dtype=coll.dtype,
+                            **kwargs)
     if count is None:
         count = coll.count
     urlgen = coll.gen_sample_ids(count=count)
     token = cfg.conn.access_token
     build_vedabase(vb, urlgen, partition, count, token,
-                       label_threads=1, image_threads=10, **kwargs)
+                   label_threads=1, image_threads=10, **kwargs)
     vb.flush()
     return vb
 
@@ -179,13 +186,14 @@ def _load_store(filename, **kwargs):
     '''
     return VedaBase.from_path(filename, **kwargs)
 
-def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSECT",
-                              default_label=None, label_field=None,
-                              workers=1, cache_type="stream",
-                              dtype=None, description='',
-                              mltype="classification", public=False,
-                              partition=[100,0,0], mask=None,
-                              **kwargs):
+
+def create_from_geojson(geojson, image, name, tilesize=[256, 256], match="INTERSECT",
+                        default_label=None, label_field=None,
+                        workers=1, cache_type="stream",
+                        dtype=None, description='',
+                        mltype="classification", public=False,
+                        partition=[100, 0, 0], mask=None,
+                        **kwargs):
     """ Loads geojson and an image into a new collection of data
 
     Args:
@@ -213,7 +221,8 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
     Returns:
         VedaCollectionProxy
     """
-    assert isinstance(name, str), ValueError('Name must be defined as a string')
+    assert isinstance(name, str), ValueError(
+        'Name must be defined as a string')
 
     sensors = [image.__class__.__name__]
     doc = from_geo(geojson, image, name=name, tilesize=tilesize, match=match,
@@ -225,7 +234,8 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
                    **kwargs)
     return VedaCollectionProxy.from_doc(doc)
 
-def create_from_tarball(s3path, name, mltype="classification", imshape=[3,256,256]):
+
+def create_from_tarball(s3path, name, mltype="classification", imshape=[3, 256, 256]):
     ''' Creates a new collection from tarball
 
     Args:
@@ -237,6 +247,7 @@ def create_from_tarball(s3path, name, mltype="classification", imshape=[3,256,25
     Returns:
         VedaCollectionProxy
     '''
-    assert isinstance(name, str), ValueError('Name must be defined as a string')
+    assert isinstance(name, str), ValueError(
+        'Name must be defined as a string')
     doc = from_tarball(s3path, name=name, mltype=mltype, imshape=imshape)
     return VedaCollectionProxy.from_doc(doc)

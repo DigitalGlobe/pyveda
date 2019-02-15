@@ -1,7 +1,8 @@
 try:
     import keras
 except ImportError:
-    raise ImportError('Keras not installed. Please install keras to import models')
+    raise ImportError(
+        'Keras not installed. Please install keras to import models')
 
 
 from pyveda.pretrainedmodels.keras.classification.resnet50 import ResNet50

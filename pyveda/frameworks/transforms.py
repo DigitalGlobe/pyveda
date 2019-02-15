@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.ndimage as ndi
 
+
 def rescale_toa(arr, dtype=np.float32):
     """
     Rescale any multi-dimensional array of shape (D, M, N) by first subtracting
@@ -10,8 +11,10 @@ def rescale_toa(arr, dtype=np.float32):
     """
     # First look at raw value dists along bands
 
-    arr_trans = np.subtract(arr, arr.min(axis=(1, 2))[:, np.newaxis, np.newaxis])
-    arr_rs = np.divide(arr_trans, arr_trans.max(axis=(1, 2))[:, np.newaxis, np.newaxis])
+    arr_trans = np.subtract(arr, arr.min(axis=(1, 2))[
+                            :, np.newaxis, np.newaxis])
+    arr_rs = np.divide(arr_trans, arr_trans.max(
+        axis=(1, 2))[:, np.newaxis, np.newaxis])
     if dtype == np.uint8:
         arr_rs = np.array(arr_rs*255, dtype=np.uint8)
     return arr_rs
@@ -28,8 +31,8 @@ def apply_transform(x, transform_matrix, channel_index=0, fill_mode='nearest', c
     final_affine_matrix = transform_matrix[:2, :2]
     final_offset = transform_matrix[:2, 2]
     channel_images = [ndi.interpolation.affine_transform(x_channel,
-                      final_affine_matrix,
-                      final_offset, order=0, mode=fill_mode, cval=cval)
+                                                         final_affine_matrix,
+                                                         final_offset, order=0, mode=fill_mode, cval=cval)
                       for x_channel in x]
     x = np.stack(channel_images, axis=0)
     x = np.rollaxis(x, 0, channel_index+1)
