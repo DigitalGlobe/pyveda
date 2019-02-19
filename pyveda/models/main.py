@@ -49,7 +49,8 @@ class Model(object):
           classes (list): A list of classes that the model should return
 
     """
-    def __init__(self, name, model_path=None, weights_path=None, **kwargs):
+    def __init__(self, name, model_path=None, weights_path=None, bounds=[], 
+                             imshape=None, classes=[], dtype="uint8", mltype='classification', **kwargs):
         self.id = kwargs.get("id", None)
         self.links = kwargs.get("links")
         vcp = kwargs.get("training_set", None)
@@ -77,7 +78,7 @@ class Model(object):
            
         if 'archive' in kwargs: 
             self.archive = kwargs.get('archive')
-        else:
+        elif model_path is not None or weights_path is not None:
             self.archive = create_archive(model_path, weights_path)
 
         self.meta = {
