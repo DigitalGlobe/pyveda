@@ -1,4 +1,6 @@
 import os 
+import tarfile
+import tempfile
 import mmap
 import json
 from requests_toolbelt.multipart.encoder import MultipartEncoder
@@ -15,6 +17,18 @@ def search(params={}):
         print(err)
         return []
 
+def create_archive(model, weights): 
+    """ Creates a tar from a model """
+    dirpath = tempfile.mkdtemp()
+    name =  "{}/model.tar.gz".format(dirpath)
+    print("Creating model archive: {}".format(name))
+    with tarfile.open(name, "w:gz") as tar:
+        if model is not None:
+            tar.add(model, arcname='model.json')
+        if weights is not None:
+            tar.add(weights, arcname='weights.h5')
+    return name
+        
 
 class Model(object):
     """ 
@@ -24,49 +38,61 @@ class Model(object):
           name (str): a name for the model
           model_path (str): path to the serialized model file  
           weights_path (str): path to the serialized model weights 
-          mltype (str):
-          bounds (list):
-          shape      
+          archive (str): a path to a local tar.gz archive for the model 
+          mltype (str): the mltype of the model
+          bounds (list): a bounding box (minx, miny, maxx, maxy)
+          imshape (tuple): the shape of the images the model expects 
           training_set (VedaCollection): a veda training data collection. Used as a reference 
                                          to the data the model was trained from. If provided, bounds, shape,
                                          dtype, and mltype will be inherited.
-          library (str): The ml framework used for 
+          library (str): The ml framework used for training the model (keras, pytorch, tensorflow)
+          classes (list): A list of classes that the model should return
 
     """
     def __init__(self, name, model_path=None, weights_path=None, **kwargs):
         self.id = kwargs.get("id", None)
         self.links = kwargs.get("links")
-        self.training_set = kwargs.get("training_set", None)
-        if self.training_set and not isinstance(self.training_set, str):
-            bounds = self.training_set.bounds
-            imshape = tuple(self.training_set.imshape)
-            dtype = self.training_set.dtype
-            mltype = self.training_set.mltype
+        vcp = kwargs.get("training_set", None)
+        if vcp and not isinstance(vcp, str):
+            bounds = vcp.bounds
+            imshape = tuple(vcp.imshape)
+            dtype = vcp.dtype.name
+            mltype = vcp.mltype
+            classes = vcp.classes
+            vcp_id = vcp.id
         else:
-            bounds = kwargs.get("bounds", [])
-            imshape = kwargs.get("imshape", (3,256,256))
-            dtype = kwargs.get("dtype", "uint8")
-            mltype = kwargs.get("mltype", None)
+            vcp_id = vcp
+        
+        # If a user provides a training set, but also these kwargs
+        # then we override from kwargs
+        bounds = kwargs.get("bounds", bounds)
+        imshape = kwargs.get("imshape", imshape)
+        dtype = kwargs.get("dtype", dtype)
+        mltype = kwargs.get("mltype", mltype)
+        classes = kwargs.get("classes", classes)
 
         library = kwargs.get("library", None)
         assert library is not None, "Must define `library` as one of `keras`, `pytorch`, or `tensorflow`"
         assert mltype is not None, "Must define an mltype as one of `classification`, `object_detection`, or `segmentation`"
-            
-        self.files = {
-            "model": model_path,
-            "weights": weights_path
-        }
+           
+        if 'archive' in kwargs: 
+            self.archive = kwargs.get('archive')
+        else:
+            self.archive = create_archive(model_path, weights_path)
+
         self.meta = {
-            "name": name,
             "bounds": bounds,
-            "mltype": mltype,
-            "imshape": imshape,
-            "dtype": dtype,
-            "public": kwargs.get("public", False),
-            "description": kwargs.get("description", None),
+            "classes": classes,
             "deployed": kwargs.get("deployed", {"id": None}),
+            "description": kwargs.get("description", None),
+            "dtype": dtype,
+            "imshape": imshape,
             "library": library,
-            "location": kwargs.get("location", {})
+            "location": kwargs.get("location", {}),
+            "name": name,
+            "mltype": mltype,
+            "public": kwargs.get("public", False),
+            "training_set": vcp_id
         }
 
         for k,v in self.meta.items():
@@ -86,12 +112,10 @@ class Model(object):
         return cls.from_doc(r.json())
 
     def save(self):
-        files = self.files
         payload = MultipartEncoder(
             fields={
                 'metadata': json.dumps(self.meta),
-                'model': (os.path.basename(files["model"]), open(files["model"], 'rb'), 'application/octet-stream'),
-                'weights': (os.path.basename(files["weights"]), open(files["weights"], 'rb'), 'application/octet-stream')
+                'model': (os.path.basename(self.archive), open(self.archive, 'rb'), 'application/octet-stream')
             }
         )
 
