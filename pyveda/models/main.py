@@ -17,25 +17,56 @@ def search(params={}):
 
 
 class Model(object):
-    """ Methods for accessing training data pairs """
-    def __init__(self, name, model_path=None, mltype="classification", bounds=[], shape=(3,256,256), dtype="uint8", **kwargs):
-        self.id = kwargs.get('id', None)
-        self.links = kwargs.get('links')
-        self.shape = tuple(shape)
-        self.dtype = dtype
+    """ 
+      Defines a Model object for saving and accessing models in Veda. 
+
+      Args:
+          name (str): a name for the model
+          model_path (str): path to the serialized model file  
+          weights_path (str): path to the serialized model weights 
+          mltype (str):
+          bounds (list):
+          shape      
+          training_set (VedaCollection): a veda training data collection. Used as a reference 
+                                         to the data the model was trained from. If provided, bounds, shape,
+                                         dtype, and mltype will be inherited.
+          library (str): The ml framework used for 
+
+    """
+    def __init__(self, name, model_path=None, weights_path=None, **kwargs):
+        self.id = kwargs.get("id", None)
+        self.links = kwargs.get("links")
+        self.training_set = kwargs.get("training_set", None)
+        if self.training_set and not isinstance(self.training_set, str):
+            bounds = self.training_set.bounds
+            imshape = tuple(self.training_set.imshape)
+            dtype = self.training_set.dtype
+            mltype = self.training_set.mltype
+        else:
+            bounds = kwargs.get("bounds", [])
+            imshape = kwargs.get("imshape", (3,256,256))
+            dtype = kwargs.get("dtype", "uint8")
+            mltype = kwargs.get("mltype", None)
+
+        library = kwargs.get("library", None)
+        assert library is not None, "Must define `library` as one of `keras`, `pytorch`, or `tensorflow`"
+        assert mltype is not None, "Must define an mltype as one of `classification`, `object_detection`, or `segmentation`"
+            
         self.files = {
             "model": model_path,
+            "weights": weights_path
         }
         self.meta = {
             "name": name,
             "bounds": bounds,
             "mltype": mltype,
+            "imshape": imshape,
+            "dtype": dtype,
             "public": kwargs.get("public", False),
-            "training_set": kwargs.get("training_set", None),
             "description": kwargs.get("description", None),
             "deployed": kwargs.get("deployed", {"id": None}),
-            "library": kwargs.get("library", None),
-            "location": kwargs.get("location", None)
+            "library": library,
+            "location": kwargs.get("location", {})
         }
 
         for k,v in self.meta.items():
@@ -59,14 +90,13 @@ class Model(object):
         payload = MultipartEncoder(
             fields={
                 'metadata': json.dumps(self.meta),
-                'model': (os.path.basename(files["model"]), open(files["model"], 'rb'), 'application/octet-stream')
+                'model': (os.path.basename(files["model"]), open(files["model"], 'rb'), 'application/octet-stream'),
+                'weights': (os.path.basename(files["weights"]), open(files["weights"], 'rb'), 'application/octet-stream')
             }
         )
 
         if self.links is not None:
             url = self.links['self']['href']
-            #meta.update({"update": True})
-            #files["metadata"] = (None, json.dumps(meta), 'application/json')
         else:
             url = "{}/models".format(cfg.host)
         r = cfg.conn.post(url, data=payload, headers={'Content-Type': payload.content_type})
@@ -76,6 +106,7 @@ class Model(object):
         self.links = doc["properties"]["links"]
         del doc["properties"]["links"]
         self.meta.update(doc['properties'])
+        self.refresh(meta=self.meta)
         return self
 
     def deploy(self):
@@ -153,10 +184,11 @@ class Model(object):
             fh.write(r.content)
         return path
 
-    def refresh(self):
-        r = cfg.conn.get(self.links["self"]["href"])
-        r.raise_for_status()
-        meta = {k: v for k, v in r.json()['properties'].items()}
+    def refresh(self, meta=None):
+        if meta is None:
+            r = cfg.conn.get(self.links["self"]["href"])
+            r.raise_for_status()
+            meta = {k: v for k, v in r.json()['properties'].items()}
         self.meta.update(meta)
         for k,v in self.meta.items():
             setattr(self, k, v)
@@ -172,7 +204,8 @@ class PredictionSet(object):
     def __init__(self, **kwargs):
         self.id = kwargs.get('id', None)
         self.links = kwargs.get('links')
-        self.meta = **kwargs
+        del kwargs['links']
+        self.meta = kwargs
         for k,v in self.meta.items():
             setattr(self, k, v)
 
