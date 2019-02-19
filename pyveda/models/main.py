@@ -168,7 +168,6 @@ class Model(object):
             "bounds": bounds,
             "deployed_model": self.deployed['id']
         }
-
         payload = {
             "id": self.id,
             "metadata": meta,
