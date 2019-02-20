@@ -1,5 +1,50 @@
 from collections import OrderedDict
 
+# Modified from pandas
+def is_iterator(obj):
+    """
+    Check if the object is an iterator.
+    For example, lists are considered iterators
+    but not strings or datetime objects.
+    Parameters
+    ----------
+    obj : The object to check
+    Returns
+    -------
+    is_iter : bool
+        Whether `obj` is an iterator.
+    Examples
+    --------
+    >>> is_iterator([1, 2, 3])
+    True
+    >>> is_iterator(datetime(2017, 1, 1))
+    False
+    >>> is_iterator("foo")
+    False
+    >>> is_iterator(1)
+    False
+    """
+
+    if not hasattr(obj, '__iter__'):
+        return False
+
+    # Python 3 generators have
+    # __next__ instead of next
+    return hasattr(obj, '__next__')
+
+
+
+def is_partitionable(obj):
+    if not getattr(obj, "count", None):
+        try:
+            assert len(obj) > 0
+        except Exception:
+            return False
+    if not getattr(obj, "partition", None):
+        return False
+    return True
+
+
 
 class OpRegister(object):
     def __init__(self):
