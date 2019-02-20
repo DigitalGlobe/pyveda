@@ -60,3 +60,28 @@ class TransformRegister(OpRegister):
         return _output
 
 
+
+class WrappedIterator(object):
+    def __init__(self, arr):
+        self._source = arr
+
+    @property
+    def _source(self):
+        return self._source
+
+    @_source.setter
+    def _source(self, source):
+        if not is_iterator(source):
+            raise TypeError("Input source must be define iterator interface")
+        self._source = source
+
+    def __getitem__(self, obj):
+        return self._source.__getitem__(obj)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self._source)
+
+
