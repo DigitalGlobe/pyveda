@@ -4,24 +4,15 @@ import tables
 import ujson as json
 from pyveda.utils import mktempfilename, _atom_from_dtype
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
+from pyveda.vedaset.abstract import mtypes
 
 
-class IOArrayMixin(object):
-    pass
+def H5StoreIOAdapter(vstore):
+    config = {}
 
 
-class IOImageMixin(IOArrayMixin):
-    pass
-
-
-class IOLabelMixin(IOArrayMixin):
-    pass
-
-
-class NDImageMixin(IOImageMixin):
-    _default_dtype = np.float32
-
-    def _input_fn(self, item):
+    @staticmethod
+    def _input_fn(item):
         dims = item.shape
         if len(dims) == 4:
             return item # for batch append stacked arrays
@@ -29,60 +20,65 @@ class NDImageMixin(IOImageMixin):
             return item.reshape(1, *dims)
         return item # what could this thing be, let it fail
 
-    def create_array(self, group):
-        atom = _atom_from_dtype(self._vset.image_dtype)
-        shape = list(self._vset.image_shape)
+    @staticmethod
+    def create_array(vset, group):
+        atom = _atom_from_dtype(vset.image_dtype)
+        shape = list(vset.image_shape)
         shape.insert(0,0)
         shape = tuple(shape)
-        self._vset._fileh.create_earray(group, "images", atom=atom, shape=shape)
+        vset._fileh.create_earray(group, "images", atom=atom, shape=shape)
 
 
 class ClassificationMixin(IOLabelMixin):
-    _default_dtype = np.uint8
 
-    def _input_fn(self, item):
+    @staticmethod
+    def _input_fn(item):
         dims = item.shape
         if len(dims) == 2:
             return item # for batch append stacked arrays
         return item.reshape(1, *dims)
 
-    def create_array(self, group):
+    @staticmethod
+    def create_array(vset, group):
         atom = tables.UInt8Atom()
-        shape = (0, len(self._vset.classes))
-        self._vset._fileh.create_earray(group, "labels", atom=atom, shape=shape)
+        shape = (0, len(vset.classes))
+        vset._fileh.create_earray(group, "labels", atom=atom, shape=shape)
 
 
-class SegmentationMixin(IOLabelMixin):
-    _default_dtype = np.uint8
+class SegmentationMixin(IOLabelMixin, NDImageMixin):
 
-    def create_array(self, group, dtype=None):
-        if not dtype:
-            dtype = self._default_dtype
+    @staticmethod
+    def create_array(vset, group, dtype=np.uint8):
         atom = _atom_from_dtype(dtype)
         shape = tuple([s if idx > 0 else 0 for
-                       idx, s in enumerate(self._vset.image_shape)])
-        self._vset._fileh.create_earray(group, "labels", atom=atom, shape=shape)
+                       idx, s in enumerate(vset.image_shape)])
+        vset._fileh.create_earray(group, "labels", atom=atom, shape=shape)
 
 
 class ObjDetectionMixin(IOLabelMixin):
     _default_dtype = np.float32
 
-    def _input_fn(self, item):
+    @staticmethod
+    def _input_fn(item):
         assert isinstance(item, list)
         return np.fromstring(json.dumps(item), dtype=np.uint8)
 
-    def _output_fn(self, item):
+    @staticmethod
+    def _output_fn(item):
         return json.loads(item.tostring())
 
-    def append_batch(self, items):
+    @staticmethod
+    def append_batch(vset, items):
         for item in items:
-            self.append(item)
+            vset.append(item)
 
-    def create_array(self, group, filters=tables.Filters(complevel=0)):
+    @staticmethod
+    def create_array(vset, group, filters=tables.Filters(complevel=0)):
         atom = tables.UInt8Atom()
-        self._vset._fileh.create_vlarray(group, "labels", atom=atom, filters=filters)
+        vset._fileh.create_vlarray(group, "labels", atom=atom, filters=filters)
 
 
+class
 def get_array_handler(inst):
     if inst.mltype == "classification":
         return ClassificationMixin

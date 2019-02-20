@@ -180,6 +180,7 @@ def _load_store(filename, **kwargs):
     '''
     return VedaBase.from_path(filename, **kwargs)
 
+# Required: tilesize, mltype,
 def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSECT",
                               default_label=None, label_field=None,
                               workers=1, cache_type="stream",

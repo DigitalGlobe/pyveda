@@ -1,4 +1,6 @@
 from collections import defaultdict, OrderedDict
+from pyveda.vedaset.interface import BaseVariableArray, is_iterator,
+                                    slice_from_partition, is_partitionable
 from pyveda.vedaset.props import register_vprops, VBaseprops, DATAGROUPS
 from pyveda.exceptions import NotSupportedException
 import numpy as np

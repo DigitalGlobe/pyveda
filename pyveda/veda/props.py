@@ -57,7 +57,8 @@ class IntMappedProp(GenericMappedProp):
 class BoolMappedProp(GenericMappedProp):
     pass
 
-
+# classes, releases, image_refs, sensors, bounds, count, percent_cached
+# descr = str
 VEDAPROPS = {"name": StrMappedProp,
              "classes": ListMappedProp,
              "dtype": DtypeMappedProp,
