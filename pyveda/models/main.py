@@ -189,6 +189,8 @@ class Model(object):
         if vcp and not isinstance(vcp, str):
             vcp_id = vcp.id
             overrides = {v:getattr(vcp,v) for v in override_vals}
+            if 'dtype' in overrides:
+                overrides['dtype'] = overrides['dtype'].name
         else:
             vcp_id = vcp
             overrides = {}
