@@ -1,3 +1,4 @@
+import inspect
 from weakref import WeakKeyDictionary
 from collections import defaultdict, OrderedDict
 import numpy as np
@@ -9,7 +10,7 @@ DATAGROUPS = ["train", "test", "validate"]
 ### class wrapper for descriptor assignment on class creation
 def register_vprops(vprops=[], fallback="_vprops", exclude=[],):
     def wrapped(cls):
-        for prop in props or getattr(cls, fallback, []):
+        for prop in set(vprops).union(set(getattr(cls, fallback, []))):
             if prop.__vname__ not in exclude:
                 setattr(cls, prop.__vname__, prop())
         return cls
@@ -83,15 +84,17 @@ class ProbabilityDistTyped(SequenceTyped):
 
 
 class PropCallbackExecutor(BaseDescriptor):
-    # This class should be mixed in last
     registry_target = "_prc"
 
     def __set__(self, instance, value):
+        super().__set__(instance, value)
         registry = getattr(instance, self.registry_target, None)
         if registery:
             for cb in registry[self.name].callbacks:
-                cb(instance, value)
-        super().__set__(instance, value)
+                if inspect.ismethod(cb):
+                    cb(value, self.name)
+                else:
+                    cb(instance, value, self.name)
 
 
 class NumpyDataTyped(PropCallbackExecutor):
@@ -138,77 +141,13 @@ class SampleCountTyped(IntTyped, PropCallbackExecutor):
     __vname__ = "count"
 
 
-#### Simple callback registry/catalog that can be utilized with CallbackExecutor
-#### on any accessor classes to register arbitrary callbacks on any
-#### descriptor.__set__ at global scale
+VBaseprops = (SampleCountTyped,
+             FeatureClassTyped,
+             PartitionTyped,
+             MLtypeTyped,
+             ImageShapedTyped,
+             NumpyDataTyped,)
 
-class CallbackRegister(object):
-    def __init__(self, d):
-        self._d = d
-
-    def register(self, fn, name=None):
-        assert callable(fn)
-        if name is None:
-            name = fn.__name__
-        self._d[name] = fn
-
-    def unregister(self, iden):
-        if callable(iden):
-            iden = iden.__name__
-        if isinstance(iden, str):
-            try:
-                self._d.__delitem__(iden)
-            except KeyError:
-                pass
-            return
-        raise TypeError("dunno that")
-
-    @property
-    def callbacks(self):
-        return self._d.values()
-
-
-class PropCallbackRegistery(object):
-    def __init__(self, factory=OrderedDict, register=CallbackRegister, factory=OrderedDict):
-        self._register = register
-        self._cbindex = defaultdict(factory)
-
-    def __getattr__(self, key):
-        self.__dict__[key] = value = self._register(self._cbindex[key])
-        return value
-
-
-### Random utils, need a types api module maybe
-# Modified rom pandas
-def is_iterator(obj):
-    """
-    Check if the object is an iterator.
-    For example, lists are considered iterators
-    but not strings or datetime objects.
-    Parameters
-    ----------
-    obj : The object to check
-    Returns
-    -------
-    is_iter : bool
-        Whether `obj` is an iterator.
-    Examples
-    --------
-    >>> is_iterator([1, 2, 3])
-    True
-    >>> is_iterator(datetime(2017, 1, 1))
-    False
-    >>> is_iterator("foo")
-    False
-    >>> is_iterator(1)
-    False
-    """
-
-    if not hasattr(obj, '__iter__'):
-        return False
-
-    # Python 3 generators have
-    # __next__ instead of next
-    return hasattr(obj, '__next__')
+baseprop_map = dict([(kls.__vname__, kls) for kls in baseprops])
 
 
