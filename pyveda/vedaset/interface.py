@@ -164,3 +164,18 @@ class PartitionedIndexArray(BaseVariableArray):
         return slice(start, stop, step)
 
 
+class SerializedVariableArray(BaseVariableArray):
+    def __init__(self, input_fn=lambda x: x, output_fn=lambda x: x, *args, **kwargs):
+        super(SerializedVariableArray, self).__init__(*args, **kwargs)
+        self._ipf = input_fn
+        self._opf = output_fn
+
+    def _gettr(self, obj):
+        obj = self._opf(obj)
+        return super()._gettr(obj)
+
+    def _settr(self, obj):
+        obj = self._ipf(obj)
+        return super()._settr(obj)
+
+
