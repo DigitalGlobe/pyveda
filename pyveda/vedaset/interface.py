@@ -46,6 +46,20 @@ def is_partitionable(obj):
 
 
 
+def slices_from_partition(total, partition):
+    # partition sums to 100
+    allocations = [np.rint(total * p * 0.01) for p in partition]
+    nparts = len(partition)
+    idxs = []
+    start = 0
+    for i, alloc in enumerate(allocations):
+        stop = start + alloc if i + 1 < nparts else total
+        idxs.append((start, stop))
+        start = stop
+    return idxs
+
+
+
 class OpRegister(object):
     def __init__(self):
         self._ops_ = OrderedDict()
