@@ -85,3 +85,49 @@ class WrappedIterator(object):
         return next(self._source)
 
 
+class BaseVariableArray(WrappedIterator):
+    def __init__(self, vset, group, arr):
+        self._vset = vset
+        self._group = group
+        self._source = arr
+
+    @property
+    def _vidx(self):
+        return getattr(self._vset._vidx, self._group)
+
+    @property
+    def _start(self):
+        return self._vidx.start
+
+    @property
+    def _stop(self):
+        return self._vidx.stop
+
+    @property
+    def allocated(self):
+        return self._vidx.allocated
+
+    def _gettr(self, obj):
+        return obj
+
+    def _settr(self, obj):
+        return obj
+
+    def append(self, obj):
+        obj = self._settr(obj)
+        self._source.append(obj)
+
+    def __getitem__(self, key):
+        obj = super(BaseVariableArray, self).__getitem__(key)
+        if isinstance(key, int):
+            return self._gettr(obj)
+        return type(obj)([self._gettr(d) for d in obj])
+
+    def __next__(self):
+        obj = super(BaseVariableArray, self).__next__()
+        return self._gettr(obj)
+
+    def __len__(self):
+        return self.allocated
+
+
