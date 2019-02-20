@@ -131,3 +131,36 @@ class BaseVariableArray(WrappedIterator):
         return self.allocated
 
 
+
+class PartitionedIndexArray(BaseVariableArray):
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            spec = self._translate_idx(key)
+        elif isinstance(key, slice):
+            spec = self._translate_slice(key)
+        else:
+            raise NotImplementedError(
+                "Numpy fancy indexing not supported")
+        return super().__getitem__(spec)
+
+    def _translate_idx(self, vidx):
+        if vidx is None: # Bounce back None slice parts
+            return vidx
+        idx = vidx + self._start
+        if idx > self._stop:
+            raise IndexError("Index out of data range")
+        return idx
+
+    def _translate_slice(self, sli):
+        start, stop, step = sli.start, sli.stop, sli.step
+        start = self._translate_idx(start)
+        stop = self._translate_idx(stop)
+        # None means default to edges
+        if start is None:
+            start = self._start
+        if stop is None:
+            stop = self._stop
+        return slice(start, stop, step)
+
+
