@@ -33,7 +33,6 @@ class OpRegister(object):
         return iter(self._ops)
 
 
-
 class TransformRegister(OpRegister):
     def __init__(self, transforms=[], attach=False):
         super(TransformRegister, self).__init__()
@@ -177,5 +176,15 @@ class SerializedVariableArray(BaseVariableArray):
     def _settr(self, obj):
         obj = self._ipf(obj)
         return super()._settr(obj)
+
+
+class ArrayTransformPlugin(BaseVariableArray):
+    def __init__(self, *args, **kwargs):
+        super(ArrayTransformPlugin, self).__init__(*args, **kwargs)
+        self.transforms = TransformRegister()
+
+    def _gettr(self, obj):
+        obj = self.transforms.transform(obj)
+        return super()._gettr(obj)
 
 
