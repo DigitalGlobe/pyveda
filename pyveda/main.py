@@ -4,9 +4,9 @@ from contextlib import contextmanager
 from pyveda.config import VedaConfig
 from pyveda.exceptions import RemoteCollectionNotFound
 from pyveda.vedaset import VedaBase, VedaStream
-from pyveda.veda.loaders import from_geo, from_tarball
-from pyveda.fetch.compat import build_vedabase
-from pyveda.veda.api import _bec, VedaCollectionProxy
+from pyveda.vedaset.veda.loaders import from_geo, from_tarball
+from pyveda.io.batch import build_vedabase
+from pyveda.vedaset.veda.api import _bec, VedaCollectionProxy
 
 cfg = VedaConfig()
 
