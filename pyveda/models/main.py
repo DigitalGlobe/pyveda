@@ -49,55 +49,20 @@ class Model(object):
           classes (list): A list of classes that the model should return
 
     """
-    def __init__(self, name, model_path=None, weights_path=None, bounds=[], 
-                             imshape=None, classes=[], dtype="uint8", mltype='classification', **kwargs):
+    def __init__(self, name, model_path=None, weights_path=None, mltype=None, **kwargs):
         self.id = kwargs.get("id", None)
         self.links = kwargs.get("links")
-        vcp = kwargs.get("training_set", None)
-        if vcp and not isinstance(vcp, str):
-            bounds = vcp.bounds
-            imshape = tuple(vcp.imshape)
-            dtype = vcp.dtype.name
-            mltype = vcp.mltype
-            classes = vcp.classes
-            vcp_id = vcp.id
-        else:
-            vcp_id = vcp
-        
-        # If a user provides a training set, but also these kwargs
-        # then we override from kwargs
-        bounds = kwargs.get("bounds", bounds)
-        imshape = kwargs.get("imshape", imshape)
-        dtype = kwargs.get("dtype", dtype)
-        mltype = kwargs.get("mltype", mltype)
-        classes = kwargs.get("classes", classes)
+        self.meta = self._construct_meta(name, mltype=mltype, **kwargs)
+        for k,v in self.meta.items():
+            setattr(self, k, v)
 
-        library = kwargs.get("library", None)
-        assert library is not None, "Must define `library` as one of `keras`, `pytorch`, or `tensorflow`"
-        assert mltype is not None, "Must define an mltype as one of `classification`, `object_detection`, or `segmentation`"
+        assert self.mltype is not None, "Must define an mltype as one of `classification`, `object_detection`, or `segmentation`"
+        assert self.library is not None, "Must define `library` as one of `keras`, `pytorch`, or `tensorflow`"
            
         if 'archive' in kwargs: 
             self.archive = kwargs.get('archive')
         elif model_path is not None or weights_path is not None:
             self.archive = create_archive(model_path, weights_path)
-
-        self.meta = {
-            "bounds": bounds,
-            "classes": classes,
-            "deployed": kwargs.get("deployed", {"id": None}),
-            "description": kwargs.get("description", None),
-            "dtype": dtype,
-            "imshape": imshape,
-            "library": library,
-            "location": kwargs.get("location", {}),
-            "name": name,
-            "mltype": mltype,
-            "public": kwargs.get("public", False),
-            "training_set": vcp_id
-        }
-
-        for k,v in self.meta.items():
-            setattr(self, k, v)
 
     @classmethod
     def from_doc(cls, doc):
@@ -216,11 +181,39 @@ class Model(object):
         self.meta.update(meta)
         for k,v in self.meta.items():
             setattr(self, k, v)
+    
+    def _construct_meta(self, name, **kwargs):
+        has_vcp = False
+        vcp = kwargs.get('training_set')
+        override_vals = ["bounds", "imshape", "dtype", "classes", "mltype"]
+        if vcp and not isinstance(vcp, str):
+            vcp_id = vcp.id
+            overrides = {v:getattr(vcp,v) for v in override_vals}
+        else:
+            vcp_id = vcp
+            overrides = {}
+  
+        # override any values from VCP that may be in from kwargs 
+        for v in override_vals:
+            if v in kwargs:
+                overrides[v] = kwargs.get(v)
 
+        meta = {
+          "name": name,
+          "deployed": kwargs.get("deployed", {"id": None}),
+          "description": kwargs.get("description", None),
+          "public": kwargs.get("public", False),
+          "library": kwargs.get("library", {}),
+          "location": kwargs.get("location", {}),
+          "training_set": vcp_id
+        }
+        meta.update(overrides)
+        return meta
 
 
     def __repr__(self):
         return json.dumps(self.meta)
+
 
 
 class PredictionSet(object):
