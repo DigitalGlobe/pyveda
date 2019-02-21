@@ -1,14 +1,8 @@
 from pyveda.vedaset.store.vedabase import H5DataBase
 from pyveda.vedaset.stream.vedastream import BufferedDataStream
-from pyveda.veda.api import VedaCollectionProxy
+from pyveda.vedaset.veda.api import VedaCollectionProxy
 from contextlib import ContextDecorator
 from collections import ChainMap
-
-def _accessor_is_compatible(vset, vobj):
-    pass
-
-class InterfaceManager:
-    registery = []
 
 
 class VedaSet(object):
