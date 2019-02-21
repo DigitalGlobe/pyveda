@@ -7,12 +7,13 @@ from functools import partial
 import numpy as np
 
 from pyveda.fetch.aiohttp.client import VedaStreamFetcher
-from pyveda.vedaset.base import BaseVariableArray, BaseSampleArray, BaseDataSet
+from pyveda.vedaset.base import BaseSampleArray, BaseDataSet
+from pyvda.vedaset.interface import BaseVariableArray, ArrayTransformPlugin
 from pyveda.frameworks.batch_generator import VedaStreamGenerator
 #from pyveda.vv.labelizer import Labelizer
 
 
-class BufferedVariableArray(BaseVariableArray):
+class BufferedVariableArray(ArrayTransformPlugin):
     pass
 
 
@@ -96,18 +97,8 @@ class BufferedSampleArray(BaseSampleArray):
         mltype = self._vset.mltype
         Labelizer(self, mltype, count, classes).clean()
 
-def vb_write_fn(vb, data):
-    label, image, _id = data
-    vb._img_arr.append(image)
-    vb._lbl_arr.append(label)
-    idx_row = vb._fileh.root.sample_index.row
-    idx_row['idx_cols'] = _id
-    idx_row.append()
-    vb._fileh.root.sample_index.flush()
-
 
 class BufferedDataStream(BaseDataSet):
-    _fetch_class = VedaStreamFetcher
     _sample_class = BufferedSampleArray
     _variable_class = BufferedVariableArray
 
