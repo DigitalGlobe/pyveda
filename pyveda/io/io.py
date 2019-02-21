@@ -3,6 +3,16 @@ import os
 import numpy as np
 from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, VedaBaseFetcher
 
+def vb_write_fn(vb, data):
+    label, image, _id = data
+    vb._img_arr.append(image)
+    vb._lbl_arr.append(label)
+    idx_row = vb._fileh.root.sample_index.row
+    idx_row['idx_cols'] = _id
+    idx_row.append()
+    vb._fileh.root.sample_index.flush()
+
+
 def vedabase_batch_write(data, database=None, partition=[70, 20, 10]):
     trainp, testp, valp = partition
     images, labels, ids = data
