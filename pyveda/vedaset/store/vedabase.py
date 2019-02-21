@@ -2,23 +2,26 @@ import os
 from functools import partial
 import numpy as np
 import tables
+from pyveda.io.hdf5.serializers import adapt_serializers
 from pyveda.vedaset.utils import ignore_NaturalNameWarning as ignore_nnw
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.base import BaseDataSet, BaseSampleArray, SerializedVariableArray,
                                 PartitionedIndexArray, ArrayTransformPlugin
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
-from pyveda.vedaset.store.arrays import get_array_handler, NDImageMixin
 #from pyveda.vv.labelizer import Labelizer
 
 
-class H5StoreVariableArray(SerializedVariableArray,
-                           PartitionedIndexArray,
-                           ArrayTransformPlugin):
+class H5VariableArray(SerializedVariableArray,
+                      PartitionedIndexArray,
+                      ArrayTransformPlugin):
     """
     This wraps a pytables array with access determined
     by a contiguous index range given by two integers
     """
-    def __init__(self, vset, group, arr, input_fn=None, output_fn=None):
+
+    def __init__(self, vset, arr, group,
+                 input_fn=None, output_fn=None):
+
         super().__init__(vset, group, arr,
                          input_fn=input_fn,
                          output_fn=output_fn)
@@ -43,7 +46,8 @@ class H5StoreVariableArray(SerializedVariableArray,
             raise
 
 
-class H5StoreSampleArray(BaseSampleArray):
+
+class H5SampleArray(BaseSampleArray):
 
     def batch_generator(self, batch_size,
                         shuffle=True,
@@ -57,14 +61,16 @@ class H5StoreSampleArray(BaseSampleArray):
         #Arguments
             batch_size: int. batch size
             shuffle: Boolean.
-            channels_last: Boolean. To return image data as Height-Width-Depth, instead of the default Depth-Height-Width
+            channels_last: Boolean. To return image data as Height-Width-Depth,
+            instead of the default Depth-Height-Width
             rescale: boolean. Rescale image values between 0 and 1.
             flip_horizontal: Boolean. Horizontally flip image and lables.
             flip_vertical: Boolean. Vertically flip image and lables
         """
         return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle,
-                                channels_last=channels_last, rescale=rescale,
-                                flip_horizontal=flip_horizontal, flip_vertical=flip_vertical, **kwargs)
+                                  channels_last=channels_last, rescale=rescale,
+                                  flip_horizontal=flip_horizontal,
+                                  flip_vertical=flip_vertical, **kwargs)
 
     def __iter__(self):
         # Reset internal state
@@ -83,15 +89,13 @@ class H5StoreSampleArray(BaseSampleArray):
         Labelizer(self, mltype, count, classes).clean()
 
 
-
 class H5DataBase(BaseDataSet):
     """
     An interface for consuming and reading local data intended to be used with
     machine learning training
     """
-    _fetch_class = VedaBaseFetcher
-    _sample_class = H5StoreSampleArray
-    _variable_class = H5StoreVariableArray
+    _sample_class = H5SampleArray
+    _variable_class = H5VariableArray
 
     def __init__(self, fname, title="SBWM", overwrite=False, mode="a", **kwargs):
 
@@ -103,17 +107,19 @@ class H5DataBase(BaseDataSet):
                 return
 
         super(H5DataBase, self).__init__(**kwargs)
-        self._fileh = tables.open_file(fname, mode=mode, title=title)
 
+        self._fileh = tables.open_file(fname, mode=mode, title=title)
+        self._configure_instance()
         self._build_filetree()
 
     def _configure_instance(self):
         super()._configure_instance()
-        H5IOAdapter.configure(self)
+        adapt_serializers(self)
 
     def _register_prophooks(self):
         super()._register_prophooks()
-        wfn = lambda v, n: setattr(self._root._v_attrs, n, v)
+        wfn = lambda v, n:
+            setattr(self._root._v_attrs, n, v)
         self._prc.mltype.register(wfn)
         self._prc.classes.register(wfn)
         self._prc.image_shape.register(wfn)
@@ -129,14 +135,15 @@ class H5DataBase(BaseDataSet):
         self._set_dprops(quiet=True, **p)
         self._register_prophooks()
 
+    @ignore_nnw
     def _build_filetree(self):
         # Build group nodes
         for name in self.groups:
-            self._fileh.create_group("/", name.lower(),
-                                     "Records of ML experimentation phases")
-        # Build table, array leaves
-        self._create_tables()
-        self._create_arrays()
+            self._fileh.create_group(
+                "/", name.lower(), "Records of ML experimentation phases")
+
+        self._image_class.create_array()
+        self._label_class.create_array()
 
     @property
     def _attrs(self):
@@ -146,19 +153,28 @@ class H5DataBase(BaseDataSet):
     def _root(self):
         return self._fileh.root
 
-    @ignore_nnw
-    def _create_arrays(self):
-        self._img_arr.create_array(self, self._fileh.root, self.image_dtype)
-        self._lbl_arr.create_array(self, self._fileh.root)
+    @property
+    def _image_class(self):
+        klass = getattr(self, "_image_class", None)
+        if not klass:
+            adapt_serializers(self)
+        return self._image_class
 
     @property
-    def _img_arr(self):
-        if self._img_arr_ is None:
-            self._img_arr_ = NDImageArray(self, self._fileh.root.images)
-        return self._img_arr_
+    def _label_class(self):
+        klass = getattr(self, "_label_class", None)
+        if not klass:
+            adapt_serializers(self)
+        return self._label_class
 
     @property
-    def _lbl_arr(self):
+    def _image_array(self):
+        if not hasattr(self, "_image_array"):
+            self._image_array = self._image_class(self, self._root.images)
+        return self._image_array
+
+    @property
+    def _label_array(self):
         if self._lbl_arr_ is None:
             lbl_handler_class = get_array_handler(self)
             self._lbl_arr_ = lbl_handler_class(self, self._fileh.root.labels)

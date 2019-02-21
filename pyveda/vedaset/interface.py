@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from pyveda.vedaset.base import BaseVariableArray
 
 # Modified from pandas
 def is_iterator(obj):
@@ -118,78 +119,6 @@ class TransformRegister(OpRegister):
         return _output
 
 
-
-class WrappedIterator(object):
-    def __init__(self, arr):
-        self._source = arr
-
-    @property
-    def _source(self):
-        return self._source
-
-    @_source.setter
-    def _source(self, source):
-        if not is_iterator(source):
-            raise TypeError("Input source must be define iterator interface")
-        self._source = source
-
-    def __getitem__(self, obj):
-        return self._source.__getitem__(obj)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return next(self._source)
-
-
-class BaseVariableArray(WrappedIterator):
-    def __init__(self, vset, group, arr):
-        self._vset = vset
-        self._group = group
-        self._source = arr
-
-    @property
-    def _vidx(self):
-        return getattr(self._vset._vidx, self._group)
-
-    @property
-    def _start(self):
-        return self._vidx.start
-
-    @property
-    def _stop(self):
-        return self._vidx.stop
-
-    @property
-    def allocated(self):
-        return self._vidx.allocated
-
-    def _gettr(self, obj):
-        return obj
-
-    def _settr(self, obj):
-        return obj
-
-    def append(self, obj):
-        obj = self._settr(obj)
-        self._source.append(obj)
-
-    def __getitem__(self, key):
-        obj = super(BaseVariableArray, self).__getitem__(key)
-        if isinstance(key, int):
-            return self._gettr(obj)
-        return type(obj)([self._gettr(d) for d in obj])
-
-    def __next__(self):
-        obj = super(BaseVariableArray, self).__next__()
-        return self._gettr(obj)
-
-    def __len__(self):
-        return self.allocated
-
-
-
 class PartitionedIndexArray(BaseVariableArray):
 
     def __getitem__(self, key):
@@ -223,7 +152,9 @@ class PartitionedIndexArray(BaseVariableArray):
 
 
 class SerializedVariableArray(BaseVariableArray):
-    def __init__(self, input_fn=lambda x: x, output_fn=lambda x: x, *args, **kwargs):
+    def __init__(self, input_fn=lambda x: x,
+                 output_fn=lambda x: x, *args, **kwargs):
+
         super(SerializedVariableArray, self).__init__(*args, **kwargs)
         self._ipf = input_fn
         self._opf = output_fn
