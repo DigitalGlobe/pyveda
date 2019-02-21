@@ -12,7 +12,7 @@ from tempfile import NamedTemporaryFile
 class WrappedDataArray(BaseVariableArray):
     def __init__(self, array, trainer, output_transform=lambda x: x):
         self._arr = array
-        self._trainer = trainer
+        self._vset = trainer
         self._read_transform = output_transform
 
     @staticmethod
@@ -82,7 +82,7 @@ class LabelArray(WrappedDataArray):
     def __init__(self, hit_table, *args, **kwargs):
         self._table = hit_table
         super(LabelArray, self).__init__(*args, **kwargs)
-        self.imshape = self._trainer.image_shape
+        self.imshape = self._vset.image_shape
 
     def _add_records(self, labels):
         records = [tuple([self._hit_test(label[klass]) for klass in label]) for label in labels]
@@ -158,5 +158,3 @@ class ObjDetectionArray(LabelArray, ObjDetectionHandler):
         trainer._fileh.create_vlarray(group, "labels",
                                       atom = tables.UInt8Atom(),
                                       filters=tables.Filters(complevel=0))
-
-

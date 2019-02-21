@@ -1,16 +1,14 @@
 import os
 from contextlib import contextmanager
 
+from pyveda.config import VedaConfig
 from pyveda.exceptions import RemoteCollectionNotFound
-from pyveda.auth import Auth
 from pyveda.vedaset import VedaBase, VedaStream
 from pyveda.veda.loaders import from_geo, from_tarball
 from pyveda.fetch.compat import build_vedabase
 from pyveda.veda.api import _bec, VedaCollectionProxy
 
-gbdx = Auth()
-HOST = os.environ.get('SANDMAN_API', "https://veda-api.geobigdata.io")
-conn = gbdx.gbdx_connection
+cfg = VedaConfig()
 
 __all__ = ["search",
            "open",
@@ -41,36 +39,32 @@ def _map_contains_submap(mmap, submap, hard_match=True):
     return all([mmap[key] == submap[key] for key in shared])
 
 
-def search(params={}, host=HOST, filters={}, **kwargs):
+def search(params={}, filters={}, **kwargs):
     ''' Search Veda for collections
 
     Args:
         params (dict): Additional search params for Elasticsearch (optional)
-        host (str): Host address to use (optional)
         filters (dict): additional filters to apply to results (optional)
 
     Returns:
         list: VedaCollectionProxies for collections returned by the search
     '''
-    r = conn.post('{}/{}'.format(host, "search"), json=params)
+    r = cfg.conn.post('{}/{}'.format(cfg.host, "search"), json=params)
     r.raise_for_status()
     results = r.json()
     return [VedaCollectionProxy.from_doc(s) for s in results
             if _map_contains_submap(s["properties"], filters, **kwargs)]
 
-def from_id(dataset_id, conn = conn, host = HOST):
+def from_id(dataset_id):
     ''' Returns the dataset as a VedaCollectionProxy from an ID if it exists.
 
     Args:
         dataset_id (str): ID of the dataset to check
-        conn (Oauth2 connection): server connection to use
-        host (str): Host address to use
-
     Returns:
         VedaCollectionProxy: the dataset
     '''
 
-    r = conn.get(_bec._dataset_base_furl.format(host_url=host,
+    r = cfg.conn.get(_bec._dataset_base_furl.format(host_url=cfg.host,
                                                 dataset_id=dataset_id))
     r.raise_for_status()
     if r.status_code == 200:
@@ -78,18 +72,16 @@ def from_id(dataset_id, conn = conn, host = HOST):
     else:
         raise Exception('Invalid dataset id, does not exist in the database.')
 
-def from_name(dataset_name, conn = conn, host = HOST):
+def from_name(dataset_name):
         ''' Returns the dataset as a VedaCollectionProxy from a name if it exists.
 
         Args:
             dataset_name (str): name of the dataset to check
             conn (Oauth2 connection): server connection to use
-            host (str): Host address to use
 
         Returns:
             VedaCollectionProxy: the dataset
         '''
-
         results = search(filters={"name": dataset_name})
         if results:
             return results[0]
@@ -157,7 +149,7 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
     if count is None:
         count = coll.count
     urlgen = coll.gen_sample_ids(count=count)
-    token = gbdx.gbdx_connection.access_token
+    token = cfg.conn.access_token
     build_vedabase(vb, urlgen, partition, count, token,
                        label_threads=1, image_threads=10, **kwargs)
     vb.flush()
@@ -193,7 +185,7 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
                               dtype=None, description='',
                               mltype="classification", public=False,
                               partition=[100,0,0], mask=None,
-                              url="{}/data".format(HOST), conn=conn, **kwargs):
+                              **kwargs):
     """ Loads geojson and an image into a new collection of data
 
     Args:
@@ -230,7 +222,21 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
                    dtype=dtype, description=description,
                    mltype=mltype, public=public, sensors=sensors,
                    partition=partition, mask=mask,
-                   url=url, conn=conn, **kwargs)
+                   **kwargs)
     return VedaCollectionProxy.from_doc(doc)
 
-create_from_tarball = from_tarball
+def create_from_tarball(s3path, name, mltype="classification", imshape=[3,256,256]):
+    ''' Creates a new collection from tarball
+
+    Args:
+        s3path (str): The url to the tarball.
+        name (str): A name for the collection.
+        mltype (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
+        imshape (list): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
+
+    Returns:
+        VedaCollectionProxy
+    '''
+    assert isinstance(name, str), ValueError('Name must be defined as a string')
+    doc = from_tarball(s3path, name=name, mltype=mltype, imshape=imshape)
+    return VedaCollectionProxy.from_doc(doc)

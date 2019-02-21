@@ -1,10 +1,52 @@
 import os
-import sys
+from pyveda.auth import Auth
 
-_PROD = "https://veda-api.geobigdata.io"
-_DEV = "https://veda-api-development.geobigdata.io"
+PROD = "https://veda-api.geobigdata.io"
+DEV = "https://veda-api-development.geobigdata.io"
+LOCAL = "http://host.docker.internal:3002"
 
-HOST = os.environ.et('SANDMAN_API', "https://veda-api.geobigdata.io")
+class _Config:
+    def __init__(self, defhost=PROD):
+        self._HOST = os.environ.get("SANDMAN_API", defhost)
+        try:
+            self._CONN = Auth().gbdx_connection
+        except:
+            pass
+
+    @property
+    def HOST(self):
+        return self._HOST
+
+    @property
+    def CONN(self):
+        return self._CONN
 
 
+config = _Config()
 
+def set_prod():
+    config._HOST = PROD
+
+def set_dev():
+    config._HOST = DEV
+
+def set_local():
+    config._HOST = LOCAL
+
+def set_host(host):
+    config._HOST = host
+
+def set_conn(conn):
+    config._CONN = conn
+
+
+class VedaConfig:
+
+    @property
+    def host(self):
+        return config.HOST
+
+    @property
+    def conn(self):
+        return config.CONN
+        

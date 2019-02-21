@@ -30,7 +30,7 @@
         ]
     },
     "properties": {
-        "mlType": "classification",
+        "mltype": "classification",
         "cached": "true",
         "dataset_id": "e91fb673-4a31-4221-a8ef-01706b6d9b63",
         "bounds": [

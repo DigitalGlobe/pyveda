@@ -14,6 +14,29 @@ from functools import partial
 from shapely.geometry import box, mapping, shape
 from shapely import ops
 from affine import Affine
+import pycurl
+from tempfile import NamedTemporaryFile
+from skimage.io import imread
+
+
+def url_to_array(url, token):
+    _curl = pycurl.Curl()
+    _curl.setopt(_curl.URL, url)
+    _curl.setopt(pycurl.NOSIGNAL, 1)
+    _curl.setopt(pycurl.HTTPHEADER, ['Authorization: Bearer {}'.format(token)])
+    with NamedTemporaryFile(prefix="veda", suffix=".tif", delete=False) as temp:
+      try:
+          _curl.setopt(_curl.WRITEDATA, temp.file)
+          _curl.perform()
+          code = _curl.getinfo(pycurl.HTTP_CODE)
+          if code != 200:
+             raise TypeError("Request for {} returned unexpected error code: {}".format(url, code))
+          temp.file.flush()
+          temp.close()
+          _curl.close()
+          return imread(temp.name)
+      except Exception as err:
+          print('Error fetching image...', err)
 
 
 def check_unexpected_kwargs(kwargs, **unexpected):
