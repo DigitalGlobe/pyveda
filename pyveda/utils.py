@@ -5,8 +5,6 @@ import uuid
 import tempfile
 import shutil
 import h5py
-import tables
-import numpy as np
 import threading
 import warnings
 import inspect
@@ -14,35 +12,12 @@ from functools import partial
 from shapely.geometry import box, mapping, shape
 from shapely import ops
 from affine import Affine
-import pycurl
-from tempfile import NamedTemporaryFile
-from skimage.io import imread
-
-
-def url_to_array(url, token):
-    _curl = pycurl.Curl()
-    _curl.setopt(_curl.URL, url)
-    _curl.setopt(pycurl.NOSIGNAL, 1)
-    _curl.setopt(pycurl.HTTPHEADER, ['Authorization: Bearer {}'.format(token)])
-    with NamedTemporaryFile(prefix="veda", suffix=".tif", delete=False) as temp:
-      try:
-          _curl.setopt(_curl.WRITEDATA, temp.file)
-          _curl.perform()
-          code = _curl.getinfo(pycurl.HTTP_CODE)
-          if code != 200:
-             raise TypeError("Request for {} returned unexpected error code: {}".format(url, code))
-          temp.file.flush()
-          temp.close()
-          _curl.close()
-          return imread(temp.name)
-      except Exception as err:
-          print('Error fetching image...', err)
-
 
 def check_unexpected_kwargs(kwargs, **unexpected):
     for key, message in unexpected.items():
         if key in kwargs:
             raise ValueError(message)
+
 
 def parse_kwargs(kwargs, *name_and_values, **unexpected):
     values = [kwargs.pop(name, default_value)
@@ -56,12 +31,15 @@ def parse_kwargs(kwargs, *name_and_values, **unexpected):
         raise TypeError(message)
     return tuple(values)
 
+
 def assert_kwargs_empty(kwargs):
     # It only checks if kwargs is empty.
-    parse_kwargs(kwargs)
+    return parse_kwargs(kwargs)
+
 
 def transform_to_int(tfm, x, y):
     return tuple(map(int, tfm * (x, y)))
+
 
 def from_bounds(west, south, east, north, width, height):
     """Return an Affine transformation given bounds, width and height.
@@ -74,6 +52,7 @@ def from_bounds(west, south, east, north, width, height):
     """
     return Affine.translation(west, north) * Affine.scale(
         (east - west) / width, (south - north) / height)
+
 
 def features_to_pixels(image, features, mltype):
     """
@@ -101,6 +80,7 @@ def features_to_pixels(image, features, mltype):
                 converted.append(mapping(ops.transform(xfm, geom)))
         return converted
 
+
 def mklogfilename(prefix, suffix="json", path=None):
     timestamp = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
     basename = "_".join([prefix, timestamp]) # e.g. 'mylogfile_120508_171442'
@@ -108,6 +88,7 @@ def mklogfilename(prefix, suffix="json", path=None):
     if path:
         filename = os.path.join(path, filename)
     return filename
+
 
 def mktempfilename(prefix, suffix="h5", path=None):
     idstr = str(uuid.uuid4())
@@ -117,13 +98,6 @@ def mktempfilename(prefix, suffix="h5", path=None):
         filename = os.path.join(path, filename)
     return filename
 
-def write_trace_profile(fname, nreqs, trace_cache):
-    basepath, inputfile = os.path.split(fname)
-    basename = "_".join([inputfile.split(".")[0], "n{}".format(nreqs)])
-    filename = mklogfilename(basename, suffix="json", path=basepath)
-    with open(filename, "w") as f:
-        json.dump(trace_cache, f)
-    return filename
 
 class NamedTemporaryHDF5File(object):
     def __init__(self, prefix="veda", suffix="h5", path=None, delete=True):
@@ -147,6 +121,7 @@ class NamedTemporaryHDF5File(object):
             os.remove(self.name)
         except Exception:
             pass
+
 
 class NamedTemporaryHDF5Generator(object):
     def __init__(self, dirpath=None, delete=True, delete_files=True):
@@ -181,10 +156,6 @@ class NamedTemporaryHDF5Generator(object):
     def mktempfilename(self, prefix="veda", suffix="h5"):
         return mktempfilename(prefix, suffix=suffix, path=self.dirpath)
 
-def _atom_from_dtype(_type):
-    if isinstance(_type, np.dtype):
-        return tables.Atom.from_dtype(_type)
-    return tables.Atom.from_dtype(np.dtype(_type))
 
 def ignore_warnings(fn, _warning=None):
     def wrapper(*args, **kwargs):
@@ -195,6 +166,7 @@ def ignore_warnings(fn, _warning=None):
                 warnings.simplefilter("ignore", _warning)
             return fn(*args, **kwargs)
     return wrapper
+
 
 def in_ipython_runtime_env():
     try:
@@ -221,8 +193,4 @@ class StoppableThread(threading.Thread):
         return self._stopper.is_set()
 
 
-def extend_instance(obj, cls):
-    """Apply mixins to a class instance after creation"""
-    base_cls = obj.__class__
-    base_cls_name = obj.__class__.__name__
-    obj.__class__ = type(base_cls_name, (cls, base_cls),{})
+
