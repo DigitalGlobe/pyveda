@@ -78,7 +78,35 @@ class mltypes:
         try:
             metatype = cls.metatype_map[typname]
         except KeyError:
-            raise MLTypeError("Cast error: unrecognized mltype string name '{}'".format(typname))
+            raise MLTypeError(
+                "Cast error: unrecognized mltype string name '{}'".format(typname))
         return metatype(*args, **kwargs)
+
+    @classmethod
+    def types_match(cls, a, b):
+        for obj in (a, b):
+            try:
+                obj = cls.get_mltype(obj)
+            except MLTypeError:
+                return False
+        return type(a) is type(b)
+
+    @classmethod
+    def is_mltype(cls, obj):
+        if obj in cls.metatype_map.values():
+            return obj()
+        if getattr(obj, "mltype", None) in cls.metatype_map:
+            return cls.metatype_map[obj.mltype]()
+        for mltype in cls.metatype_map.values():
+            if isinstance(obj, mltype):
+                return obj
+        return False
+
+    @classmethod
+    def get_mltype(cls, obj):
+        mltype = cls.is_mltype(obj)
+        if mltype: return mltype
+        raise MLTypeError(
+            "'{}' is not of type 'mltypes.mltype'".format(obj))
 
 
