@@ -5,10 +5,11 @@ with the team and app.
 ## Table of contents
 - [Resources](#resources)
 - [Git Workflows](#git-workflows)
-   - [Hooks](#hooks)
+   - [Working on pyveda inside Veda](#working-on-pyveda-inside-veda)
    - [Branches](#branches)
    - [Commits](#commits)
    - [Pull Requests](#pull-requests)
+   - [Hooks](#hooks)
 
 ## Resources
 
@@ -125,4 +126,49 @@ If you are the **Assignee**:
 1. When done with your review, click the "Review changes" button at top right and indicate whether you are approving the PR or requesting changes.
 
 1. When you and all reviewers have approved the PR, all checkboxes are checked, and the automated tests came back with success, merge the PR.
+
+### Hooks
+
+#### Local git hooks
+
+The following git hooks will be installed (from pyveda/.githooks) when you run `make init` from pyveda
+and/or `npm run init` from veda:
+
+1. *commit-msg*: Make sure the commit message is prepended either with a ticket
+   key, FIX, or Merge. If your branch is prepended with a Jira ticket it will
+   automatically add it to the commit.
+
+1. *pre-commit*: Run [pycodestyle](https://github.com/PyCQA/pycodestyle)
+   against the repo. See pyveda/.githooks/pre-commit to see the pycodestyle
+   settings.
+
+#### Remote hooks
+
+*Jira*
+
+Commits prepended with ticket keys will transition the connected ticket under
+the following circumstances:
+
+1. You have your @digitalglobe email configured in git locally: `git config
+   --local user.email <you>@digitalglobe.com`
+
+1. You have added your @digitaglobe email to https://github.com/settings/emails
+
+1. "Open" tickets will transition to "In progress" after the first commit.
+
+1. "In progress" tickets will transition to "Resolved" when a branch with the
+   ticket key is PR'ed.
+
+1. "Resolved" tickets will transition to "Closed" when a PR for a branch with
+   the matching ticket key is merged.
+
+1. "Resolved" tickets will transition to "Re-opened" when a PR for a branch
+   with the matching ticket key is rejected.
+
+*Tip*: When not going through the PR cycle -- for a quick fix, for example --
+you can include the transition in the commit. For example:
+
+```
+MLT-123 #close fixed this thing
+```
 
