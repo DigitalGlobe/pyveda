@@ -16,7 +16,7 @@ setup(name='pyveda',
       description='Python API for interfacing with veda',
       url='https://github.com/DigitalGlobe/pyveda',
       license='MIT',
-      packages=['pyveda', "pyveda.fetch", "pyveda.fetch.compat", "pyveda.fetch.aiohttp", "pyveda.fetch.diagnostics"],
+      packages=['pyveda', "pyveda.vedaset", "pyveda.veda", "pyveda.fetch", "pyveda.fetch.compat", "pyveda.fetch.aiohttp", "pyveda.fetch.diagnostics"],
       zip_safe=False,
       install_requires=reqs
       )
