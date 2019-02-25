@@ -1,43 +1,116 @@
-from functools import partial
 import os
+import inspect
 import numpy as np
-from pyveda.fetch.aiohttp.client import ThreadedAsyncioRunner, VedaBaseFetcher
+from functools import partial
+from pyveda.config import VedaConfig
+from pyveda.io.remote.client import ThreadedAsyncioRunner, VedaBaseFetcher
 
-def vb_write_fn(vb, data):
-    label, image, _id = data
-    vb._img_arr.append(image)
-    vb._lbl_arr.append(label)
-    idx_row = vb._fileh.root.sample_index.row
-    idx_row['idx_cols'] = _id
-    idx_row.append()
-    vb._fileh.root.sample_index.flush()
+def write_v_sample_obj(vb, data):
+    """
+    Writes a veda sample (label, image, veda ID)
+    to a vedabase object.
+    """
+
+    label, image, *data = data
+    vb._image_array.append(image)
+    vb._label_array.append(label)
+    write_v_sample_id(vb, *data)
+    return data
 
 
-def vedabase_batch_write(data, database=None, partition=[70, 20, 10]):
-    trainp, testp, valp = partition
-    images, labels, ids = data
-    batch_size = images.shape[0]
-    ntrain = round(batch_size * (trainp * 0.01))
-    ntest = round(batch_size * (testp * 0.01))
-    nval = round(batch_size * (valp * 0.01))
+def write_v_sample_id(vb, data):
+    """
+    Writes a veda ID to a vedabase index table.
+    """
+    vid, *data = data
+    row = vb._tables.veda_ids.row
+    row["veda_id"] = vid
+    row.append()
+    vb._tables.veda_ids.flush()
+    return data
 
-    # write training data, record ids
-    database.train.images.append_batch(images[:ntrain])
-    database.train.labels.append_batch(labels[:ntrain])
-    database.train.id_table.append(ids[:ntrain])
-    database.train.id_table.flush()
 
-    # write testing data, record ids
-    database.test.images.append_batch(images[ntrain:ntrain + ntest])
-    database.test.labels.append_batch(labels[ntrain:ntrain + ntest])
-    database.test.id_table.append(ids[ntrain:ntrain + ntest])
-    database.test.id_table.flush()
+is_iterator = lambda x: isinstance(x, inspect.collections.Iterator)
 
-    # write validation data, record ids
-    database.validate.images.append_batch(images[ntrain + ntest:])
-    database.validate.labels.append_batch(labels[ntrain + ntest:])
-    database.validate.id_table.append(ids[ntrain + ntest:])
-    database.validate.id_table.flush()
+def is_stream_based_accessor(accessor):
+    if type(accessor).__name__ == "BufferedDataStream":
+        return True
+    if hasattr(accessor, "__v_iotype__"):
+        return accessor.__v_iotypee__ == "BufferedIOBased"
+    return False
+
+
+def is_file_based_accessor(accessor):
+    if type(accessor).__name__ == "H5DataBase":
+        return True
+    if hasattr(accessor, "__v_iotype__"):
+        return accessor.__v_iotype__ == "FileIOBased"
+    return False
+
+
+def ensure_iterator(obj):
+    if not obj:
+        return obj
+    if is_iterator(obj):
+        return obj
+    if inspect.isgeneratorfunction(obj):
+        return obj()
+    if inspect.isgenerator(obj):
+        gs = inspect.getgeneratorstate(obj)
+        if gs is inspect.GEN_CLOSED:
+            raise GeneratorExit("Input source generator is empty")
+        # Raise warning/do something if already running(suspended)?
+        return gs
+    if is_iterable(obj):
+        return iter(obj)
+
+    return False
+
+
+def configure_client(vset, source=None, token=None, **kwargs):
+    if not token:
+        token = VedaConfig().conn.access_token
+
+    source = source or getattr(vset, "_source_factory", None)
+    if source:
+        source = ensure_iterator(source)
+    if not source:
+        raise ValueError("why u do that")
+
+    if is_stream_based_accessor(vset):
+        vclient = _thin
+
+
+
+
+
+
+class IOTaskExecutor(object):
+    schedulers = ["synchronous",
+                  "concurrent"]
+
+    def __init__(self, client=None, scheduler="concurrent"):
+        self.client = client
+        if scheduler not in self.schedulers:
+            raise NotImplementedError("Scheduler '{}' not supported")
+
+    def _run_sync(self, client):
+        client = self.client or client
+        assert client
+        with ThreadedAsyncIORunner(
+            client.run_loop, client.start_fetch) as tar:
+            tar(loop=tar._loop)
+
+
+
+
+
+def build_vedaindex(index, source, total, token):
+    abf = VedaBaseFetcher(source, total_count=total, token=token,
+                          write_fn=partial(vb_write_veda_id, index)
+
+    with ThreadedAsyncioRunner(abf.run_loop, abf.start_fetch) as tar:
+                          tar(loop=tar._loop)
 
 
 def build_vedabase(database, source, partition, total, token, label_threads=1, image_threads=10):
