@@ -1,3 +1,4 @@
+# pylint: disable
 ''' Tests for funcitions in main.py '''
 
 import os, sys
@@ -71,12 +72,22 @@ class MainFunctionsTest(unittest.TestCase):
         store = pv.store(dataset_id = self.id, filename = self.h5, count = 10)
         self.assertTrue(isinstance(store, VedaBase))
 
-    @my_vcr.use_cassette('tests/unit/cassettes/test_main_createfromgeojson.yaml', filter_headers=['authorization'])
     def test_createfromgeojson(self):
         geojson = {'features': [{'type': 'Feature', 'properties': {'Name': None, 'label': 'american_football_field'}, 'geometry': {'type': 'Polygon', 'coordinates': [[[-122.4907898268108, 37.778191163762486], [-122.49129463633359, 37.7781838052681], [-122.49133721678479, 37.77898525977172], [-122.49083240181278, 37.778992618408225], [-122.4907898268108, 37.778191163762486]]]}}, {'type': 'Feature', 'properties': {'Name': None, 'label': 'american_football_field'}, 'geometry': {'type': 'Polygon', 'coordinates': [[[-122.1102008575904, 37.8440139386442], [-122.1113937618264, 37.843225245649634], [-122.11200867572458, 37.84375777445076], [-122.11075646129174, 37.84455775662023], [-122.1102008575904, 37.8440139386442]]]}}]}
-        # TODO: do we really want all of CatalogImage here?
-        image = CatalogImage('103001002300F900')
-        name = 'name2'
+        class BogusRda():
+            def graph(self):
+                return {'nodes': [{'id': 'someid'}]}
+
+        class BogusImage():
+
+            def __init__(self):
+                self.dtype = np.dtype('uint8')
+                self.shape = [256, 256, 3]
+                self.rda = BogusRda()
+                self.rda_id = 'someotherid'
+
+        image = BogusImage()
+        name = 'foojed2'
         background_ratio = 2.0
         pv.config.set_dev()
         vcp = pv.create_from_geojson(geojson, image, name, background_ratio=background_ratio)
