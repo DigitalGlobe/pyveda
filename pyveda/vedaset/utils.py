@@ -1,3 +1,5 @@
+from functools import partial
+import tables
 from pyveda.utils import ignore_warnings
 
 ignore_NaturalNameWarning = partial(ignore_warnings,

@@ -6,9 +6,9 @@ import time
 from functools import partial
 import numpy as np
 
-from pyveda.fetch.aiohttp.client import VedaStreamFetcher
+from pyveda.io.remote.client import VedaStreamFetcher
 from pyveda.vedaset.base import BaseSampleArray, BaseDataSet
-from pyvda.vedaset.interface import BaseVariableArray, ArrayTransformPlugin
+from pyveda.vedaset.interface import BaseVariableArray, ArrayTransformPlugin
 from pyveda.frameworks.batch_generator import VedaStreamGenerator
 #from pyveda.vv.labelizer import Labelizer
 
@@ -36,8 +36,9 @@ class BufferedSampleArray(BaseSampleArray):
             except StopIteration:
                 pass
             else:
-                asyncio.run_coroutine_threadsafe(self._vset._fetcher.produce_reqs(reqs=[nreqs]),
-                                                 loop=self._vset._loop)
+                asyncio.run_coroutine_threadsafe(
+                    self._vset._fetcher.produce_reqs(reqs=[nreqs]),
+                    loop=self._vset._loop)
 
             # The following get() blocks, as it should, when we're waiting for
             # the thread running the asyncio loop to fetch more data while the
@@ -65,7 +66,8 @@ class BufferedSampleArray(BaseSampleArray):
         #Arguments
             batch_size: Int. batch size
             shuffle: Boolean.
-            channels_last: Boolean. To return image data as Height-Width-Depth,instead of the default Depth-Height-Width
+            channels_last: Boolean. To return image data as Height-Width-Depth,
+            instead of the default Depth-Height-Width
             rescale: boolean. Rescale image values between 0 and 1.
             flip_horizontal: Boolean. Horizontally flip image and lables.
             flip_vertical: Boolean. Vertically flip image and lables
@@ -125,12 +127,12 @@ class BufferedDataStream(BaseDataSet):
             self._start_consumer()
 
     @property
-    def _img_arr(self):
+    def _image_array(self):
         _, imgs, _ = zip(*self._buf)
         return self._variable_class(self, imgs)
 
     @property
-    def _lbl_arr(self):
+    def _label_array(self):
         lbls, _, _ = zip(*self._buf)
         return self._variable_class(self, lbls)
 
@@ -146,7 +148,9 @@ class BufferedDataStream(BaseDataSet):
         self._exhausted = val
 
     def _on_group_exhausted(self):
-        if all([self.train.exhausted, self.test.exhausted, self.validate.exhausted]):
+        if all([self.train.exhausted,
+                self.test.exhausted,
+                self.validate.exhausted]):
             self.exhausted = True
 
     def _on_exhausted(self):
@@ -161,11 +165,11 @@ class BufferedDataStream(BaseDataSet):
             except StopIteration:
                 break
 
-        f = asyncio.run_coroutine_threadsafe(self._fetcher.produce_reqs(reqs=reqs), loop=self._loop)
+        f = asyncio.run_coroutine_threadsafe(
+            self._fetcher.produce_reqs(reqs=reqs), loop=self._loop)
         f.result()
 
     def _configure_fetcher(self, **kwargs):
-
         if self._write_h5:
             vb = VedaBase.from_vtype("temp.h5", self._unpack())
             write_fn = partial(vb_write_fn, vb=vb)
@@ -187,7 +191,8 @@ class BufferedDataStream(BaseDataSet):
         if not loop:
             loop = asyncio.new_event_loop()
         self._loop = loop
-        self._thread = threading.Thread(target=partial(self._fetcher.run_loop, loop=loop))
+        self._thread = threading.Thread(
+            target=partial(self._fetcher.run_loop, loop=loop))
 
     def _start_consumer(self, init_buff=True):
         if not self._fetcher:
@@ -197,14 +202,15 @@ class BufferedDataStream(BaseDataSet):
 
         self._thread.start()
         time.sleep(1.0)
-        self._consumer_fut = asyncio.run_coroutine_threadsafe(self._fetcher.start_fetch(self._loop),
-                                                              loop=self._loop)
+        self._consumer_fut = asyncio.run_coroutine_threadsafe(
+            self._fetcher.start_fetch(self._loop), loop=self._loop)
         if init_buff:
-            self._initialize_buffer() # Fill the buffer and block until full
+            self._initialize_buffer()
 
     def _stop_consumer(self):
         self._consumer_fut.cancel()
-        f = asyncio.run_coroutine_threadsafe(self._fetcher.kill_workers(), loop=self._loop)
+        f = asyncio.run_coroutine_threadsafe(
+            self._fetcher.kill_workers(), loop=self._loop)
         f.result() # Wait for workers to shutdown gracefully
         for task in asyncio.Task.all_tasks():
             task.cancel()
@@ -215,7 +221,8 @@ class BufferedDataStream(BaseDataSet):
 
     @classmethod
     def from_vc(cls, vc, **kwargs):
-        return cls(vc.mltype, vc.classes, vc.count, vc.gen_sample_ids(**kwargs),
+        return cls(vc.mltype, vc.classes,
+                   vc.count, vc.gen_sample_ids(**kwargs),
                    vc.imshape, **kwargs)
 
     def __enter__(self):

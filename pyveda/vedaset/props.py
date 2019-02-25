@@ -10,7 +10,7 @@ DATAGROUPS = ["train", "test", "validate"]
 ### class wrapper for descriptor assignment on class creation
 def register_vprops(vprops=[], fallback="_vprops", exclude=[],):
     def wrapped(cls):
-        for prop in set(vprops).union(set(getattr(cls, fallback, []))):
+        for prop in set(vprops).union(set(getattr(cls, fallback, {}).values())):
             if prop.__vname__ not in exclude:
                 setattr(cls, prop.__vname__, prop())
         return cls
@@ -22,7 +22,7 @@ class BaseDescriptor(object):
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
-        if not getattr(self, name, None):
+        if not getattr(self, "name", None):
             self.name = type(self).__vname__
 
     def __get__(self, instance, klass):
@@ -109,7 +109,7 @@ class NumpyDataTyped(PropCallbackExecutor):
         super().__set__(instance, d)
 
 
-class ImageShapedTyped(SizeMatched, PropCallbackExecutor):
+class ImageShapedTyped(SizedMatched, PropCallbackExecutor):
     __vname__ = "image_shape"
     allowed_sizes = [2, 3]
 
@@ -128,7 +128,7 @@ class MLtypeTyped(Typed, PropCallbackExecutor):
         super().__set__(instance, value)
 
 
-class PartitionedTyped(SizeMatched, ProbabilityDistTyped, PropCallbackExecutor):
+class PartitionedTyped(SizedMatched, ProbabilityDistTyped, PropCallbackExecutor):
     __vname__ = "partition"
     size = [3]
 
@@ -141,13 +141,13 @@ class SampleCountTyped(IntTyped, PropCallbackExecutor):
     __vname__ = "count"
 
 
-VBaseprops = (SampleCountTyped,
-             FeatureClassTyped,
-             PartitionTyped,
-             MLtypeTyped,
-             ImageShapedTyped,
-             NumpyDataTyped,)
+_vdataprops = (SampleCountTyped,
+              FeatureClassTyped,
+              PartitionedTyped,
+              MLtypeTyped,
+              ImageShapedTyped,
+              NumpyDataTyped,)
 
-baseprop_map = dict([(kls.__vname__, kls) for kls in baseprops])
+VDATAPROPS = dict([(kls.__vname__, kls) for kls in _vdataprops])
 
 

@@ -5,8 +5,8 @@ import tables
 from pyveda.io.hdf5.serializers import adapt_serializers
 from pyveda.vedaset.utils import ignore_NaturalNameWarning as ignore_nnw
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
-from pyveda.vedaset.base import BaseDataSet, BaseSampleArray, SerializedVariableArray,
-                                PartitionedIndexArray, ArrayTransformPlugin
+from pyveda.vedaset.base import BaseDataSet, BaseSampleArray
+from pyveda.vedaset.interface import SerializedVariableArray, PartitionedIndexArray, ArrayTransformPlugin
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
 #from pyveda.vv.labelizer import Labelizer
 
@@ -41,7 +41,7 @@ class H5VariableArray(SerializedVariableArray,
     def __next__(self):
        try:
             return super().__next__()
-        except StopIteration as si:
+       except StopIteration as si:
             self._itr_ = None
             raise
 
@@ -113,13 +113,16 @@ class H5DataBase(BaseDataSet):
         self._build_filetree()
 
     def _configure_instance(self):
+        self._image_class = None
+        self._label_class = None
+        self._image_array = None
+        self._label_array = None
         super()._configure_instance()
         adapt_serializers(self)
 
     def _register_prophooks(self):
         super()._register_prophooks()
-        wfn = lambda v, n:
-            setattr(self._root._v_attrs, n, v)
+        wfn = lambda v, n: setattr(self._root._v_attrs, n, v)
         self._prc.mltype.register(wfn)
         self._prc.classes.register(wfn)
         self._prc.image_shape.register(wfn)
@@ -155,30 +158,27 @@ class H5DataBase(BaseDataSet):
 
     @property
     def _image_class(self):
-        klass = getattr(self, "_image_class", None)
-        if not klass:
+        if self._image_class is None:
             adapt_serializers(self)
         return self._image_class
 
     @property
     def _label_class(self):
-        klass = getattr(self, "_label_class", None)
-        if not klass:
+        if self._label_class is None:
             adapt_serializers(self)
         return self._label_class
 
     @property
     def _image_array(self):
-        if not hasattr(self, "_image_array"):
+        if self._image_array is None:
             self._image_array = self._image_class(self, self._root.images)
         return self._image_array
 
     @property
     def _label_array(self):
-        if self._lbl_arr_ is None:
-            lbl_handler_class = get_array_handler(self)
-            self._lbl_arr_ = lbl_handler_class(self, self._fileh.root.labels)
-        return self._lbl_arr_
+        if self._label_array is None:
+            self._label_array = self._label_class(self, self._root.labels)
+        return self._label_array
 
     def flush(self):
         self._fileh.flush()

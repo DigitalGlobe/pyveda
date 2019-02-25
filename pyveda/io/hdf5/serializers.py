@@ -3,7 +3,7 @@ import tables
 import numpy as np
 import ujson as json
 from functools import partial
-from pyveda.vedaset.abstract import mtypes
+from pyveda.vedaset.abstract import mltypes
 from pyveda.io.utils import _atom_from_dtype
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 

@@ -20,7 +20,7 @@ import collections
 import logging
 import logging.handlers
 
-from pyveda.utils import write_trace_profile
+from pyveda.io.utils import write_trace_profile
 from pyveda.config import VedaConfig
 
 has_tqdm = False

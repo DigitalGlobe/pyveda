@@ -12,7 +12,7 @@ class MetaDataSchema(type):
         return True
 
 
-class BaseDataSchema(metaclass=MetaBaseSchema): pass
+class BaseDataSchema(metaclass=MetaDataSchema): pass
 
 
 class DataSampleSchema(BaseDataSchema):

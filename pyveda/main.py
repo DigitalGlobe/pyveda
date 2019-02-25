@@ -5,7 +5,7 @@ from pyveda.config import VedaConfig
 from pyveda.exceptions import RemoteCollectionNotFound
 from pyveda.vedaset import VedaBase, VedaStream
 from pyveda.vedaset.veda.loaders import from_geo, from_tarball
-from pyveda.io.batch import build_vedabase
+from pyveda.io.io import build_vedabase
 from pyveda.vedaset.veda.api import _bec, VedaCollectionProxy
 
 cfg = VedaConfig()
