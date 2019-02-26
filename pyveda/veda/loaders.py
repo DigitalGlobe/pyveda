@@ -26,8 +26,7 @@ def args_to_meta(name, description, dtype, imshape,
       'sensors': sensors,
       'classes': [],
       'bounds': None,
-      # TODO: max(0.0, min(1.0, float(background_ratio)))
-      'background_ratio': float(background_ratio)
+      'background_ratio': max(0.0, min(1.0, float(background_ratio)))
     }
 
 
@@ -62,7 +61,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
                               dtype=None, description='',
                               mltype="classification", public=False,
                               partition=[100,0,0], sensors=[],
-                              background_ratio=1.0,
+                              background_ratio=0.0,
                               **kwargs):
     """
         Loads a geojson file into the collection
