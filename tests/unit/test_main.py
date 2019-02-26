@@ -97,20 +97,6 @@ class MainFunctionsTest(unittest.TestCase):
         }
         from_geo.return_value = {'properties': mock_doc}
         geojson = {}
-
-        class _Rda():
-            def graph(self):
-                return {'nodes': [{'id': 'someid'}]}
-
-        class _Image():
-
-            def __init__(self):
-                self.dtype = np.dtype('uint8')
-                self.shape = [256, 256, 3]
-                self.rda = _Rda()
-                self.rda_id = 'someotherid'
-
-        image = _Image()
-
+        image = []
         vcp = pv.create_from_geojson(geojson, image, mock_doc['name'])
         self.assertTrue(isinstance(vcp, VedaCollectionProxy))
