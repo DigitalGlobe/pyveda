@@ -94,6 +94,8 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
             temp.file.write(json.dumps(geojson))
         geojson = temp.name
 
+    assert len(geojson['features']), "No features found in geojson. At least one feature is needed for creating data." 
+
     if dtype is None:
        dtype = image.dtype
     else:
