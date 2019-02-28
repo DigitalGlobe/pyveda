@@ -49,9 +49,10 @@ class Model(object):
           classes (list): A list of classes that the model should return
 
     """
-    def __init__(self, name, model_path=None, weights_path=None, mltype=None, **kwargs):
+    def __init__(self, name, model_path=None, weights_path=None, mltype=None, channels_last=False, **kwargs):
         self.id = kwargs.get("id", None)
         self.links = kwargs.get("links")
+        self.channels_last = channels_last
         self.meta = self._construct_meta(name, mltype=mltype, **kwargs)
         for k,v in self.meta.items():
             setattr(self, k, v)
@@ -112,7 +113,7 @@ class Model(object):
         else:
             print('Model already deployed.')
     
-    def predict(self, bounds, image, **kwargs):
+    def predict(self, bounds, image=None, **kwargs):
         ''' 
           Run predictions for an AOI within an RDA image based image. 
 
@@ -121,23 +122,31 @@ class Model(object):
             image (RDAImage): An ERDA based image to use for streaming tiles
         '''
         assert self.deployed is not None, "Model no deployed, please call deploy() before running predictions"
-        rda_node = image.rda.graph()['nodes'][0]['id']
+        if image is None: 
+            rda_id = kwargs.get('rda_id')
+            rda_node = kwargs.get('rda_node')
+        else:
+            rda_id = image.rda_id
+            rda_node = image.rda.graph()['nodes'][0]['id']
+        # TODO assert we have at least an ID and Node
+
         meta = {
             "name": self.name,
             "description": kwargs.get("description", None),
             "dtype": self.dtype, 
-            "imshape": self.shape,
             "mltype": self.mltype,
-            "imshape": list(self.shape),
+            "imshape": self.imshape,
             "public": False,
             "bounds": bounds,
             "deployed_model": self.deployed['id']
         }
+        #if self.channels_last:
+        meta["imshape"] = self.imshape[::-1]
         payload = {
             "id": self.id,
             "metadata": meta,
             "options": {
-              "graph": image.rda_id,
+              "graph": rda_id,
               "node": rda_node
             }
         }
@@ -230,7 +239,7 @@ class PredictionSet(object):
 
     def update(self, new_data):
         self.meta.update(new_data)
-        return cfg.conn.put(self.links["update"]["href"], json=self.meta).json()
+        return cfg.conn.put(self.links["update"]["href"], data=json.dumps(self.meta)).json()
 
     def remove(self):
         self.id = None
@@ -247,13 +256,22 @@ class PredictionSet(object):
     @classmethod
     def from_doc(cls, doc):
         """ Helper method that converts a db doc to a PredictionSet """
-        return cls(**doc)
+        return cls(**doc['properties'])
 
     @classmethod
     def from_id(cls, _id):
         """ Helper method that fetches an id into a predictionset """
-        url = "{}//{}".format(cfg.host, _id)
+        url = "{}/predictions/{}".format(cfg.host, _id)
         r = cfg.conn.get(url)
         r.raise_for_status()
         return cls.from_doc(r.json())
+
+    @classmethod
+    def search(cls, params={}):
+        r = cfg.conn.post('{}/predictions/search'.format(cfg.host), json=params)
+        try:
+            results = r.json()
+            return [cls.from_doc(s) for s in results]
+        except Exception as err:
+            return []
 
