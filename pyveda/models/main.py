@@ -4,6 +4,7 @@ import tempfile
 import mmap
 import json
 from requests_toolbelt.multipart.encoder import MultipartEncoder
+from pyveda.veda.api import DataSampleClient, VedaCollectionProxy
 from pyveda.config import VedaConfig
 
 cfg = VedaConfig()
@@ -128,7 +129,7 @@ class Model(object):
         else:
             rda_id = image.rda_id
             rda_node = image.rda.graph()['nodes'][0]['id']
-        # TODO assert we have at least an ID and Node
+        assert rda_id is not None, "Must at least provide and image object or an rda_id"
 
         meta = {
             "name": self.name,
@@ -138,10 +139,12 @@ class Model(object):
             "imshape": self.imshape,
             "public": False,
             "bounds": bounds,
+            "classes": self.classes,
+            "channels_last": str(self.channels_last), 
             "deployed_model": self.deployed['id']
         }
-        #if self.channels_last:
-        meta["imshape"] = self.imshape[::-1]
+        if self.channels_last:
+            meta["imshape"] = self.imshape[::-1]
         payload = {
             "id": self.id,
             "metadata": meta,
@@ -150,7 +153,8 @@ class Model(object):
               "node": rda_node
             }
         }
-        return cfg.conn.post(self.links["predict"]["href"], json=payload).json()
+        doc = cfg.conn.post(self.links["predict"]["href"], json=payload).json()
+        return PredictionSet.from_doc(doc)
 
         
     def update(self, new_data, save=True):
@@ -226,20 +230,31 @@ class Model(object):
         return json.dumps(self.meta)
 
 
+class PredictionSampleClient(DataSampleClient):
+  def raw(self):
+      print('get raw data')
 
-class PredictionSet(object):
+class PredictionSet(VedaCollectionProxy):
     """ Methods for accessing training data pairs """
-    def __init__(self, **kwargs):
-        self.id = kwargs.get('id', None)
-        self.links = kwargs.get('links')
-        del kwargs['links']
-        self.meta = kwargs
-        for k,v in self.meta.items():
-            setattr(self, k, v)
+    _data_sample_client = PredictionSampleClient
 
-    def update(self, new_data):
-        self.meta.update(new_data)
-        return cfg.conn.put(self.links["update"]["href"], data=json.dumps(self.meta)).json()
+    def __init__(self, **kwargs):
+        self._meta = {k: v for k, v in kwargs.items() if k in self._metaprops}
+        self.links = kwargs.get('links')
+        self.id = kwargs.get('id')
+        self._dataset_id = self.id
+
+    #def __init__(self, **kwargs):
+    #    self.id = kwargs.get('id', None)
+    #    self.links = kwargs.get('links')
+    #    del kwargs['links']
+    #    self.meta = kwargs
+    #    for k,v in self.meta.items():
+    #        setattr(self, k, v)
+
+    #def update(self, new_data):
+    #    self.meta.update(new_data)
+    #    return cfg.conn.put(self.links["update"]["href"], data=json.dumps(self.meta)).json()
 
     def remove(self):
         self.id = None
@@ -252,7 +267,7 @@ class PredictionSet(object):
     def unpublish(self):
         assert self.id is not None, 'You can only unpublish a saved Model. Call the save method first.'
         return cfg.conn.put(self.links["update"]["href"], json={"public": False}).json() 
-
+    
     @classmethod
     def from_doc(cls, doc):
         """ Helper method that converts a db doc to a PredictionSet """
