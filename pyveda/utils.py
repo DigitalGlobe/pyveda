@@ -38,6 +38,25 @@ def url_to_array(url, token):
       except Exception as err:
           print('Error fetching image...', err)
 
+def url_to_numpy(url, token):
+    _curl = pycurl.Curl()
+    _curl.setopt(_curl.URL, url)
+    _curl.setopt(pycurl.NOSIGNAL, 1)
+    _curl.setopt(pycurl.HTTPHEADER, ['Authorization: Bearer {}'.format(token)])
+    with NamedTemporaryFile(prefix="veda", suffix=".npy", delete=False) as temp:
+      try:
+          _curl.setopt(_curl.WRITEDATA, temp.file)
+          _curl.perform()
+          code = _curl.getinfo(pycurl.HTTP_CODE)
+          if code != 200:
+             raise TypeError("Request for {} returned unexpected error code: {}".format(url, code))
+          temp.file.flush()
+          temp.close()
+          _curl.close()
+          return np.load(temp.name)
+      except Exception as err:
+          print('Error fetching image...', err)
+
 
 def check_unexpected_kwargs(kwargs, **unexpected):
     for key, message in unexpected.items():

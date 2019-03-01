@@ -3,6 +3,7 @@ import tarfile
 import tempfile
 import mmap
 import json
+from pyveda.utils import url_to_numpy
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 from pyveda.veda.api import DataSampleClient, VedaCollectionProxy
 from pyveda.config import VedaConfig
@@ -232,8 +233,10 @@ class Model(object):
 
 
 class PredictionSampleClient(DataSampleClient):
-  def raw(self):
-      print('get raw data')
+  @property
+  def prediction(self):
+      url = "{}/predictions/result/{}".format(cfg.host, self.id)
+      return url_to_numpy(url, cfg.conn.access_token)
 
 class PredictionSet(VedaCollectionProxy):
     """ Methods for accessing training data pairs """
@@ -241,7 +244,6 @@ class PredictionSet(VedaCollectionProxy):
 
     def __init__(self, **kwargs):
         self._meta = {k: v for k, v in kwargs.items() if k in self._metaprops}
-        #self.links = kwargs.get('links')
         self._dataset_base_furl = "{host_url}/predictions/{dataset_id}"
         self.id = kwargs.get('id')
         self._dataset_id = self.id
