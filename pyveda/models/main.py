@@ -132,18 +132,18 @@ class Model(object):
         assert rda_id is not None, "Must at least provide and image object or an rda_id"
 
         meta = {
-            "name": self.name,
+            "name": kwargs.get('name', self.name),
             "description": kwargs.get("description", None),
             "dtype": self.dtype, 
             "mltype": self.mltype,
-            "imshape": self.imshape,
+            "imshape": kwargs.get('imshape', self.imshape),
             "public": False,
             "bounds": bounds,
             "classes": self.classes,
             "channels_last": str(self.channels_last), 
             "deployed_model": self.deployed['id']
         }
-        if self.channels_last:
+        if self.channels_last == 'true':
             meta["imshape"] = self.imshape[::-1]
         payload = {
             "id": self.id,
@@ -220,7 +220,8 @@ class Model(object):
           "public": kwargs.get("public", False),
           "library": kwargs.get("library", {}),
           "location": kwargs.get("location", {}),
-          "training_set": vcp_id
+          "training_set": vcp_id,
+          "channels_last": self.channels_last
         }
         meta.update(overrides)
         return meta
@@ -240,34 +241,11 @@ class PredictionSet(VedaCollectionProxy):
 
     def __init__(self, **kwargs):
         self._meta = {k: v for k, v in kwargs.items() if k in self._metaprops}
-        self.links = kwargs.get('links')
+        #self.links = kwargs.get('links')
+        self._dataset_base_furl = "{host_url}/predictions/{dataset_id}"
         self.id = kwargs.get('id')
         self._dataset_id = self.id
 
-    #def __init__(self, **kwargs):
-    #    self.id = kwargs.get('id', None)
-    #    self.links = kwargs.get('links')
-    #    del kwargs['links']
-    #    self.meta = kwargs
-    #    for k,v in self.meta.items():
-    #        setattr(self, k, v)
-
-    #def update(self, new_data):
-    #    self.meta.update(new_data)
-    #    return cfg.conn.put(self.links["update"]["href"], data=json.dumps(self.meta)).json()
-
-    def remove(self):
-        self.id = None
-        cfg.conn.delete(self.links["delete"]["href"])
-
-    def publish(self):
-        assert self.id is not None, 'You can only publish a saved Model. Call the save method first.'
-        return cfg.conn.put(self.links["update"]["href"], json={"public": True}).json()
-
-    def unpublish(self):
-        assert self.id is not None, 'You can only unpublish a saved Model. Call the save method first.'
-        return cfg.conn.put(self.links["update"]["href"], json={"public": False}).json() 
-    
     @classmethod
     def from_doc(cls, doc):
         """ Helper method that converts a db doc to a PredictionSet """
