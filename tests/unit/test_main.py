@@ -7,6 +7,7 @@ from auth_mock import conn, my_vcr
 from pyveda.veda.api import VedaCollectionProxy
 from pyveda.vedaset import VedaStream
 from pyveda.vedaset import VedaBase
+from pyveda.models import Model
 
 import pyveda as pv
 pv.config.set_dev()
@@ -20,7 +21,6 @@ class MainFunctionsTest(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         self.id = '1245073f-dae9-40ac-ac5c-52ca349ae8dd'
-        #self.vcp = VedaCollectionProxy.from_id(id)
         self.h5 = './test.h5'
 
     @classmethod
@@ -72,3 +72,8 @@ class MainFunctionsTest(unittest.TestCase):
 
     def test_createfromgeojson(self):
         pass
+
+    @my_vcr.use_cassette('tests/unit/cassettes/test_main_model_from_id.yaml', filter_headers=['authorization'])
+    def test_model_from_id(self):
+        model = pv.model_from_id('eb1e1e0b-c48e-494f-b56a-4bb0734c98fc')
+        self.assertIsInstance(model, Model)

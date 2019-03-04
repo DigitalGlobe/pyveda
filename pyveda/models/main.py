@@ -10,14 +10,10 @@ from pyveda.config import VedaConfig
 
 cfg = VedaConfig()
 
-def search(params={}):
-    r = cfg.conn.post('{}/models/search'.format(cfg.host), json=params)
-    try:
-        results = r.json()
-        return [Model.from_doc(s) for s in results]
-    except Exception as err:
-        print(err)
-        return []
+def search(url, params={}):
+    r = cfg.conn.post(url, json=params)
+    r.raise_for_status()
+    return r.json()
 
 def create_archive(model, weights): 
     """ Creates a tar from a model """
@@ -79,6 +75,11 @@ class Model(object):
         r = cfg.conn.get(url)
         r.raise_for_status()
         return cls.from_doc(r.json())
+
+    @classmethod
+    def search(cls, **kwargs):
+        results = search('{}/models/search'.format(cfg.host), **kwargs)
+        return [Model.from_doc(s) for s in results]
 
     def save(self):
         payload = MultipartEncoder(
@@ -269,4 +270,10 @@ class PredictionSet(VedaCollectionProxy):
             return [cls.from_doc(s) for s in results]
         except Exception as err:
             return []
+    
+    @classmethod
+    def search(cls, **kwargs):
+        results = search('{}/predictions/search'.format(cfg.host), **kwargs)
+        return [cls.from_doc(s) for s in results]
+
 
