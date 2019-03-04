@@ -18,7 +18,7 @@ class BaseGenerator():
     '''
 
     def __init__(self, cache, batch_size=32, shuffle=True, channels_last=False, expand_dims=False, rescale=False,
-                    flip_horizontal=False, flip_vertical=False):
+                    flip_horizontal=False, flip_vertical=False, custom_label_transform=None):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
@@ -30,6 +30,10 @@ class BaseGenerator():
         self.flip_h = flip_horizontal
         self.flip_v = flip_vertical
         self.list_ids = np.arange(len(self.cache))
+        self.custom_label_transform = custom_label_transform
+
+        if custom_label_transform is not None:
+            assert callable(custom_label_transform), "custom_label_transform must be a method"
 
     @property
     def mltype(self):
@@ -160,12 +164,17 @@ class VedaStoreGenerator(BaseGenerator):
 
             if self.expand_dims:
                 y_img = np.expand_dims(y_img, 2)
+
+            if self.custom_label_transform: #must be a method
+                y_img = [self.custom_label_transform((_y, indx)) for indx, _x in enumerate(y_img) for _y in _x]
+
+            #this is a single y value, apply the transform here?
             y.append(y_img)
 
         #rescale after entire bactch is collected
         if self.rescale:
             x /= x.max()
-        return x, np.array(y)
+        return x, np.array(y) #last place we touch y before returned, but this is a whole batch
 
 class VedaStreamGenerator(BaseGenerator):
     '''
