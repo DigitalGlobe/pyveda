@@ -90,11 +90,11 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
     if isinstance(geojson, str) and not os.path.exists(geojson):
         raise ValueError('{} does not exist'.format(geojson))
     elif isinstance(geojson, dict):
+        assert len(geojson['features']), "No features found in geojson. At least one feature is needed for creating data." 
         with NamedTemporaryFile(mode="w+t", prefix="veda", suffix="json", delete=False) as temp:
             temp.file.write(json.dumps(geojson))
         geojson = temp.name
 
-    assert len(geojson['features']), "No features found in geojson. At least one feature is needed for creating data." 
 
     if dtype is None:
        dtype = image.dtype
