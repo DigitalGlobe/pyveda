@@ -11,7 +11,7 @@ from pyveda.config import VedaConfig
 cfg = VedaConfig()
 
 def args_to_meta(name, description, dtype, imshape,
-                 mltype, partition, public, sensors):
+                 mltype, partition, public, sensors, background_ratio):
     """
       Helper method for just building a dict of meta fields to pass to the API
     """
@@ -25,7 +25,8 @@ def args_to_meta(name, description, dtype, imshape,
       'partition': partition,
       'sensors': sensors,
       'classes': [],
-      'bounds': None
+      'bounds': None,
+      'background_ratio': max(0.0, min(1.0, float(background_ratio)))
     }
 
 
@@ -60,6 +61,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
                               dtype=None, description='',
                               mltype="classification", public=False,
                               partition=[100,0,0], sensors=[],
+                              background_ratio=0.0,
                               **kwargs):
     """
         Loads a geojson file into the collection
@@ -106,7 +108,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
     #   raise ValueError('Image dtype ({}) and given dtype ({}) must match.'.format(image.dtype, dtype))
 
     imshape = [image.shape[0]] + list(tilesize)
-    meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors)
+    meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors, background_ratio)
 
     rda_node = image.rda.graph()['nodes'][0]['id']
     options = {
