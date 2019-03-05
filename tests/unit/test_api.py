@@ -18,32 +18,17 @@ class VedaAPIFunctionsTest(unittest.TestCase):
     @patch('pyveda.veda.api.VedaCollectionProxy.status')
     @patch('pyveda.veda.api.from_geo')
     def test_appendfromgeojson(self, from_geo, status):
+        ''' Test the append_from_geojson method '''
         type = np.dtype('uint8')
-        vcp = VedaCollectionProxy(dataset_id='1234', dtype=type, status='COMPLETE', sensors=[])
+        vcp = VedaCollectionProxy(dataset_id='1234', dtype=type,
+                                  status='COMPLETE', sensors=['WV4'])
         geojson = {}
         class _image():
             def __init__(self):
                 self.dtype = type
-
-        mock_doc = {
-            "name":             'mockname',
-            "classes":          [],
-            "dataset_id":       '234',
-            "dtype":            np.dtype('uint8'),
-            "userId":           'foo',
-            "imshape":          [],
-            "releases":         'releases',
-            "mltype":           'classification',
-            "tilesize":         [],
-            "image_refs":       [],
-            "sensors":          [],
-            "bounds":           [],
-            "public":           True,
-            "count":            3,
-            "percent_cached":   1,
-            "background_ratio": 1.0
-        }
-        from_geo.return_value = {'properties': mock_doc}
-
-        doc = vcp.append_from_geojson(geojson=geojson, image=_image(), background_ratio=1.0)
-        self.assertEqual(mock_doc, doc['properties'])
+        test_image = _image()
+        vcp.append_from_geojson(geojson=geojson, image=test_image,
+                                background_ratio=1.0)
+        from_geo.assert_called_once_with(geojson, test_image,
+                                        background_ratio=1.0, sensors=['WV4'],
+                                        dtype=type, dataset_id='1234')
