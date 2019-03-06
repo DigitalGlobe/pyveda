@@ -11,11 +11,11 @@ from pyveda.config import VedaConfig
 cfg = VedaConfig()
 
 def args_to_meta(name, description, dtype, imshape,
-                 mltype, partition, public, sensors, background_ratio):
+                 mltype, partition, public, sensors, background_ratio=None):
     """
       Helper method for just building a dict of meta fields to pass to the API
     """
-    return {
+    meta_dict = {
       'name': name,
       'description': description,
       'dtype': dtype.name,
@@ -26,8 +26,10 @@ def args_to_meta(name, description, dtype, imshape,
       'sensors': sensors,
       'classes': [],
       'bounds': None,
-      'background_ratio': max(0.0, min(1.0, float(background_ratio)))
     }
+    if background_ratio is not None:
+        meta_dict['background_ratio'] = max(0.0, min(1.0, float(background_ratio)))
+    return meta_dict
 
 
 def from_tarball(s3path, name=None, dtype='uint8',
@@ -92,7 +94,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
     if isinstance(geojson, str) and not os.path.exists(geojson):
         raise ValueError('{} does not exist'.format(geojson))
     elif isinstance(geojson, dict):
-        assert len(geojson['features']), "No features found in geojson. At least one feature is needed for creating data." 
+        assert len(geojson['features']), "No features found in geojson. At least one feature is needed for creating data."
         with NamedTemporaryFile(mode="w+t", prefix="veda", suffix="json", delete=False) as temp:
             temp.file.write(json.dumps(geojson))
         geojson = temp.name
