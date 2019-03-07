@@ -4,6 +4,8 @@ pyveda: Python tools for The Veda Machine Learning API
 
 pyveda is a package for working with machine learning data, models and inference sets stored in Veda.
 
+.. warning:: pyveda is beta software, and these docs are a work in progress
+
 Veda
 -----
 
@@ -33,3 +35,8 @@ For general information on the Veda platform and API visit http://github.com/Dig
    models
    releases
    api
+
+Notebook Documentation
+
+.. toctree::
+   Accessing Veda Data
