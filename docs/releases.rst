@@ -51,7 +51,7 @@ The json file is a single geojson feature consisting of a `Polygon `describing t
 
 A simplified example of the contents of the json file for classified images is:
 
-..code-block:: python
+.. code-block:: python
 
     >>> cat labels/tile_0.json
 
@@ -72,7 +72,7 @@ A simplified example of the contents of the json file for classified images is:
 
 Images labelled for segmentation or object detection will have a json file like:
 
-..code-block:: python
+.. code-block:: python
 
     >>> cat labels/tile_0.json
 
@@ -97,7 +97,7 @@ Images labelled for segmentation or object detection will have a json file like:
 
 Images that do not have georeferencing are also supported. If the geometry field is left empty Veda will treat the image as having a pixel-based coordinate system. Label geometries, if present, are described in units of pixels using the top left of the image as the origin. Data points without spatial information can not be found with spatial searches or filters.
 
-..code-block:: python
+.. code-block:: python
 
     >>> cat labels/tile_0.json
 
