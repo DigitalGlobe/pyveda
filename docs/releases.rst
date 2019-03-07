@@ -56,6 +56,7 @@ A simplified example of the contents of the json file for classified images is:
     >>> cat labels/tile_0.json
 
     {
+    "type": "Feature",
     "geometry": {
         "type": "Polygon", 
         "coordinates": [[...]]
@@ -76,6 +77,7 @@ Images labelled for segmentation or object detection will have a json file like:
     >>> cat labels/tile_0.json
 
     {
+    "type": "Feature",
     "geometry": {
         "type": "Polygon", 
         "coordinates": [[...]]
@@ -100,6 +102,7 @@ Images that do not have georeferencing are also supported. If the geometry field
     >>> cat labels/tile_0.json
 
     {
+    "type": "Feature",
     "geometry": {}, 
     "properties": {
         "label": {
