@@ -28,7 +28,7 @@ from pyveda.vedaset import stream, store
 from pyveda import veda
 
 class Labelizer():
-    def __init__(self, vset, mltype, count, classes):
+    def __init__(self, vset, mltype, count, classes, include_background_tiles):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
@@ -56,6 +56,7 @@ class Labelizer():
         self.classes = classes
         self.labels = self._create_labels()
         self.flagged_tiles = []
+        self.include_background_tiles = include_background_tiles
 
     def _get_next(self):
         self.index += 1
