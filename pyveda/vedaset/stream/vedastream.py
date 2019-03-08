@@ -105,7 +105,7 @@ class BufferedSampleArray(BaseSampleArray):
             yield batch
 
     def batch_generator(self, batch_size, shuffle=True, channels_last=False, expand_dims=False, rescale=False, flip_horizontal=False, flip_vertical=False,
-                        custom_label_transform=None, **kwargs):
+                        custom_label_transform=None, custom_batch_transform=None, **kwargs):
         """
         Generatates Batch of Images/Lables on a VedaStream partition.
         #Arguments
@@ -121,7 +121,8 @@ class BufferedSampleArray(BaseSampleArray):
         return VedaStreamGenerator(self, batch_size=batch_size, shuffle=shuffle,
                                 channels_last=channels_last, expand_dims = expand_dims,rescale=rescale,
                                 flip_horizontal=flip_horizontal, flip_vertical=flip_vertical,
-                                custom_label_transform=custom_label_transform, **kwargs)
+                                custom_label_transform=custom_label_transform,
+                                custom_batch_transform=custom_batch_transform, **kwargs)
 
     @property
     def exhausted(self):

@@ -37,7 +37,8 @@ class WrappedDataNode(object):
         return self._vset._label_array_factory(self._node.hit_table, self._node.labels,  self._vset)
 
     def batch_generator(self, batch_size, shuffle=True, channels_last=False, expand_dims=False, rescale=False,
-                        flip_horizontal=False, flip_vertical=False, custom_label_transform=None, **kwargs):
+                        flip_horizontal=False, flip_vertical=False, custom_label_transform=None,
+                        custom_batch_transform=None, **kwargs):
         """
         Generatates Batch of Images/Lables on a VedaBase partition.
         #Arguments
@@ -53,7 +54,8 @@ class WrappedDataNode(object):
         return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle,
                                 channels_last=channels_last, expand_dims = expand_dims, rescale=rescale,
                                 flip_horizontal=flip_horizontal, flip_vertical=flip_vertical,
-                                custom_label_transform=custom_label_transform, **kwargs)
+                                custom_label_transform=custom_label_transform,
+                                custom_batch_transform=custom_batch_transform, **kwargs)
 
     def __getitem__(self, spec):
         if isinstance(spec, int):
