@@ -61,8 +61,15 @@ class Labelizer():
     def _get_next(self):
         self.index += 1
         self.datapoint = self.vedaset[self.index]
-        self.image = self._create_images()
-        self.labels = self._create_labels()
+        if include_background_tiles:
+            self.image = self._create_images()
+            self.labels = self._create_labels()
+        else:
+            if self._check_for_background_tile():
+                self.image = self._create_images()
+                self.labels = self._create_labels()
+            else:
+                self._get_next()
 
     def _check_for_background_tile(self):
         lbl = self._create_labels()
