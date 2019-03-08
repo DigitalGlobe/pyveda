@@ -64,6 +64,13 @@ class Labelizer():
         self.image = self._create_images()
         self.labels = self._create_labels()
 
+    def _check_for_background_tile(self):
+        lbl = self._create_labels()
+        if len(lbl) == 0:
+            return False
+        else:
+            return True
+
     def _create_images(self):
         """
         Creates image tiles from a datapoint
