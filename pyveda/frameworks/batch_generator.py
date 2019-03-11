@@ -234,10 +234,7 @@ class VedaStreamGenerator(BaseGenerator):
         if self.rescale:
             x /= x.max()
         if self.custom_batch_transform:
-            y = transform_b(y)
-            print(type(y))
-            print(y.shape)
-
-            y = self.custom_batch_transform(y)
+            t = [np.asarray(i) for i in y]
+            y = self.custom_batch_transform(t)
 
         return x, np.array(y)
