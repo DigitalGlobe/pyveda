@@ -4,6 +4,13 @@ from random import randint, sample
 
 from pyveda.frameworks.transforms import *
 
+
+def transform_b(revised_y_lst):
+    for i in np.arange(len(revised_y_lst)):
+        for x in np.arange(len(revised_y_lst[i])):
+            revised_y_lst[i][x] = np.asarray(revised_y_lst[i][x])
+    return np.asarray(revised_y_lst)
+
 class BaseGenerator():
     '''
     Parent Class for Generator
@@ -179,8 +186,9 @@ class VedaStoreGenerator(BaseGenerator):
         if self.rescale:
             x /= x.max()
 
-        if custom_batch_transform:
-            y = custom_batch_transform(y)
+        if self.custom_batch_transform:
+            t = [np.asarray(i) for i in y]
+            y = self.custom_batch_transform(t)
         return x, np.array(y) #last place we touch y before returned, but this is a whole batch
 
 class VedaStreamGenerator(BaseGenerator):
@@ -221,10 +229,15 @@ class VedaStreamGenerator(BaseGenerator):
 
             if self.custom_label_transform: #must be a method
                 y_img = [self.custom_label_transform((_y, indx)) for indx, _x in enumerate(y_img) for _y in _x]
+            y.append(y_img)
 
         if self.rescale:
             x /= x.max()
-        if custom_batch_transform:
-            y = custom_batch_transform(y)
-            
+        if self.custom_batch_transform:
+            y = transform_b(y)
+            print(type(y))
+            print(y.shape)
+
+            y = self.custom_batch_transform(y)
+
         return x, np.array(y)
