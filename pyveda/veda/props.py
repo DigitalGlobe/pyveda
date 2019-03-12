@@ -72,5 +72,6 @@ VEDAPROPS = {"name": StrMappedProp,
              "userId": StrMappedProp,
              "public": BoolMappedProp,
              "count": IntMappedProp,
-             "percent_cached": IntMappedProp
+             "percent_cached": IntMappedProp,
+             "background_ratio": IntMappedProp
              }
