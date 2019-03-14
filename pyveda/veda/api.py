@@ -474,14 +474,16 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         classes = self.classes
         mltype = self.mltype
         if return_flagged_tiles:
-            flagged_tiles = Labelizer(self, mltype, count, classes, include_background_tiles, return_flagged_tiles).clean()
-            return flagged_tiles
+            l = Labelizer(self, mltype, count, classes, include_background_tiles)
+            l.clean()
+            ft = iter(l.flagged_tiles)
+            return ft
         else:
-            Labelizer(self, mltype, count, classes, include_background_tiles, return_flagged_tiles).clean()
+            Labelizer(self, mltype, count, classes, include_background_tiles).clean()
 
 
 
-    def preview(self, count=10, include_background_tiles=True, return_flagged_tiles=False):
+    def preview(self, count=10, include_background_tiles=True):
         """
         Page through VedaCollection data and flag bad data.
         Params:
