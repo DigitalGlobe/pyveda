@@ -154,6 +154,7 @@ class Labelizer():
             self.index += 1
             self._get_next()
         elif b.description == 'No':
+            self.index += 1
             self.flagged_tiles.append(self.datapoint)
             self._get_next()
         elif b.description == 'Exit':
