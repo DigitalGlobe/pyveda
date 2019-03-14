@@ -28,7 +28,7 @@ from pyveda.vedaset import stream, store
 from pyveda import veda
 
 class Labelizer():
-    def __init__(self, vset, mltype, count, classes, include_background_tiles):
+    def __init__(self, vset, mltype, count, classes, include_background_tiles, return_flagged_tiles):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
@@ -55,6 +55,7 @@ class Labelizer():
         self.flagged_tiles = []
         self.include_background_tiles = include_background_tiles
         self._get_next()  #create images, labels, and datapoint
+        self.return_flagged_tiles = return_flagged_tiles
 
 
     def _get_next(self):
@@ -183,6 +184,8 @@ class Labelizer():
             self.clean_flags()
         except StopIteration:
             print("All flagged tiles have been cleaned.")
+            if self.return_flagged_tiles:
+                return self.flagged_tiles
 
     def _recolor_images(self):
         img = self.image.astype('float32')
@@ -343,12 +346,9 @@ class Labelizer():
             plt.show()
             self._get_next()
 
-    def return_flagged_tiles(self, return_list):
-        'Returns an iterator or list of tiles flagged with vcp'
-        if len(list(self.flagged_tiles)) == 0:
-            return 'No tiles flagged.'
-        else:
-            if return_list:
-                return(list(self.flagged_tiles))
-            else:
-                return(self.flagged_tiles)
+    # def _return_flagged_tiles(self):
+    #     'Returns an iterator or list of tiles flagged with vcp'
+    #     if len(list(self.flagged_tiles)) == 0:
+    #         return 'No tiles flagged.'
+    #     else:
+    #         return(self.flagged_tiles)

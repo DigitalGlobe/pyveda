@@ -465,7 +465,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def __geo_interface__(self):
         return box(*self.bounds).__geo_interface__
 
-    def clean(self, count=None, include_background_tiles=True):
+    def clean(self, count=None, include_background_tiles=True, return_flagged_tiles=False):
         """
         Page through VedaCollection data and flag bad data.
         Params:
@@ -473,9 +473,15 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         """
         classes = self.classes
         mltype = self.mltype
-        Labelizer(self, mltype, count, classes, include_background_tiles).clean()
+        if return_flagged_tiles:
+            flagged_tiles = Labelizer(self, mltype, count, classes, include_background_tiles, return_flagged_tiles).clean()
+            return flagged_tiles
+        else:
+            Labelizer(self, mltype, count, classes, include_background_tiles, return_flagged_tiles).clean()
 
-    def preview(self, count=10, include_background_tiles=True):
+
+
+    def preview(self, count=10, include_background_tiles=True, return_flagged_tiles=False):
         """
         Page through VedaCollection data and flag bad data.
         Params:
@@ -483,4 +489,4 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         """
         classes = self.classes
         mltype = self.mltype
-        Labelizer(self, mltype, count, classes, include_background_tiles).preview()
+        Labelizer(self, mltype, count, classes, include_background_tiles, return_flagged_tiles).preview()
