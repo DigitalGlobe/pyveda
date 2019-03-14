@@ -78,17 +78,16 @@ class Labelizer():
         lbl = self._create_labels()
         if self.mltype == 'object_detection' or self.mltype == 'segmentation':
             for i, shp in enumerate(lbl):
-                print(shp)
                 if len(shp) is not 0:
                     return True
-                    break
             else:
                 return False
-
         if self.mltype == 'classification':
-            print('hi')
-            #TODO: add conditionals for segmentation
-            # self._display_classification()
+            for i, shp in enumerate(lbl):
+                if shp != 0:
+                    return True
+            else:
+                return False
 
     def _create_images(self):
         """
