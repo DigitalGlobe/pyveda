@@ -25,7 +25,8 @@ class BaseGenerator():
     '''
 
     def __init__(self, cache, batch_size=32, shuffle=True, channels_last=False, expand_dims=False, rescale=False,
-                    flip_horizontal=False, flip_vertical=False, custom_label_transform=None, custom_batch_transform=None):
+                    flip_horizontal=False, flip_vertical=False, custom_label_transform=None, custom_batch_transform=None,
+                    custom_image_transform=None):
         self.cache = cache
         self.batch_size = batch_size
         self.index = 0
@@ -39,12 +40,16 @@ class BaseGenerator():
         self.list_ids = np.arange(len(self.cache))
         self.custom_label_transform = custom_label_transform
         self.custom_batch_transform = custom_batch_transform
+        self.custom_image_transform = custom_image_transform
 
         if custom_label_transform is not None:
             assert callable(custom_label_transform), "custom_label_transform must be a method"
 
         if custom_batch_transform is not None:
             assert callable(custom_batch_transform), "custom_batch_transform must be a method"
+
+        if custom_image_transform is not None:
+            assert callable(custom_image_transform), "custom_image_transform must be a method"
 
     @property
     def mltype(self):
@@ -171,6 +176,8 @@ class VedaStoreGenerator(BaseGenerator):
             x_img, y_img = self.apply_transforms(x_img, y_img)
             if self.channels_last:
                 x_img = x_img.T
+            if self.custom_image_transform:
+                x_img = custom_image_transform(x_img)
             x[i, ] = x_img
 
             if self.expand_dims:
@@ -223,6 +230,9 @@ class VedaStreamGenerator(BaseGenerator):
 
             if self.channels_last:
                 x_img = x_img.T
+
+            if self.custom_image_transform:
+                x_img = custom_image_transform(x_img)
             x[len(y), ] = x_img
 
             if self.expand_dims:
