@@ -342,3 +342,13 @@ class Labelizer():
                 self._display_segmentation(title=False)
             plt.show()
             self._get_next()
+
+    def return_flagged_tiles(self, return_list):
+        'Returns an iterator or list of tiles flagged with vcp'
+        if len(list(self.flagged_tiles)) == 0:
+            return 'No tiles flagged.'
+        else:
+            if return_list:
+                return(list(self.flagged_tiles))
+            else:
+                return(self.flagged_tiles)
