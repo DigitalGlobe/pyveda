@@ -123,8 +123,5 @@ def pad(arr_x, size, channels_last):
     size_add = int((size - arr_x.shape[1])/2)
     assert(size_add > 0), "Pad must be bigger than image dimensions"
 
-    if channels_last:
-        arr_p = np.pad(arr_x, ((size_add, size_add), (size_add, size_add), (0,0)),'constant', constant_values=0)
-    else:
-        arr_p = np.pad(arr_x, ((0,0),(size_add, size_add), (size_add, size_add)),'constant', constant_values=0)
+    arr_p = np.pad(arr_x, ((0, 0), (size_add, size_add), (size_add, size_add), (0,0)),'constant', constant_values=0)
     return arr_p
