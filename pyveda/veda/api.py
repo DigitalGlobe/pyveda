@@ -488,4 +488,4 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         """
         classes = self.classes
         mltype = self.mltype
-        Labelizer(self, mltype, count, classes, include_background_tiles, return_flagged_tiles).preview()
+        Labelizer(self, mltype, count, classes, include_background_tiles).preview()
