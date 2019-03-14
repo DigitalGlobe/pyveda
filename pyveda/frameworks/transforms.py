@@ -112,3 +112,13 @@ def flip_labels_vertical(shp, klass_lst):
     def flipp_klass(feature_lst):
         return [bbox if not bbox else flipped_v(shp, bbox) for bbox in feature_lst]
     return [flipp_klass(klass) for klass in klass_lst]
+
+def pad(arr_x, size):
+    """
+    Pad image array with zeros to reach larger size.
+    arr_x: numpy array
+    size: int, desired new width and height of the new image
+    """
+    size_add = (size - arr_x.shape[1])/2
+    arr_p = np.pad(arr_x, ((0,0), (size_add, size_add), (size_add, size_add), (0,0)),'constant', constant_values=0)
+    return array_p
