@@ -183,9 +183,6 @@ class VedaStoreGenerator(BaseGenerator):
             if self.channels_last:
                 x_img = x_img.T
 
-            if self.pad:
-                x_img = pad(x_img, self.pad, self.channels_last)
-
             if self.custom_image_transform:
                 x_img = custom_image_transform(x_img)
             x[i, ] = x_img
@@ -202,6 +199,9 @@ class VedaStoreGenerator(BaseGenerator):
         #rescale after entire bactch is collected
         if self.rescale:
             x /= x.max()
+
+        if self.pad:
+            x = pad(x, self.pad, self.channels_last)
 
         if self.custom_batch_transform:
             print(y[0])
@@ -241,9 +241,6 @@ class VedaStreamGenerator(BaseGenerator):
             if self.channels_last:
                 x_img = x_img.T
 
-            if self.pad:
-                x_img = pad(x_img, self.pad, self.channels_last)
-
             if self.custom_image_transform:
                 x_img = custom_image_transform(x_img)
             x[len(y), ] = x_img
@@ -258,6 +255,10 @@ class VedaStreamGenerator(BaseGenerator):
 
         if self.rescale:
             x /= x.max()
+
+        if self.pad:
+            x = pad(x, self.pad)
+
         if self.custom_batch_transform:
             t = [np.asarray(i) for i in y]
             y = self.custom_batch_transform(t)
