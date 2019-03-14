@@ -184,7 +184,7 @@ class VedaStoreGenerator(BaseGenerator):
                 x_img = x_img.T
 
             if self.pad:
-                x_img = pad(x_img, self.pad)
+                x_img = pad(x_img, self.pad, self.channels_last)
 
             if self.custom_image_transform:
                 x_img = custom_image_transform(x_img)
@@ -242,7 +242,7 @@ class VedaStreamGenerator(BaseGenerator):
                 x_img = x_img.T
 
             if self.pad:
-                x_img = pad(x_img, self.pad)
+                x_img = pad(x_img, self.pad, self.channels_last)
 
             if self.custom_image_transform:
                 x_img = custom_image_transform(x_img)

@@ -113,14 +113,18 @@ def flip_labels_vertical(shp, klass_lst):
         return [bbox if not bbox else flipped_v(shp, bbox) for bbox in feature_lst]
     return [flipp_klass(klass) for klass in klass_lst]
 
-def pad(arr_x, size):
+def pad(arr_x, size, channels_last):
     """
     Pad image array with zeros to reach larger size.
     arr_x: numpy array
     size: int, desired new width and height of the new image
     """
 
-    size_add = (size - arr_x.shape[1])/2
+    size_add = int((size - arr_x.shape[1])/2)
     assert(size_add > 0), "Pad must be bigger than image dimensions"
-    arr_p = np.pad(arr_x, ((0,0), (size_add, size_add), (size_add, size_add), (0,0)),'constant', constant_values=0)
-    return array_p
+
+    if channels_last:
+        arr_p = np.pad(arr_x, ((size_add, size_add), (size_add, size_add), (0,0)),'constant', constant_values=0)
+    else:
+        arr_p = np.pad(arr_x, ((0,0),(size_add, size_add), (size_add, size_add)),'constant', constant_values=0)
+    return arr_p
