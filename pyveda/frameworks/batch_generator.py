@@ -55,7 +55,6 @@ class BaseGenerator():
 
         if pad is not None:
             assert isinstance(pad, int), "Pad must be an integer"
-            assert pad >= self.image.shape[1], "Pad must be bigger than image dimensions"
 
 
     @property
