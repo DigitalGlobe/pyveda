@@ -263,15 +263,6 @@ class PredictionSet(VedaCollectionProxy):
         return cls.from_doc(r.json())
 
     @classmethod
-    def search(cls, params={}):
-        r = cfg.conn.post('{}/predictions/search'.format(cfg.host), json=params)
-        try:
-            results = r.json()
-            return [cls.from_doc(s) for s in results]
-        except Exception as err:
-            return []
-    
-    @classmethod
     def search(cls, **kwargs):
         results = search('{}/predictions/search'.format(cfg.host), **kwargs)
         return [cls.from_doc(s) for s in results]
