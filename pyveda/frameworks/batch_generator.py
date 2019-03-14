@@ -204,8 +204,6 @@ class VedaStoreGenerator(BaseGenerator):
             x = pad(x, self.pad, self.channels_last)
 
         if self.custom_batch_transform:
-            print(y[0])
-            print(type(y[0]))
             t = [np.asarray(i) for i in y]
             y = self.custom_batch_transform(t)
         return x, np.array(y) #last place we touch y before returned, but this is a whole batch
