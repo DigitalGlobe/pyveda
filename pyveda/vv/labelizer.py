@@ -51,16 +51,13 @@ class Labelizer():
                 self.count = len(self.vedaset)
         self.index = 0
         self.mltype = mltype
-        self.datapoint = self.vedaset[self.index]
-        self.image = self._create_images()
         self.classes = classes
-        self.labels = self._create_labels()
         self.flagged_tiles = []
         self.include_background_tiles = include_background_tiles
+        self._get_next()  #create images, labels, and datapoint
 
 
     def _get_next(self):
-        # self.index += 1
         self.datapoint = self.vedaset[self.index]
         if self.include_background_tiles:
             self.image = self._create_images()
