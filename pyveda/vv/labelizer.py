@@ -60,7 +60,7 @@ class Labelizer():
 
 
     def _get_next(self):
-        self.index += 1
+        # self.index += 1
         self.datapoint = self.vedaset[self.index]
         if self.include_background_tiles:
             self.image = self._create_images()
@@ -74,7 +74,6 @@ class Labelizer():
                 self._get_next()
 
     def _check_for_background_tile(self):
-        ##CURRENT ISSUES: very slow, does not check for first tile
         lbl = self._create_labels()
         if self.mltype == 'object_detection' or self.mltype == 'segmentation':
             for i, shp in enumerate(lbl):
