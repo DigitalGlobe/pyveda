@@ -22,10 +22,11 @@ class BaseGenerator():
     Rescale: Boolean. Flag to indicate if data returned from the generator should be rescaled between 0 and 1.
     flip_horizontal: boolean. Horizontally flip image and lables.
     flip_vertical: boolean. Vertically flip image and lables
+    pad: Int. New larger dimension to transform image into.
     '''
 
     def __init__(self, cache, batch_size=32, shuffle=True, channels_last=False, expand_dims=False, rescale=False,
-                    flip_horizontal=False, flip_vertical=False, custom_label_transform=None, custom_batch_transform=None,
+                    flip_horizontal=False, flip_vertical=False, pad=None, custom_label_transform=None, custom_batch_transform=None,
                     custom_image_transform=None):
         self.cache = cache
         self.batch_size = batch_size
@@ -37,6 +38,7 @@ class BaseGenerator():
         self.on_epoch_end()
         self.flip_h = flip_horizontal
         self.flip_v = flip_vertical
+        self.pad = pad
         self.list_ids = np.arange(len(self.cache))
         self.custom_label_transform = custom_label_transform
         self.custom_batch_transform = custom_batch_transform
@@ -50,6 +52,11 @@ class BaseGenerator():
 
         if custom_image_transform is not None:
             assert callable(custom_image_transform), "custom_image_transform must be a method"
+
+        if pad is not None:
+            assert isinstance(pad, int), "Pad must be an integer"
+            assert pad >= self.image.shape[1], "Pad must be bigger than image dimensions"
+
 
     @property
     def mltype(self):
@@ -176,6 +183,10 @@ class VedaStoreGenerator(BaseGenerator):
             x_img, y_img = self.apply_transforms(x_img, y_img)
             if self.channels_last:
                 x_img = x_img.T
+
+            if self.pad:
+                x_img = pad(x_img, self.pad)
+
             if self.custom_image_transform:
                 x_img = custom_image_transform(x_img)
             x[i, ] = x_img
@@ -230,6 +241,9 @@ class VedaStreamGenerator(BaseGenerator):
 
             if self.channels_last:
                 x_img = x_img.T
+
+            if self.pad:
+                x_img = pad(x_img, self.pad)
 
             if self.custom_image_transform:
                 x_img = custom_image_transform(x_img)
