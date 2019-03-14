@@ -465,23 +465,20 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def __geo_interface__(self):
         return box(*self.bounds).__geo_interface__
 
-    def clean(self, count=None, include_background_tiles=True, return_flagged_tiles=False):
+    def clean(self, count=None, include_background_tiles=True):
         """
         Page through VedaCollection data and flag bad data.
         Params:
-            count: the number of tiles to clean
+            count (int): the number of tiles to clean
+            include_background_tiles (bool): include tiles that do not have labels on them
+        Returns:
+            l: a Labelizer() object
         """
         classes = self.classes
         mltype = self.mltype
-        if return_flagged_tiles:
-            l = Labelizer(self, mltype, count, classes, include_background_tiles)
-            l.clean()
-            ft = iter(l.flagged_tiles)
-            return ft
-        else:
-            Labelizer(self, mltype, count, classes, include_background_tiles).clean()
-
-
+        l = Labelizer(self, mltype, count, classes, include_background_tiles)
+        l.clean()
+        return l
 
     def preview(self, count=10, include_background_tiles=True):
         """

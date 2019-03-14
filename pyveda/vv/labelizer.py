@@ -53,9 +53,9 @@ class Labelizer():
         self.mltype = mltype
         self.classes = classes
         self.flagged_tiles = []
+        self.iflagged_tiles = []
         self.include_background_tiles = include_background_tiles
         self._get_next()  #create images, labels, and datapoint
-        self.return_flagged_tiles = return_flagged_tiles
 
 
     def _get_next(self):
@@ -174,20 +174,17 @@ class Labelizer():
         """
         try:
             if b.description == 'Keep':
-                self.datapoint = next(self.flagged_tiles)
+                self.datapoint = next(self.iflagged_tiles)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
             elif b.description == 'Remove':
                 self.datapoint.remove() ##only works for VCP, currently
-                self.datapoint = next(self.flagged_tiles)
+                self.datapoint = next(self.iflagged_tiles)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
             self.clean_flags()
         except StopIteration:
             print("All flagged tiles have been cleaned.")
-            # if self.return_flagged_tiles:
-            #     print('returning')
-            #     return self.flagged_tiles
 
     def _recolor_images(self):
         img = self.image.astype('float32')
@@ -323,8 +320,8 @@ class Labelizer():
         else:
             try:
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
-                self.flagged_tiles = iter(self.flagged_tiles)
-                self.datapoint = next(self.flagged_tiles)
+                self.iflagged_tiles = iter(self.flagged_tiles)
+                self.datapoint = next(self.iflagged_tiles)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
                 self.clean_flags()
