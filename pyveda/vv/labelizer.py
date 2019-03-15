@@ -28,7 +28,7 @@ from pyveda.vedaset import stream, store
 from pyveda import veda
 
 class Labelizer():
-    def __init__(self, vset, mltype, count, classes):
+    def __init__(self, vset, mltype, count, classes, include_background_tiles):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
@@ -51,17 +51,40 @@ class Labelizer():
                 self.count = len(self.vedaset)
         self.index = 0
         self.mltype = mltype
-        self.datapoint = self.vedaset[self.index]
-        self.image = self._create_images()
         self.classes = classes
-        self.labels = self._create_labels()
         self.flagged_tiles = []
+        self.iflagged_tiles = []
+        self.include_background_tiles = include_background_tiles
+        self._get_next()  #create images, labels, and datapoint
+
 
     def _get_next(self):
-        self.index += 1
         self.datapoint = self.vedaset[self.index]
-        self.image = self._create_images()
-        self.labels = self._create_labels()
+        if self.include_background_tiles:
+            self.image = self._create_images()
+            self.labels = self._create_labels()
+        else:
+            _check_for_background_tile = self._check_for_background_tile()
+            if _check_for_background_tile:
+                self.image = self._create_images()
+                self.labels = self._create_labels()
+            else:
+                self._get_next()
+
+    def _check_for_background_tile(self):
+        lbl = self._create_labels()
+        if self.mltype == 'object_detection' or self.mltype == 'segmentation':
+            for i, shp in enumerate(lbl):
+                if len(shp) is not 0:
+                    return True
+            else:
+                return False
+        if self.mltype == 'classification':
+            for i, shp in enumerate(lbl):
+                if shp != 0:
+                    return True
+            else:
+                return False
 
     def _create_images(self):
         """
@@ -131,6 +154,7 @@ class Labelizer():
             self.index += 1
             self._get_next()
         elif b.description == 'No':
+            self.index += 1
             self.flagged_tiles.append(self.datapoint)
             self._get_next()
         elif b.description == 'Exit':
@@ -150,12 +174,12 @@ class Labelizer():
         """
         try:
             if b.description == 'Keep':
-                self.datapoint = next(self.flagged_tiles)
+                self.datapoint = next(self.iflagged_tiles)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
             elif b.description == 'Remove':
                 self.datapoint.remove() ##only works for VCP, currently
-                self.datapoint = next(self.flagged_tiles)
+                self.datapoint = next(self.iflagged_tiles)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
             self.clean_flags()
@@ -296,8 +320,8 @@ class Labelizer():
         else:
             try:
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
-                self.flagged_tiles = iter(self.flagged_tiles)
-                self.datapoint = next(self.flagged_tiles)
+                self.iflagged_tiles = iter(self.flagged_tiles)
+                self.datapoint = next(self.iflagged_tiles)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
                 self.clean_flags()
