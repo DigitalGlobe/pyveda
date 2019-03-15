@@ -7,6 +7,7 @@ from pyveda.vedaset import VedaBase, VedaStream
 from pyveda.veda.loaders import from_geo, from_tarball
 from pyveda.fetch.compat import build_vedabase
 from pyveda.veda.api import _bec, VedaCollectionProxy
+from pyveda.models import Model 
 
 cfg = VedaConfig()
 
@@ -16,7 +17,8 @@ __all__ = ["search",
            "from_id",
            "from_name",
            "create_from_geojson",
-           "create_from_tarball"]
+           "create_from_tarball",
+           "model_from_id"]
 
 def _map_contains_submap(mmap, submap, hard_match=True):
     """ Checks if a submap is contained in a master map.
@@ -54,6 +56,18 @@ def search(params={}, filters={}, **kwargs):
     results = r.json()
     return [VedaCollectionProxy.from_doc(s) for s in results
             if _map_contains_submap(s["properties"], filters, **kwargs)]
+
+def model_from_id(model_id):
+    """ 
+      Initialize a Model class from an id
+
+      Args:
+          model_id (str): the id of the model
+
+      Returns:
+          model (Model): the pyveda model class for the tis
+    """
+    return Model.from_id(model_id)
 
 def from_id(dataset_id):
     ''' Returns the dataset as a VedaCollectionProxy from an ID if it exists.
