@@ -36,9 +36,9 @@ class WrappedDataNode(object):
     def labels(self):
         return self._vset._label_array_factory(self._node.hit_table, self._node.labels,  self._vset)
 
-    def batch_generator(self, batch_size, shuffle=True, channels_last=False, expand_dims=False, rescale=False,
-                        flip_horizontal=False, flip_vertical=False, custom_label_transform=None,
-                        custom_batch_transform=None, custom_image_transform=None, pad=None, **kwargs):
+    def batch_generator(self, batch_size, steps=None, loop=True, shuffle=True, channels_last=False, expand_dims=False, rescale=False,
+                        flip_horizontal=False, flip_vertical=False, label_transform=None,
+                        batch_label_transform=None, image_transform=None, pad=None, **kwargs):
         """
         Generatates Batch of Images/Lables on a VedaBase partition.
         #Arguments
@@ -53,12 +53,12 @@ class WrappedDataNode(object):
             custom_image_transform: Function. User defined function that takes an x valye and returns a modified image array.
             pad: Int. New larger dimension to transform image into.
         """
-        return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle,
+        return VedaStoreGenerator(self, batch_size=batch_size, steps=steps, loop=loop, shuffle=shuffle,
                                 channels_last=channels_last, expand_dims = expand_dims, rescale=rescale,
                                 flip_horizontal=flip_horizontal, flip_vertical=flip_vertical,
-                                custom_label_transform=custom_label_transform,
-                                custom_batch_transform=custom_batch_transform,
-                                custom_image_transform=custom_image_transform,
+                                label_transform=label_transform,
+                                batch_label_transform=batch_label_transform,
+                                image_transform=image_transform,
                                 pad=pad, **kwargs)
 
     def __getitem__(self, spec):
