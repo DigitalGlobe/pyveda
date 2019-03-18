@@ -12,19 +12,18 @@ def transform_b(revised_y_lst):
     return np.asarray(revised_y_lst)
 
 class BaseGenerator():
-    '''
-    Parent Class for Generator
+    ''' Base class for data generators
 
     cache (VedaBase or VedaStream partition): Partition (train, test, or validate)
     batch_size (int): Number of samples in batch
-    steps (int): Nnumber of steps of batches to run in one epoch. If not provided, will calculate maximum possible number of complete batches
-    loop (boolean): if true, batcher will loop infinitely, if false, StopIteration is thrown after 1 epoch
-    shuffle (boolean): To shuffle or not shuffle data between epochs.
-    channels_last: Boolean. To return image data as Height-Width-Depth, instead of the default Depth-Height-Width
-    Rescale: Boolean. Flag to indicate if data returned from the generator should be rescaled between 0 and 1.
-    flip_horizontal: boolean. Horizontally flip image and lables.
-    flip_vertical: boolean. Vertically flip image and lables
-    pad: Int. New larger dimension to transform image into.
+    steps (int): Number of steps of batches to run in one epoch. If not provided, will calculate maximum possible number of complete batches
+    loop (Boolean): Loop batcher indefinitely. If false, StopIteration is thrown after one epoch.
+    shuffle (Boolean): Shuffle data between epochs.
+    channels_last (Boolean): To return image data as Height-Width-Depth, instead of the default Depth-Height-Width
+    rescale (Boolean): Return images rescaled to values between 0 and 1
+    flip_horizontal (Boolean): Horizontally flip image and labels (50% probability)
+    flip_vertical (Boolean): Vertically flip image and labels (50% probability)
+    pad (int): Pad image with zeros to this dimension.
     '''
 
     def __init__(self, cache, batch_size=32, steps=None, loop=True, shuffle=True, channels_last=False, expand_dims=False, rescale=False,
@@ -37,7 +36,7 @@ class BaseGenerator():
         self.step = 1
         self.last_step = int(math.floor(len(self.cache)/self.batch_size))
         if steps is not None:
-            assert steps <= self.last_step, "{} datapoints is not enough for {} steps with a batch size of {}".format(len(self.cache), steps, self.batch_size)
+            assert steps <= self.last_step, "{} datapoints is insufficient for {} steps with a batch size of {}".format(len(self.cache), steps, self.batch_size)
             self.last_step = steps
         self.loop = loop
         self.id_lut = np.arange(len(self.cache))
@@ -76,30 +75,23 @@ class BaseGenerator():
         return self.cache._vset.image_shape
 
     def shuffle_ids(self):
-        '''update index for each epoch'''
+        ''' shuffle the ID lookup table '''
         np.random.shuffle(self.id_lut)
 
-    def _applied_augs(self):
-        """
-        Returns randomly selected augmentation functions from a list of eligible augmentation functions
-        """
-        augmentation_list = []
-        if self.flip_h and choice([True, False]):
-            augmentation_list.append(np.fliplr)
-        if self.flip_v and choice([True, False]):
-            augmentation_list.append(np.flipud)
-        return augmentation_list
-
     def apply_augmentations(self, x, y):
-        """
-            Applies all built-in transforms, returns augmented x/y
+        """ Applies all built-in transforms, returns augmented x/y
             Args:
               x: image array
               y: label
         """
+        augmentation_list = []
 
-        # Make Augmentations
-        for t_fn in self._applied_augs():
+        if self.flip_h and choice([True, False]):
+            augmentation_list.append(np.fliplr)
+        if self.flip_v and choice([True, False]):
+            augmentation_list.append(np.flipud)
+
+        for t_fn in augmentation_list:
             x = t_fn(x)
 
             if self.mltype == 'segmentation':
@@ -120,6 +112,7 @@ class BaseGenerator():
         raise NotImplementedError("Getting a specific batch is not supported since batches are generally randomized")
 
     def __next__(self):
+        ''' Yield the next batch '''
         if self.step > self.last_step:
             if not self.loop:
                 raise StopIteration
@@ -133,7 +126,6 @@ class BaseGenerator():
         return batch
 
     def __iter__(self):
-        """Create a generator that iterates over the Sequence."""
         return self
 
     def __len__(self):
@@ -201,8 +193,10 @@ class VedaStoreGenerator(BaseGenerator):
 
 class VedaStreamGenerator(BaseGenerator):
     '''
-    Generator for VedaStream parition, either train, test, or validate.
+    Generator for VedaStream partitions
     '''
+
+    # TODO: get these to loop
 
     def build_batch(self, step):
         '''Generate one batch of data'''
