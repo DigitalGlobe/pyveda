@@ -120,7 +120,7 @@ def pad(arr_x, size, channels_last):
     size: int, desired new width and height of the new image
     """
 
-    size_add = int((size - arr_x.shape[1])/2)
+    size_add = int(((size - 256)/2))
     assert(size_add > 0), "Pad must be bigger than image dimensions"
 
     arr_p = np.pad(arr_x, ((0, 0), (size_add, size_add), (size_add, size_add), (0,0)),'constant', constant_values=0)

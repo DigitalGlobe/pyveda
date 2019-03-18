@@ -127,29 +127,24 @@ class BaseGenerator():
 
     def __next__(self):
         try:
+            #print('inside next')
             item = self[self.index]  # index???
         except IndexError:
+            #print('inside next except')
             raise StopIteration
-        self.index += 1
+        #self.index += 1
+        self.index = (self.index + 1) % len(self)
         return item
 
     def on_epoch_end(self):
         '''update index for each epoch'''
-        # self.indexes = np.arange(len(self.list_ids)) self.list_ids not defined in baseclass
         self.indexes = np.arange(len(self.cache))
         if self.shuffle:
             np.random.shuffle(self.indexes)
 
-    def __iter__(self):
-        """Create a generator that iterates over the Sequence."""
-        for item in (self[i] for i in range(len(self))):
-            self.index += 1
-            yield item
-
     def __len__(self):
         '''Denotes the number of batches per epoch'''
         return int(np.floor(len(self.cache)/self.batch_size))
-
 
 class VedaStoreGenerator(BaseGenerator):
     '''
@@ -169,11 +164,12 @@ class VedaStoreGenerator(BaseGenerator):
         '''Generates data containing batch_size samples
         optionally pre-processes the data'''
 
-        # setup empty batch
+        #setup empty batch
         if self.channels_last:
             x = np.empty((self.batch_size, *self.shape[::-1]))
         else:
             x = np.empty((self.batch_size, *self.shape))
+
         y = []
 
         for i, _id in enumerate(list_ids_temp):
@@ -186,10 +182,8 @@ class VedaStoreGenerator(BaseGenerator):
             if self.custom_image_transform:
                 x_img = custom_image_transform(x_img)
             x[i, ] = x_img
-
             if self.expand_dims:
                 y_img = np.expand_dims(y_img, 2)
-
             if self.custom_label_transform: #must be a method
                 y_img = [self.custom_label_transform((_y, indx)) for indx, _x in enumerate(y_img) for _y in _x]
 
@@ -203,9 +197,11 @@ class VedaStoreGenerator(BaseGenerator):
         if self.pad:
             x = pad(x, self.pad, self.channels_last)
 
+        #print('pre transform', x.shape, np.array(y).shape)
         if self.custom_batch_transform:
             t = [np.asarray(i) for i in y]
             y = self.custom_batch_transform(t)
+        #print('post transform', x.shape, np.array(y).shape)
         return x, np.array(y) #last place we touch y before returned, but this is a whole batch
 
 class VedaStreamGenerator(BaseGenerator):
