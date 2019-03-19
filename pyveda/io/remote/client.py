@@ -64,11 +64,25 @@ class ThreadedAsyncioRunner(object):
         return f.result()
 
 
-class BatchFetchTracer(object):
+class HTTPClientTracer(object):
+    """
+    A mixin class that can be used to record infomation about
+    aiohttp request lifecycles.
+    """
+
     def __init__(self, cache=None):
         if not cache:
             cache = collections.defaultdict(list)
         self._trace_cache = cache
+
+    async def on_request_exception(self, session, context, params):
+        pass
+
+    async def on_connection_queued_start(self, session, context, params):
+        pass
+
+    async def on_connection_queued_end(self, session, context, params):
+        pass
 
     async def on_dns_resolvehost_start(self, session, context, params):
         context.start = session.loop.time()
@@ -83,15 +97,6 @@ class BatchFetchTracer(object):
     async def on_request_end(self, session, context, params):
         elapsed = session.loop.time() - context.start
         self._trace_cache["request_times"].append(elapsed)
-
-    async def on_request_exception(self, session, context, params):
-        pass
-
-    async def on_connection_queued_start(self, session, context, params):
-        pass
-
-    async def on_connection_queued_end(self, session, context, params):
-        pass
 
     async def on_connection_create_start(self, session, context, params):
         context.start = session.loop.time()
@@ -113,20 +118,62 @@ class BatchFetchTracer(object):
         trace_config.on_connection_create_end.append(self.on_connection_create_end)
         return trace_config
 
+idfn = lambda x: x
+
+def run_in_executor(fn, loop=None, executor=None):
+    @wraps(fn)
+    async def wrapper(*args):
+        res = await loop.run_in_executor(executor, fn, *args)
+        return res
+    return wrapper
+
+def run_with_lock(fn, loop=None, lock=None):
+    if not lock:
+        lock = asyncio.Lock(loop=loop)
+    @wraps(fn)
+    async def wrapper(*args):
+        async with lock:
+            if inspect.iscoroutinefunction(fn):
+                res = await fn(*args)
+            else:
+                res = fn(*args)
+        return res
+    return wrapper
 
 
-class BaseVedaSetFetcher(BatchFetchTracer):
-    def __init__(self, total_count=0, session=None, token=None, max_retries=5, timeout=20,
-                 session_limit=30, max_concurrent_requests=200, max_memarrays=100,  connector=aiohttp.TCPConnector,
-                 lbl_payload_handler=lambda x: x, img_payload_handler=lambda x: x, write_fn=lambda x: x,
-                 img_batch_transform=lambda x: x, lbl_batch_transform=lambda x: x,
-                 num_lbl_payload_threads=1, num_img_payload_threads=10, num_write_workers=1, num_write_threads=1,
+class AsyncHTTPDataClient(HTTPClientTracer):
+    def __init__(self,
+                 total_count=0,
+                 session=None,
+                 token=None,
+                 max_retries=5,
+                 timeout=20,
+                 session_limit=30,
+                 max_concurrent_requests=200,
+                 max_memarrays=100,
+                 suppress_callback_errors = True
+                 suppress_http_errors = True
+                 write_fn=idfn,
+                 num_write_workers=1,
+                 num_write_threads=1,
+                 lbl_payload_handler=idfn,
+                 img_payload_handler=idfn,
+                 img_batch_transform=idfn,
+                 lbl_batch_transform=idfn,
+                 num_lbl_payload_threads=10,
+                 num_img_payload_threads=10,
                  lbl_payload_executor=concurrent.futures.ThreadPoolExecutor,
                  img_payload_executor=concurrent.futures.ThreadPoolExecutor,
                  write_executor=concurrent.futures.ThreadPoolExecutor,
-                 run_tracer=False, *args, **kwargs):
+                 connector=aiohttp.TCPConnector,
+                 suppress_callback_errors = True
+                 suppress_http_errors = True
+                 run_tracer=False,
+                 *args, **kwargs):
 
         self.max_concurrent_reqs = min(total_count, max_concurrent_requests)
+        self.suppress_cb_errs = suppress_callback_errors
+        self.suppress_http_errs = suppress_http_errors
         self.max_retries = max_retries
         self.timeout = timeout
         self.session = session
@@ -146,11 +193,12 @@ class BaseVedaSetFetcher(BatchFetchTracer):
         self._img_batch_transform = img_batch_transform
         self._n_lbl_payload_threads = num_lbl_payload_threads
         self._n_img_payload_threads = num_img_payload_threads
-        self._lbl_payload_executor = lbl_payload_executor(max_workers=num_lbl_payload_threads)
-        self._img_payload_executor = img_payload_executor(max_workers=num_img_payload_threads)
         self._n_write_workers = num_write_workers
         self._n_write_threads = num_write_threads
         self._write_executor = write_executor(max_workers=num_write_threads)
+        self._lbl_payload_executor = lbl_payload_executor(max_workers=num_lbl_payload_threads)
+        self._img_payload_executor = img_payload_executor(max_workers=num_img_payload_threads)
+
 
         self.lbl_payload_handler = functools.partial(self._payload_handler,
                                                      executor=self._lbl_payload_executor,
@@ -158,12 +206,9 @@ class BaseVedaSetFetcher(BatchFetchTracer):
         self.img_payload_handler = functools.partial(self._payload_handler,
                                                      executor=self._img_payload_executor,
                                                      fn=img_payload_handler)
-        self._exc_callbacks = []
 
     @property
     def headers(self):
-        if not self._token:
-            self._token = cfg.conn.access_token
         return {"Authorization": "Bearer {}".format(self._token)}
 
     async def _payload_handler(self, payload, executor=None, fn=lambda x: x):
@@ -172,6 +217,7 @@ class BaseVedaSetFetcher(BatchFetchTracer):
 
     async def fetch_with_retries(self, url, json=True, callback=None, **kwargs):
         await asyncio.sleep(0.0)
+        data = None
         retries = self.max_retries
         while retries:
             try:
@@ -188,14 +234,18 @@ class BaseVedaSetFetcher(BatchFetchTracer):
                         data = await callback(data, **kwargs)
                     except Exception as e:
                         logger.info(e)
+                        if not self.suppress_cb_errs:
+                            raise
                 return data
             except CancelledError:
                 break
-            except Exception as e:
+            except Exception as e: # TODO: catch appr aiohttp exceptions here
                 logger.info(e)
                 logger.info("    URL READ ERROR: {}".format(url))
                 retries -= 1
-        return None
+                if not retries and not self.suppress_http_errs:
+                    raise
+        return data
 
     async def start_fetch(self, loop):
         async with aiohttp.ClientSession(loop=loop,
@@ -212,8 +262,10 @@ class BaseVedaSetFetcher(BatchFetchTracer):
         while True:
             try:
                 label_url, image_url, _id = await self._qreq.get()
-                flbl = asyncio.ensure_future(self.fetch_with_retries(label_url, callback=self.lbl_payload_handler))
-                fimg = asyncio.ensure_future(self.fetch_with_retries(image_url, json=False, callback=self.img_payload_handler))
+                flbl = asyncio.ensure_future(self.fetch_with_retries(
+                    label_url, callback=self.lbl_payload_handler))
+                fimg = asyncio.ensure_future(self.fetch_with_retries(
+                    image_url, json=False, callback=self.img_payload_handler))
                 label, image = await asyncio.gather(flbl, fimg)
                 await self._qwrite.put([label, image, _id])
             except CancelledError:
@@ -225,9 +277,30 @@ class BaseVedaSetFetcher(BatchFetchTracer):
         self._source_exhausted = asyncio.Event(loop=loop)
         self._qreq = asyncio.Queue(maxsize=self.max_concurrent_reqs, loop=loop)
         self._qwrite = asyncio.Queue(loop=loop)
-        self._write_lock = asyncio.Lock(loop=loop)
-        self._consumers = [asyncio.ensure_future(self.consume_reqs(), loop=loop) for _ in range(self.max_concurrent_reqs)]
-        self._writers = [asyncio.ensure_future(self.write_stack(), loop=loop) for _ in range(self._n_write_workers)]
+        self._buf_lock = asyncio.Lock(loop=loop)
+        self._consumers = [asyncio.ensure_future(self.consume_reqs(), loop=loop)
+                           for _ in range(self.max_concurrent_reqs)]
+        self._writers = [asyncio.ensure_future(self.process_data(), loop=loop)
+                         for _ in range(self._n_write_workers)]
+
+        self.run_in_exec = functools.partial(run_in_exec, loop=loop)
+        self.run_with_lock = functools.partial(run_with_lock, loop=loop)
+
+    def register_iobound_callback(self, fn, executor=None, lock=None):
+        if not executor:
+            executor = self._io_executor
+        cb = functools.partial(self.run_in_exec, fn=fn, executor=executor)
+        if lock:
+            cb = functools.partial(self.run_with_lock, fn=fn, lock=lock)
+        self.iobound_callbacks.register(cb)
+
+    def register_cpubound_callback(self, fn, executor=None, lock=None):
+        if not executor:
+            executor = self._cpu_executor
+        cb = functools.partial(self.run_in_exec, fn=fn, executor=executor)
+        if lock:
+            cb = functools.partial(self.run_with_lock, fn=fn, lock=lock)
+        self.cpubound_callbacks.register(cb)
 
     async def kill_workers(self):
         await self._qwrite.join()
@@ -245,14 +318,51 @@ class BaseVedaSetFetcher(BatchFetchTracer):
         asyncio.set_event_loop(loop)
         loop.run_forever()
 
-    async def write_stack(self):
-        raise NotImplementedError
-
     async def drive_fetch(self, session, loop):
-        raise NotImplementedError
+        self._configure(session, loop)
+        await self._source_exhausted.wait()
+        res = await self.kill_workers()
 
-    async def produce_reqs(self):
-        raise NotImplementedError
+    async def process_data(self):
+        while True:
+            try:
+                data = await self._qwrite.get()
+                self._qreq.task_done()
+                self._qwrite.task_done()
+
+                data = await self.filter_data(data)
+                if not data:
+                    continue
+
+                datastack = None
+                async with self._buf_lock:
+                    self._data_buf.append(data)
+                    if self._data_buf.phased: # Get the view, release the lock
+                        datastack = self.data_buf.view()
+
+                if datastack:
+                    await self.run_io_callbacks(datastack)
+            except CancelledError as ce:
+                break
+        return True
+
+    async def run_iocallbacks(self, data):
+        for cb in self.iobased_callbacks:
+            try:
+                await cb(data)
+            except Exception as e:
+                logger.info(
+                    "User exception in io callback: {}".format(e))
+                if not self.suppress_cb_errs:
+                    raise
+
+    async def produce_reqs(self, reqs=[]):
+        for req in reqs:
+            if req is None:
+                self._source_exhausted.set()
+                return True
+            await self._qreq.put(req)
+        return True
 
 
 class VedaBaseFetcher(BaseVedaSetFetcher):
@@ -279,7 +389,6 @@ class VedaBaseFetcher(BaseVedaSetFetcher):
                             await self.loop.run_in_executor(self._write_executor, self.write_fn, data)
                             logger.info("SUCCESS WRITE {} DATAPOINTS".format(len(images)))
                         except Exception as e:
-                            logger.info("Exception is WRITE_STACK: {}".format(e))
                     labels, images, _ids = [], [], []
                 self._qreq.task_done()
                 self._qwrite.task_done()
@@ -326,16 +435,4 @@ class VedaStreamFetcher(BaseVedaSetFetcher):
                 break
         return True
 
-    async def drive_fetch(self, session, loop):
-        self._configure(session, loop)
-        await self._source_exhausted.wait()
-        res = await self.kill_workers()
-
-    async def produce_reqs(self, reqs=None):
-        for req in reqs:
-            if req is None:
-                self._source_exhausted.set()
-                return True
-            await self._qreq.put(req)
-        return True
 

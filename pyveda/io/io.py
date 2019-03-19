@@ -10,7 +10,6 @@ def write_v_sample_obj(vb, data):
     Writes a veda sample (label, image, veda ID)
     to a vedabase object.
     """
-
     label, image, *data = data
     vb._image_array.append(image)
     vb._label_array.append(label)
@@ -36,7 +35,7 @@ def is_stream_based_accessor(accessor):
     if type(accessor).__name__ == "BufferedDataStream":
         return True
     if hasattr(accessor, "__v_iotype__"):
-        return accessor.__v_iotypee__ == "BufferedIOBased"
+        return accessor.__v_iotype__ == "BufferedIOBased"
     return False
 
 
@@ -77,11 +76,17 @@ def configure_client(vset, source=None, token=None, **kwargs):
     if not source:
         raise ValueError("why u do that")
 
-    if is_stream_based_accessor(vset):
-        vclient = _thin
+    if is_file_based_accessor(accessor):
+        write_fn = partial(write_v_sample_obj(vb=vset))
+        abf = VedasetFetcher(source,
+                             token=token,
+                             total_count=vset.count,
+                             write_fn=write_fn)
 
 
 
+    if is_stream_based_accessor(accessor):
+        pass
 
 
 
