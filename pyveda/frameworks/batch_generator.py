@@ -243,9 +243,16 @@ class VedaStreamGenerator(BaseGenerator):
                 y_img = np.expand_dims(y_img, 2)
             y.append(y_img)
 
+<<<<<<< HEAD
             if self.custom_label_transform: #must be a method
                 y_img = [self.custom_label_transform((_y, indx)) for indx, _x in enumerate(y_img) for _y in _x]
             y.append(y_img)
+=======
+            if self.custom_label_transform:
+                y_img = [self.custom_label_transform((_y, indx)) for indx, _x in enumerate(y_img) for _y in _x]
+
+                y.append(y_img)
+>>>>>>> 3953b2520383edba8dbe712511d7c5d2c086c5dc
 
         if self.rescale:
             x /= x.max()

@@ -3,19 +3,17 @@ import tarfile
 import tempfile
 import mmap
 import json
+from pyveda.utils import url_to_numpy
 from requests_toolbelt.multipart.encoder import MultipartEncoder
+from pyveda.veda.api import DataSampleClient, VedaCollectionProxy
 from pyveda.config import VedaConfig
 
 cfg = VedaConfig()
 
-def search(params={}):
-    r = cfg.conn.post('{}/models/search'.format(cfg.host), json=params)
-    try:
-        results = r.json()
-        return [Model.from_doc(s) for s in results]
-    except Exception as err:
-        print(err)
-        return []
+def search(url, params={}):
+    r = cfg.conn.post(url, json=params)
+    r.raise_for_status()
+    return r.json()
 
 def create_archive(model, weights): 
     """ Creates a tar from a model """
@@ -49,9 +47,10 @@ class Model(object):
           classes (list): A list of classes that the model should return
 
     """
-    def __init__(self, name, model_path=None, weights_path=None, mltype=None, **kwargs):
+    def __init__(self, name, model_path=None, weights_path=None, mltype=None, channels_last=False, **kwargs):
         self.id = kwargs.get("id", None)
         self.links = kwargs.get("links")
+        self.channels_last = channels_last
         self.meta = self._construct_meta(name, mltype=mltype, **kwargs)
         for k,v in self.meta.items():
             setattr(self, k, v)
@@ -76,6 +75,11 @@ class Model(object):
         r = cfg.conn.get(url)
         r.raise_for_status()
         return cls.from_doc(r.json())
+
+    @classmethod
+    def search(cls, **kwargs):
+        results = search('{}/models/search'.format(cfg.host), **kwargs)
+        return [Model.from_doc(s) for s in results]
 
     def save(self):
         payload = MultipartEncoder(
@@ -112,7 +116,7 @@ class Model(object):
         else:
             print('Model already deployed.')
     
-    def predict(self, bounds, image, **kwargs):
+    def predict(self, bounds, image=None, **kwargs):
         ''' 
           Run predictions for an AOI within an RDA image based image. 
 
@@ -121,27 +125,38 @@ class Model(object):
             image (RDAImage): An ERDA based image to use for streaming tiles
         '''
         assert self.deployed is not None, "Model no deployed, please call deploy() before running predictions"
-        rda_node = image.rda.graph()['nodes'][0]['id']
+        if image is None: 
+            rda_id = kwargs.get('rda_id')
+            rda_node = kwargs.get('rda_node')
+        else:
+            rda_id = image.rda_id
+            rda_node = image.rda.graph()['nodes'][0]['id']
+        assert rda_id is not None, "Must at least provide and image object or an rda_id"
+
         meta = {
-            "name": self.name,
+            "name": kwargs.get('name', self.name),
             "description": kwargs.get("description", None),
             "dtype": self.dtype, 
-            "imshape": self.shape,
             "mltype": self.mltype,
-            "imshape": list(self.shape),
+            "imshape": kwargs.get('imshape', self.imshape),
             "public": False,
             "bounds": bounds,
+            "classes": self.classes,
+            "channels_last": str(self.channels_last), 
             "deployed_model": self.deployed['id']
         }
+        if self.channels_last == 'true':
+            meta["imshape"] = self.imshape[::-1]
         payload = {
             "id": self.id,
             "metadata": meta,
             "options": {
-              "graph": image.rda_id,
+              "graph": rda_id,
               "node": rda_node
             }
         }
-        return cfg.conn.post(self.links["predict"]["href"], json=payload).json()
+        doc = cfg.conn.post(self.links["predict"]["href"], json=payload).json()
+        return PredictionSet.from_doc(doc)
 
         
     def update(self, new_data, save=True):
@@ -207,7 +222,8 @@ class Model(object):
           "public": kwargs.get("public", False),
           "library": kwargs.get("library", {}),
           "location": kwargs.get("location", {}),
-          "training_set": vcp_id
+          "training_set": vcp_id,
+          "channels_last": self.channels_last
         }
         meta.update(overrides)
         return meta
@@ -217,43 +233,38 @@ class Model(object):
         return json.dumps(self.meta)
 
 
+class PredictionSampleClient(DataSampleClient):
+  @property
+  def prediction(self):
+      url = "{}/predictions/result/{}".format(cfg.host, self.id)
+      return url_to_numpy(url, cfg.conn.access_token)
 
-class PredictionSet(object):
+class PredictionSet(VedaCollectionProxy):
     """ Methods for accessing training data pairs """
+    _data_sample_client = PredictionSampleClient
+
     def __init__(self, **kwargs):
-        self.id = kwargs.get('id', None)
-        self.links = kwargs.get('links')
-        del kwargs['links']
-        self.meta = kwargs
-        for k,v in self.meta.items():
-            setattr(self, k, v)
-
-    def update(self, new_data):
-        self.meta.update(new_data)
-        return cfg.conn.put(self.links["update"]["href"], json=self.meta).json()
-
-    def remove(self):
-        self.id = None
-        cfg.conn.delete(self.links["delete"]["href"])
-
-    def publish(self):
-        assert self.id is not None, 'You can only publish a saved Model. Call the save method first.'
-        return cfg.conn.put(self.links["update"]["href"], json={"public": True}).json()
-
-    def unpublish(self):
-        assert self.id is not None, 'You can only unpublish a saved Model. Call the save method first.'
-        return cfg.conn.put(self.links["update"]["href"], json={"public": False}).json() 
+        self._meta = {k: v for k, v in kwargs.items() if k in self._metaprops}
+        self._dataset_base_furl = "{host_url}/predictions/{dataset_id}"
+        self.id = kwargs.get('id')
+        self._dataset_id = self.id
 
     @classmethod
     def from_doc(cls, doc):
         """ Helper method that converts a db doc to a PredictionSet """
-        return cls(**doc)
+        return cls(**doc['properties'])
 
     @classmethod
     def from_id(cls, _id):
         """ Helper method that fetches an id into a predictionset """
-        url = "{}//{}".format(cfg.host, _id)
+        url = "{}/predictions/{}".format(cfg.host, _id)
         r = cfg.conn.get(url)
         r.raise_for_status()
         return cls.from_doc(r.json())
+
+    @classmethod
+    def search(cls, **kwargs):
+        results = search('{}/predictions/search'.format(cfg.host), **kwargs)
+        return [cls.from_doc(s) for s in results]
+
 
