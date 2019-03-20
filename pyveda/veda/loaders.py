@@ -11,22 +11,24 @@ from pyveda.config import VedaConfig
 cfg = VedaConfig()
 
 def args_to_meta(name, description, dtype, imshape,
-                 mltype, partition, public, sensors):
+                 mltype, public, sensors, background_ratio=None):
     """
       Helper method for just building a dict of meta fields to pass to the API
     """
-    return {
+    meta_dict = {
       'name': name,
       'description': description,
       'dtype': dtype.name,
       'imshape': imshape,
       'mltype': mltype,
       'public': public,
-      'partition': partition,
       'sensors': sensors,
       'classes': [],
       'bounds': None
     }
+    if background_ratio is not None:
+        meta_dict['background_ratio'] = max(0.0, min(1.0, float(background_ratio)))
+    return meta_dict
 
 
 def from_tarball(s3path, name=None, dtype='uint8',
@@ -36,10 +38,9 @@ def from_tarball(s3path, name=None, dtype='uint8',
                                     mltype="classification",
                                     description="",
                                     public=False,
-                                    sensors=[],
-                                    partition=[100,0,0]):
+                                    sensors=[]):
     dtype = np.dtype(dtype)
-    meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors)
+    meta = args_to_meta(name, description, dtype, imshape, mltype, public, sensors)
     options = {
         'default_label': default_label,
         'label_field':  label_field,
@@ -59,7 +60,8 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
                               workers=1, cache_type="stream",
                               dtype=None, description='',
                               mltype="classification", public=False,
-                              partition=[100,0,0], sensors=[],
+                              sensors=[],
+                              background_ratio=0.0,
                               **kwargs):
     """
         Loads a geojson file into the collection
@@ -73,7 +75,6 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
           name (str): A name for the TrainingSet.
           mltype (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
           tilesize (list): The shape of the imagery stored in the data. Used to enforce consistent shapes in the set.
-          partition (list):Internally partition the contents into `train,validate,test` groups, in percentages. Default is `[100, 0, 0]`, all datapoints in the training group.
           imshape (list): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
           dtype (str): Data type of image data.
           description (str): An optional description of the training dataset. Useful for attaching external info and links to a collection.
@@ -90,9 +91,11 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
     if isinstance(geojson, str) and not os.path.exists(geojson):
         raise ValueError('{} does not exist'.format(geojson))
     elif isinstance(geojson, dict):
+        assert len(geojson['features']), "No features found in geojson. At least one feature is needed for creating data."
         with NamedTemporaryFile(mode="w+t", prefix="veda", suffix="json", delete=False) as temp:
             temp.file.write(json.dumps(geojson))
         geojson = temp.name
+
 
     if dtype is None:
        dtype = image.dtype
@@ -104,7 +107,7 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
     #   raise ValueError('Image dtype ({}) and given dtype ({}) must match.'.format(image.dtype, dtype))
 
     imshape = [image.shape[0]] + list(tilesize)
-    meta = args_to_meta(name, description, dtype, imshape, mltype, partition, public, sensors)
+    meta = args_to_meta(name, description, dtype, imshape, mltype, public, sensors, background_ratio)
 
     rda_node = image.rda.graph()['nodes'][0]['id']
     options = {

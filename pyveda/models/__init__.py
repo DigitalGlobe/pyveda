@@ -1,1 +1,1 @@
-from pyveda.models.main import search, Model
+from pyveda.models.main import Model, PredictionSet
