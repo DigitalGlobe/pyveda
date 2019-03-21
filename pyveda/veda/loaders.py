@@ -11,7 +11,7 @@ from pyveda.config import VedaConfig
 cfg = VedaConfig()
 
 def args_to_meta(name, description, dtype, imshape,
-                 mltype, public, sensors, background_ratio=None):
+                 mltype, public, sensors, background_ratio):
     """
       Helper method for just building a dict of meta fields to pass to the API
     """
@@ -129,8 +129,6 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
             'options': (None, json.dumps(options), 'application/json')
         }
         url = "{}/data".format(cfg.host)
-        if 'dataset_id' in kwargs:
-            url += "/{}".format(kwargs['dataset_id'])
         r = cfg.conn.post(url, files=body)
         if r.status_code <= 201:
             return r.json()
