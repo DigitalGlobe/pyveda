@@ -10,7 +10,7 @@ if sys.version_info[0:2] >= (3,4):
     reqs.append("aiohttp")
 
 setup(name='pyveda',
-      version='0.0.3',
+      version='0.0.5',
       author='DigitalGlobe',
       author_email='',
       description='Python API for interfacing with veda',
