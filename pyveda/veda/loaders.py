@@ -24,10 +24,9 @@ def args_to_meta(name, description, dtype, imshape,
       'public': public,
       'sensors': sensors,
       'classes': [],
-      'bounds': None
+      'bounds': None,
+      'background_ratio': float(background_ratio)
     }
-    if background_ratio is not None:
-        meta_dict['background_ratio'] = max(0.0, min(1.0, float(background_ratio)))
     return meta_dict
 
 
