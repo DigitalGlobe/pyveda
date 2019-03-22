@@ -103,19 +103,6 @@ class Model(object):
         self.refresh(meta=self.meta)
         return self
 
-    def deploy(self):
-        # fetch the latest model data from the server, need to make sure we've saved the tarball
-        self.refresh()
-        assert self.id is not None, "Model not saved, please call save() before deploying."
-        assert self.library is not None, "Model library not defined. Please set the `.library` property before deploying."
-        assert self.meta["location"] is not None, "Model not finished saving yet, model.location is None..."
-        if self.deployed is None or self.deployed["id"] is None:
-            cfg.conn.post(self.links["deploy"]["href"], json={"id": self.id})
-            self.refresh()
-            return self.deployed 
-        else:
-            print('Model already deployed.')
-    
     def predict(self, bounds, image=None, **kwargs):
         ''' 
           Run predictions for an AOI within an RDA image based image. 
@@ -124,7 +111,6 @@ class Model(object):
             bounds (list): bounding box AOI
             image (RDAImage): An ERDA based image to use for streaming tiles
         '''
-        assert self.deployed is not None, "Model no deployed, please call deploy() before running predictions"
         if image is None: 
             rda_id = kwargs.get('rda_id')
             rda_node = kwargs.get('rda_node')
@@ -142,8 +128,7 @@ class Model(object):
             "public": False,
             "bounds": bounds,
             "classes": self.classes,
-            "channels_last": str(self.channels_last), 
-            "deployed_model": self.deployed['id']
+            "channels_last": str(self.channels_last)
         }
         if self.channels_last == 'true':
             meta["imshape"] = self.imshape[::-1]
@@ -217,7 +202,6 @@ class Model(object):
 
         meta = {
           "name": name,
-          "deployed": kwargs.get("deployed", {"id": None}),
           "description": kwargs.get("description", None),
           "public": kwargs.get("public", False),
           "library": kwargs.get("library", {}),
