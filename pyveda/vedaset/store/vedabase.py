@@ -38,7 +38,7 @@ class WrappedDataNode(object):
 
     def batch_generator(self, batch_size, steps=None, loop=True, shuffle=True, channels_last=False, expand_dims=False, rescale=False,
                         flip_horizontal=False, flip_vertical=False, label_transform=None,
-                        batch_label_transform=None, image_transform=None, pad=None, **kwargs):
+                        batch_label_transform=None, image_transform=None, batch_image_transform=None, pad=None, **kwargs):
         """
         Generatates Batch of Images/Lables on a VedaBase partition.
 
@@ -53,6 +53,10 @@ class WrappedDataNode(object):
             flip_horizontal (Boolean): Horizontally flip image and labels (50% probability)
             flip_vertical (Boolean): Vertically flip image and labels (50% probability)
             pad (int): Pad image with zeros to this dimension.
+            label_transform (callable): function to apply to each label
+            image_transform (callable): function to apply to each image
+            batch_label_transform (callable): function to apply to the batch of labels
+            batch_image_transform (callable): function to apply to the batch of images
         """
         return VedaStoreGenerator(self, batch_size=batch_size, steps=steps, loop=loop, shuffle=shuffle,
                                 channels_last=channels_last, expand_dims = expand_dims, rescale=rescale,
@@ -60,6 +64,7 @@ class WrappedDataNode(object):
                                 label_transform=label_transform,
                                 batch_label_transform=batch_label_transform,
                                 image_transform=image_transform,
+                                batch_image_transform=batch_image_transform,
                                 pad=pad, **kwargs)
 
     def __getitem__(self, spec):

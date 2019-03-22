@@ -28,8 +28,10 @@ class BaseGenerator():
 
     def __init__(self, cache, batch_size=32, steps=None, loop=True, shuffle=True, channels_last=False, expand_dims=False, rescale=False,
                     flip_horizontal=False, flip_vertical=False, pad=None, label_transform=None, batch_label_transform=None,
-                    image_transform=None):
+                    image_transform=None, batch_image_transform=None):
         self.cache = cache
+        self.img_dtype = cache.images[0].dtype
+        self.label_dtype = cache.labels[0].dtype
         self.batch_size = batch_size
         self.epoch = 1
         # steps start at 1
@@ -52,6 +54,7 @@ class BaseGenerator():
         self.label_transform = label_transform
         self.batch_label_transform = batch_label_transform
         self.image_transform = image_transform
+        self.batch_image_transform = batch_image_transform
 
         if label_transform is not None:
             assert callable(label_transform), "label_transform must be a method"
@@ -61,6 +64,9 @@ class BaseGenerator():
 
         if image_transform is not None:
             assert callable(image_transform), "image_transform must be a method"
+
+        if batch_image_transform is not None:
+            assert callable(batch_image_transform), "batch_label_transform must be a method"
 
         if pad is not None:
             assert isinstance(pad, int), "Pad must be an integer"
@@ -151,9 +157,9 @@ class VedaStoreGenerator(BaseGenerator):
 
         #setup empty batch
         if self.channels_last:
-            x = np.empty((self.batch_size, *self.shape[::-1]))
+            x = np.empty((self.batch_size, *self.shape[::-1]), dtype=self.img_dtype)
         else:
-            x = np.empty((self.batch_size, *self.shape))
+            x = np.empty((self.batch_size, *self.shape), dtype=self.img_dtype)
 
         y = []
 
@@ -179,16 +185,23 @@ class VedaStoreGenerator(BaseGenerator):
             y.append(y_img)
 
         if self.rescale:
-            x /= x.max()
+            self.img_dtype = 'float'
+            x = np.array(x, dtype=self.img_dtype)
+            x = x/x.max()
 
         if self.pad:
             x = pad(x, self.pad, self.channels_last)
 
         if self.batch_label_transform:
-            t = [np.asarray(i) for i in y]
+            t = [np.asarray(i, dtype=self.label_dtype) for i in y]
             y = self.batch_label_transform(t)
+            self.label_dtype = y.dtype
             
-        return x, np.array(y) 
+        if self.batch_image_transform:
+            x = self.batch_image_transform(x)
+            self.img_dtype = x.dtype
+
+        return x, np.array(y, dtype=self.label_dtype) 
 
 class VedaStreamGenerator(BaseGenerator):
     '''
@@ -207,9 +220,9 @@ class VedaStreamGenerator(BaseGenerator):
         optionally pre-processes the data'''
 
         if self.channels_last:
-            x = np.empty((self.batch_size, *self.shape[::-1]))
+            x = np.empty((self.batch_size, *self.shape[::-1]), dtype=self.img_dtype)
         else:
-            x = np.empty((self.batch_size, *self.shape))
+            x = np.empty((self.batch_size, *self.shape), dtype=self.img_dtype)
         y = []
 
         for i in range(self.batch_size):
@@ -243,7 +256,7 @@ class VedaStreamGenerator(BaseGenerator):
             x = pad(x, self.pad, self.channels_last)
 
         if self.batch_label_transform:
-            t = [np.asarray(i) for i in y]
+            t = [np.asarray(i, dtype=self.img_dtype) for i in y]
             y = self.batch_label_transform(t)
 
-        return x, np.array(y)
+        return x, np.array(y, dtype=self.label_dtype)
