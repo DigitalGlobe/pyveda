@@ -89,7 +89,7 @@ class PropCallbackExecutor(BaseDescriptor):
     def __set__(self, instance, value):
         super().__set__(instance, value)
         registry = getattr(instance, self.registry_target, None)
-        if registery:
+        if registry:
             for cb in registry[self.name].callbacks:
                 if inspect.ismethod(cb):
                     cb(value, self.name)
@@ -115,7 +115,7 @@ class ImageShapedTyped(SizedMatched, PropCallbackExecutor):
 
     def __set__(self, instance, value):
         value = tuple(value)
-        super().__setitem__(instance, value)
+        super().__set__(instance, value)
 
 
 class MLtypeTyped(Typed, PropCallbackExecutor):
@@ -130,7 +130,7 @@ class MLtypeTyped(Typed, PropCallbackExecutor):
 
 class PartitionedTyped(SizedMatched, ProbabilityDistTyped, PropCallbackExecutor):
     __vname__ = "partition"
-    size = [3]
+    allowed_sizes = [3]
 
 
 class FeatureClassTyped(ListTyped, PropCallbackExecutor):
