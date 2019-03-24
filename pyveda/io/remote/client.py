@@ -64,6 +64,61 @@ class ThreadedAsyncioRunner(object):
         return f.result()
 
 
+class PhaseBuffer(object):
+    def __init__(self, period=1, maxlen=None):
+        self.period = period
+        self._count = 0
+        self._cycle_num = 1
+        self._full_cycles = 0
+        self._phased = False
+        self._ibuf = deque(maxlen=maxlen)
+
+    @property
+    def count(self):
+        return self._count
+
+    @property
+    def phased(self):
+        return self._phased
+
+    @phased.setter
+    def phased(self, v):
+        self._phased = v
+        if v:
+            self._full_cycles = self._cycle_num
+            self._cycle_num += 1
+
+    @property
+    def k(self):
+        return self.count % self.period
+
+    @property
+    def full_cycles(self):
+        return self._full_cycles
+
+    @property
+    def cycle_number(self):
+        return self.full_cycles + 1
+
+    @property
+    def current_sample(self):
+        n = self.k
+        if self.phased:
+            n = self.period
+        return list(tail(n, self.view))
+
+    def append(self, obj):
+        self._phased = False
+        self._ibuf.append(obj)
+        self._count += 1
+        if self.k == 0:
+            self.phased = True
+
+    @property
+    def view(self):
+        return self._ibuf.copy()
+
+
 class HTTPClientTracer(object):
     """
     A mixin class that can be used to record infomation about
@@ -118,6 +173,7 @@ class HTTPClientTracer(object):
         trace_config.on_connection_create_end.append(self.on_connection_create_end)
         return trace_config
 
+
 idfn = lambda x: x
 
 def run_in_executor(fn, loop=None, executor=None):
@@ -141,7 +197,7 @@ def run_with_lock(fn, loop=None, lock=None):
     return wrapper
 
 
-class AsyncHTTPDataClient(HTTPClientTracer):
+class HTTPDataClient(HTTPClientTracer):
     def __init__(self,
                  total_count=0,
                  session=None,
@@ -153,7 +209,7 @@ class AsyncHTTPDataClient(HTTPClientTracer):
                  max_memarrays=100,
                  suppress_callback_errors = True
                  suppress_http_errors = True
-                 write_fn=idfn,
+                 on_data=idfn,
                  num_write_workers=1,
                  num_write_threads=1,
                  lbl_payload_handler=idfn,
@@ -169,6 +225,7 @@ class AsyncHTTPDataClient(HTTPClientTracer):
                  suppress_callback_errors = True
                  suppress_http_errors = True
                  run_tracer=False,
+                 buf=None,
                  *args, **kwargs):
 
         self.max_concurrent_reqs = min(total_count, max_concurrent_requests)
@@ -187,7 +244,7 @@ class AsyncHTTPDataClient(HTTPClientTracer):
             trace_config = self._configure_tracer()
             self._trace_configs.append(trace_config)
 
-        self.write_fn = write_fn
+        self.on_data = on_data
         self.max_memarrs = max_memarrays
         self._lbl_batch_transform = lbl_batch_transform
         self._img_batch_transform = img_batch_transform
@@ -206,6 +263,12 @@ class AsyncHTTPDataClient(HTTPClientTracer):
         self.img_payload_handler = functools.partial(self._payload_handler,
                                                      executor=self._img_payload_executor,
                                                      fn=img_payload_handler)
+        if not buf:
+            buf = PhaseBuffer(period=max_memarrays, maxlen=max_memarrays)
+        self.data_buf = buf
+
+        self.io_callbacks = []
+        self.cpu_callbacks = []
 
     @property
     def headers(self):
@@ -286,24 +349,29 @@ class AsyncHTTPDataClient(HTTPClientTracer):
         self.run_in_exec = functools.partial(run_in_exec, loop=loop)
         self.run_with_lock = functools.partial(run_with_lock, loop=loop)
 
-    def register_iobound_callback(self, fn, executor=None, lock=None):
+    def register_io_callback(self, fn, executor=None, lock=None):
         if not executor:
             executor = self._io_executor
         cb = functools.partial(self.run_in_exec, fn=fn, executor=executor)
         if lock:
             cb = functools.partial(self.run_with_lock, fn=fn, lock=lock)
-        self.iobound_callbacks.register(cb)
+        #self.io_callbacks.register(cb)
+        self.io_callbacks.append(cb)
 
-    def register_cpubound_callback(self, fn, executor=None, lock=None):
+    def register_cpu_callback(self, fn, executor=None, lock=None):
         if not executor:
             executor = self._cpu_executor
         cb = functools.partial(self.run_in_exec, fn=fn, executor=executor)
         if lock:
             cb = functools.partial(self.run_with_lock, fn=fn, lock=lock)
-        self.cpubound_callbacks.register(cb)
+        #self.cpu_callbacks.register(cb)
+        self.cpu_callbacks.append(cb)
 
     async def kill_workers(self):
         await self._qwrite.join()
+        # Next line runs io on any remaining data in the buffer
+        if not self.data_buf.phased:
+            await self.run_io_callbacks(self.data_buf.current_sample)
         for fut in self._consumers:
             fut.cancel()
         for fut in self._writers:
@@ -323,31 +391,37 @@ class AsyncHTTPDataClient(HTTPClientTracer):
         await self._source_exhausted.wait()
         res = await self.kill_workers()
 
+    async def filter_data(self, data):
+        await asyncio.sleep(0)
+        return data
+
     async def process_data(self):
         while True:
             try:
                 data = await self._qwrite.get()
                 self._qreq.task_done()
-                self._qwrite.task_done()
 
                 data = await self.filter_data(data)
                 if not data:
+                    self._qwrite.task_done()
                     continue
 
-                datastack = None
-                async with self._buf_lock:
-                    self._data_buf.append(data)
-                    if self._data_buf.phased: # Get the view, release the lock
-                        datastack = self.data_buf.view()
+                dstack = None
+                async with self._data_lock:
+                    self.data_buf.append(data)
+                    self.on_data(data)
+                    if self.data_buf.phased: # Get the view, release the lock
+                        dstack = self.data_buf.current_sample
+                if dstack:
+                    await self.run_io_callbacks(dstack)
+                self._qwrite.task_done()
 
-                if datastack:
-                    await self.run_io_callbacks(datastack)
             except CancelledError as ce:
                 break
         return True
 
-    async def run_iocallbacks(self, data):
-        for cb in self.iobased_callbacks:
+    async def run_iocallbacks(self, dstack):
+        for cb in self.io_callbacks:
             try:
                 await cb(data)
             except Exception as e:
