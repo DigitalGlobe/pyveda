@@ -8,10 +8,16 @@ import h5py
 import threading
 import warnings
 import inspect
+import collections
 from functools import partial
 from shapely.geometry import box, mapping, shape
 from shapely import ops
 from affine import Affine
+
+def tail(n, iterable):
+    "Return an iterator over the last n items"
+    # tail(3, 'ABCDEFG') --> E F G
+    return iter(collections.deque(iterable, maxlen=n))
 
 def check_unexpected_kwargs(kwargs, **unexpected):
     for key, message in unexpected.items():
