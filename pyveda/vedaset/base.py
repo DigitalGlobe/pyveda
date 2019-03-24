@@ -100,7 +100,7 @@ class BaseDataSet(object):
         self._vidx_ = OrderedDict()
         indexes = slices_from_partition(self.count, self.partition)
         for g, (start, stop) in zip(self.groups, indexes):
-            self._vidx_[g] = PartitionIndex(start, stop)
+            self._vidx_[g] = (start, stop)
 
     def _unpack(self):
         """
