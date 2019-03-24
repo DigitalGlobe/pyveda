@@ -208,8 +208,8 @@ class HTTPDataClient(HTTPClientTracer):
                  session_limit=30,
                  max_concurrent_requests=200,
                  max_memarrays=100,
-                 suppress_callback_errors = True
-                 suppress_http_errors = True
+                 suppress_callback_errors = True,
+                 suppress_http_errors = True,
                  on_data=idfn,
                  num_write_workers=1,
                  num_write_threads=1,
@@ -223,8 +223,6 @@ class HTTPDataClient(HTTPClientTracer):
                  img_payload_executor=concurrent.futures.ThreadPoolExecutor,
                  write_executor=concurrent.futures.ThreadPoolExecutor,
                  connector=aiohttp.TCPConnector,
-                 suppress_callback_errors = True
-                 suppress_http_errors = True
                  run_tracer=False,
                  buf=None,
                  *args, **kwargs):

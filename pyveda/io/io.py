@@ -3,7 +3,7 @@ import inspect
 import numpy as np
 from functools import partial
 from pyveda.config import VedaConfig
-from pyveda.io.remote.client import ThreadedAsyncioRunner, VedaBaseFetcher
+from pyveda.io.remote.client import ThreadedAsyncioRunner, HTTPDataClient
 
 def write_v_sample_obj(vb, data):
     """
@@ -91,8 +91,8 @@ def configure_client(vset, source=None, token=None, **kwargs):
 
 
 class IOTaskExecutor(object):
-    schedulers = ["synchronous",
-                  "concurrent"]
+    schedulers = ("synchronous",
+                  "concurrent",)
 
     def __init__(self, client=None, scheduler="concurrent"):
         self.client = client
@@ -110,16 +110,9 @@ class IOTaskExecutor(object):
 
 
 
-def build_vedaindex(index, source, total, token):
-    abf = VedaBaseFetcher(source, total_count=total, token=token,
-                          write_fn=partial(vb_write_veda_id, index)
-
-    with ThreadedAsyncioRunner(abf.run_loop, abf.start_fetch) as tar:
-                          tar(loop=tar._loop)
-
 
 def build_vedabase(database, source, partition, total, token, label_threads=1, image_threads=10):
-    abf = VedaBaseFetcher(source, total_count=total, token=token,
+    abf = HTTPDataClient(source, total_count=total, token=token,
                           write_fn=partial(vedabase_batch_write, database=database, partition=partition),
                           img_batch_transform=database._image_klass._batch_transform,
                           lbl_batch_transform=database._label_klass._batch_transform,
