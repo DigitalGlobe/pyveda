@@ -22,6 +22,7 @@ import logging.handlers
 
 from pyveda.io.utils import write_trace_profile
 from pyveda.config import VedaConfig
+from pyveda.utils import tail
 
 has_tqdm = False
 try:
@@ -436,77 +437,6 @@ class HTTPDataClient(HTTPClientTracer):
                 self._source_exhausted.set()
                 return True
             await self._qreq.put(req)
-        return True
-
-
-class VedaBaseFetcher(BaseVedaSetFetcher):
-    def __init__(self, reqs, **kwargs):
-        self.reqs = reqs
-        super(VedaBaseFetcher, self).__init__(**kwargs)
-        self._pbar = None
-        if has_tqdm and self._total_count:
-            self._pbar = tqdm(total=self._total_count)
-
-    async def write_stack(self):
-        await asyncio.sleep(0.0)
-        labels, images, _ids = [], [], []
-        while True:
-            try:
-                label, image, _id = await self._qwrite.get()
-                labels.append(label)
-                images.append(image)
-                _ids.append(_id)
-                if len(images) == self.max_memarrs:
-                    data = [self._img_batch_transform(images), self._lbl_batch_transform(labels), _ids]
-                    async with self._write_lock:
-                        try:
-                            await self.loop.run_in_executor(self._write_executor, self.write_fn, data)
-                            logger.info("SUCCESS WRITE {} DATAPOINTS".format(len(images)))
-                        except Exception as e:
-                    labels, images, _ids = [], [], []
-                self._qreq.task_done()
-                self._qwrite.task_done()
-                if self._pbar:
-                    self._pbar.update(1)
-            except CancelledError: # write out anything remaining
-                if images:
-                    data = [self._img_batch_transform(images), self._lbl_batch_transform(labels), _ids]
-                    async with self._write_lock:
-                        await self.loop.run_in_executor(self._write_executor, self.write_fn, data)
-                break
-        return True
-
-    async def drive_fetch(self, session, loop):
-        self._configure(session, loop)
-        producer = await self.produce_reqs()
-        res = await self.kill_workers()
-
-    async def produce_reqs(self):
-        for req in self.reqs:
-            await self._qreq.put(req)
-        await self._qreq.join()
-        self._source_exhausted.set()
-
-
-class VedaStreamFetcher(BaseVedaSetFetcher):
-    def __init__(self, streamer, **kwargs):
-        self.streamer = streamer
-        super(VedaStreamFetcher, self).__init__(**kwargs)
-
-    async def write_stack(self):
-        await asyncio.sleep(0.0)
-        while True:
-            try:
-                dataload = await self._qwrite.get()
-                self.streamer._buf.append(dataload)
-                async with self._write_lock:
-                    self.streamer._q.put_nowait(dataload)
-                    if self.streamer.write_vb:
-                        await self.loop.run_in_executor(self._write_executor, self.write_fn, dataload)
-                self._qreq.task_done()
-                self._qwrite.task_done()
-            except CancelledError:
-                break
         return True
 
 
