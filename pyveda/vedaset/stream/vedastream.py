@@ -6,7 +6,7 @@ import time
 from functools import partial
 import numpy as np
 
-from pyveda.io.remote.client import VedaStreamFetcher
+from pyveda.io.remote.client import HTTPDataClient
 from pyveda.vedaset.base import BaseSampleArray, BaseDataSet
 from pyveda.vedaset.interface import BaseVariableArray, ArrayTransformPlugin
 from pyveda.frameworks.batch_generator import VedaStreamGenerator
@@ -179,11 +179,11 @@ class BufferedDataStream(BaseDataSet):
         img_h = self._img_handler_class
         lbl_h = self._lbl_handler_class
 
-        self._fetcher = VedaStreamFetcher(self,
-                                          total_count=self.count,
-                                          img_payload_handler=img_h,
-                                          lbl_payload_handler=lbl_h,
-                                          **kwargs)
+        self._fetcher = HTTPDataClient(self,
+                                       total_count=self.count,
+                                       img_payload_handler=img_h,
+                                       lbl_payload_handler=lbl_h,
+                                       **kwargs)
 
     def _configure_worker(self, fetcher=None, loop=None):
         if not self._fetcher:

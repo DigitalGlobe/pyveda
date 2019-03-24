@@ -25,7 +25,7 @@ import numpy as np
 import requests
 from pyveda.auth import Auth
 from pyveda.vedaset import stream, store
-from pyveda import veda
+from pyveda.vedaset import veda
 
 class Labelizer():
     def __init__(self, vset, mltype, count, classes):
