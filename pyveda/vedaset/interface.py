@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import numpy as np
 
 # Modified from pandas
 def is_iterator(obj):
@@ -59,6 +60,14 @@ def slices_from_partition(total, partition):
     return idxs
 
 
+class RegisterCatalog(object):
+    def __init__(self, factory):
+        self.factory = factory
+
+    def __getattr__(self, attr):
+        self.__dict__[attr] = self.factory()
+        return self.__dict__[attr]
+
 
 class OpRegister(object):
     def __init__(self):
@@ -70,6 +79,7 @@ class OpRegister(object):
             name = getattr(f, "__name__", None) or f.__func__.__name__
         if index is None or index >= len(self._ops_):
             self._ops_[name] = f
+            return
         ops = list(self._ops_.items())
         ops.insert(index, (name, f))
         self._ops_ = OrderedDict(ops)

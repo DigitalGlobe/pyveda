@@ -3,7 +3,7 @@ from collections import defaultdict, OrderedDict
 from pyveda.exceptions import NotSupportedException
 from pyveda.vedaset.props import register_vprops, VDATAPROPS, DATAGROUPS
 from pyveda.vedaset.interface import is_iterator, slices_from_partition, is_partitionable
-from pyveda.vedaset.interface import BaseVariableArray
+from pyveda.vedaset.interface import BaseVariableArray, OpRegister, RegisterCatalog
 
 
 class BaseSampleArray(object):
@@ -59,7 +59,7 @@ class BaseDataSet(object):
         self._vidx_ = None
 
         self._set_dprops(**kwargs)
-        self._prc = defaultdict(OpRegister)
+        self._prc = RegisterCatalog(OpRegister)
         self._configure_instance()
         self._register_prophooks()
 
@@ -69,11 +69,11 @@ class BaseDataSet(object):
             p = getattr(cls, dname)
             p.__set__(obj, dval)
         except Exception as e:
-            pass
+            print(e)
 
     def _set_dprops(self, quiet=False, **kwargs):
         for k, v in kwargs.items():
-            if k not in self._vpropmap.keys():
+            if k not in self._vprops.keys():
                 if not quiet:
                     raise ValueError(
                         "Unexpected initialization argument!")
