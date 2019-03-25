@@ -11,7 +11,7 @@ from pyveda.config import VedaConfig
 cfg = VedaConfig()
 
 def args_to_meta(name, description, dtype, imshape,
-                 mltype, public, sensors, background_ratio):
+                 mltype, public, sensors, background_ratio=None):
     """
       Helper method for just building a dict of meta fields to pass to the API
     """
@@ -25,9 +25,12 @@ def args_to_meta(name, description, dtype, imshape,
       'sensors': sensors,
       'classes': [],
       'bounds': None,
-      'background_ratio': float(background_ratio)
     }
+    #background_ratio defaults to None here for `create_from_tarball`.
+    if background_ratio is not None:
+        meta_dict['background_ratio'] = float(background_ratio)
     return meta_dict
+
 
 
 def from_tarball(s3path, name=None, dtype='uint8',
