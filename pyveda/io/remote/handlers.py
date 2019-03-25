@@ -49,7 +49,8 @@ class BaseLabelHandler(object):
         raise NotImplementedError
 
 
-class ClassificationHandler(BaseLabelHandler):
+class BinaryClassificationHandler(BaseLabelHandler):
+    mltype = "classification"
     _default_dtype = np.uint8
 
     def _payload_handler(self, item, **kwargs):
@@ -57,7 +58,8 @@ class ClassificationHandler(BaseLabelHandler):
         return [payload[klass] for klass in self.vset.classes]
 
 
-class SegmentationHandler(BaseLabelHandler):
+class InstanceSegmentationHandler(BaseLabelHandler):
+    mltype = "segmentation"
     _default_dtype = np.float32
 
     def _payload_handler(self, *args, **kwargs):
@@ -112,7 +114,8 @@ class SegmentationHandler(BaseLabelHandler):
         return mask
 
 
-class ObjDetectionHandler(BaseLabelHandler):
+class ObjectDetectionHandler(BaseLabelHandler):
+    mltype = "obj_detection"
     _default_dtype = np.float32
 
     def _payload_handler(self, *args, **kwargs):
@@ -138,12 +141,24 @@ class ObjDetectionHandler(BaseLabelHandler):
             labels.append(class_labels)
         return labels
 
-def get_label_handler(vset):
-    if vset.mltype == "classification":
-        handler = ClassificationHandler(vset)
-    elif vset.mltype == "segmentation":
-        handler = SegmentationHandler(vset)
-    else:
-        handler = ObjDetectionHandler(vset)
 
-    return handler._payload_handler
+def set_handlers(vset):
+    image_hanlders = (bytes_to_array,)
+    label_handlers = (BinaryClassificationHandler,
+                      InstanceSegmentationHandler,
+                      ObjectDetectionHandler,)
+
+    def get_handler(handlers):
+        try:
+            return [handler for handler in handlers if
+                    mltypes.types_match(vset, handler)].pop()
+        except IndexError:
+            raise MLTypeError(
+                "'{}' is not of type 'mltypes.mltype'".format(vset)) from None
+
+
+    img_handler = list(image_handlers).pop()
+    lbl_handler_class = get_handler(label_handlers)
+
+    return (img_handler, lbl_handler_class(vset)._payload_handler)
+
