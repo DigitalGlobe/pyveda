@@ -67,7 +67,7 @@ class BaseClient(BaseEndpointConstructor):
         """ Builds a query string from kwargs for fetching points """
         params.update(**kwargs)
         if enc_classes and self.classes:
-            params["classes"] = ",".join(self.classes)
+            params["classes"] = json.dumps(self.classes)
         return urlencode(params)
 
 
