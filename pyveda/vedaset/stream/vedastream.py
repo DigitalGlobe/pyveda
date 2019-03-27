@@ -176,9 +176,7 @@ class BufferedDataStream(BaseDataSet):
             kwargs.update({"write_fn": write_fn})
             self._vb = vb
 
-        img_h = self._img_handler_class
-        lbl_h = self._lbl_handler_class
-
+        img_h, lbl_h = set_handlers(self)
         self._fetcher = HTTPDataClient(self,
                                        total_count=self.count,
                                        img_payload_handler=img_h,
