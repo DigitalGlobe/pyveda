@@ -24,11 +24,13 @@ def args_to_meta(name, description, dtype, imshape,
       'public': public,
       'sensors': sensors,
       'classes': [],
-      'bounds': None
+      'bounds': None,
     }
+    #background_ratio defaults to None here for `create_from_tarball`.
     if background_ratio is not None:
-        meta_dict['background_ratio'] = max(0.0, min(1.0, float(background_ratio)))
+        meta_dict['background_ratio'] = float(background_ratio)
     return meta_dict
+
 
 
 def from_tarball(s3path, name=None, dtype='uint8',
@@ -130,8 +132,6 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
             'options': (None, json.dumps(options), 'application/json')
         }
         url = "{}/data".format(cfg.host)
-        if 'dataset_id' in kwargs:
-            url += "/{}".format(kwargs['dataset_id'])
         r = cfg.conn.post(url, files=body)
         if r.status_code <= 201:
             return r.json()
