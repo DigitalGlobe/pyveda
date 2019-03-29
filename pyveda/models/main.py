@@ -15,14 +15,15 @@ def search(url, params={}):
     r.raise_for_status()
     return r.json()
 
-def create_archive(model, weights): 
+def create_archive(model, weights, library): 
     """ Creates a tar from a model """
     dirpath = tempfile.mkdtemp()
     name =  "{}/model.tar.gz".format(dirpath)
     print("Creating model archive: {}".format(name))
     with tarfile.open(name, "w:gz") as tar:
         if model is not None:
-            tar.add(model, arcname='model.json')
+            ext = 'json' if library == 'keras' else 'pt'
+            tar.add(model, arcname='model.{}'.format(ext))
         if weights is not None:
             tar.add(weights, arcname='weights.h5')
     return name
@@ -47,11 +48,11 @@ class Model(object):
           classes (list): A list of classes that the model should return
 
     """
-    def __init__(self, name, model_path=None, weights_path=None, mltype=None, channels_last=False, **kwargs):
+    def __init__(self, name, model_path=None, weights_path=None, mltype=None, channels_last=False, library='keras', **kwargs):
         self.id = kwargs.get("id", None)
         self.links = kwargs.get("links")
         self.channels_last = channels_last
-        self.meta = self._construct_meta(name, mltype=mltype, **kwargs)
+        self.meta = self._construct_meta(name, library, mltype=mltype, **kwargs)
         for k,v in self.meta.items():
             setattr(self, k, v)
 
@@ -61,7 +62,7 @@ class Model(object):
         if 'archive' in kwargs: 
             self.archive = kwargs.get('archive')
         elif model_path is not None or weights_path is not None:
-            self.archive = create_archive(model_path, weights_path)
+            self.archive = create_archive(model_path, weights_path, library)
 
     @classmethod
     def from_doc(cls, doc):
@@ -182,7 +183,7 @@ class Model(object):
         for k,v in self.meta.items():
             setattr(self, k, v)
     
-    def _construct_meta(self, name, **kwargs):
+    def _construct_meta(self, name, library, **kwargs):
         has_vcp = False
         vcp = kwargs.get('training_set')
         override_vals = ["bounds", "imshape", "dtype", "classes", "mltype"]
@@ -204,7 +205,7 @@ class Model(object):
           "name": name,
           "description": kwargs.get("description", None),
           "public": kwargs.get("public", False),
-          "library": kwargs.get("library", {}),
+          "library": library,
           "location": kwargs.get("location", {}),
           "training_set": vcp_id,
           "channels_last": self.channels_last
