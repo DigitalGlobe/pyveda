@@ -132,6 +132,8 @@ def from_geo(geojson, image, name=None, tilesize=[256,256], match="INTERSECT",
             'options': (None, json.dumps(options), 'application/json')
         }
         url = "{}/data".format(cfg.host)
+        if 'dataset_id' in kwargs:
+            url = url + '/{}'.format(kwargs['dataset_id'])
         r = cfg.conn.post(url, files=body)
         if r.status_code <= 201:
             return r.json()
