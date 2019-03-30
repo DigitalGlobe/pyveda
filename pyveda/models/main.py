@@ -135,8 +135,8 @@ class Model(object):
             "public": False,
             "bounds": bounds,
             "classes": self.classes,
-            "channels_last": str(self.channels_last)
-            "weights_file_name" = self.weights_file_name
+            "channels_last": str(self.channels_last),
+            "weights_file_name" = self.weights_file_name,
             "model_file_name" = self.model_file_name
         }
         if self.channels_last == 'true':
