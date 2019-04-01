@@ -136,8 +136,6 @@ class Model(object):
             "bounds": bounds,
             "classes": self.classes,
             "channels_last": str(self.channels_last)
-            # "weights_file_name" = self.weights_file_name,
-            # "model_file_name" = self.model_file_name
         }
         if self.channels_last == 'true':
             meta["imshape"] = self.imshape[::-1]
@@ -216,9 +214,9 @@ class Model(object):
           "library": library,
           "location": kwargs.get("location", {}),
           "training_set": vcp_id,
-          "channels_last": self.channels_last
-          # "weights_file_name" = self.weights_file_name,
-          # "model_file_name" = self.model_file_name
+          "channels_last": self.channels_last,
+          "weights_file_name" = self.weights_file_name,
+          "model_file_name" = self.model_file_name
         }
         meta.update(overrides)
         return meta
