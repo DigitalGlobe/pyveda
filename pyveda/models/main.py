@@ -215,8 +215,8 @@ class Model(object):
           "location": kwargs.get("location", {}),
           "training_set": vcp_id,
           "channels_last": self.channels_last,
-          "weights_file_name" = self.weights_file_name,
-          "model_file_name" = self.model_file_name
+          "weights_file_name": self.weights_file_name,
+          "model_file_name": self.model_file_name
         }
         meta.update(overrides)
         return meta
