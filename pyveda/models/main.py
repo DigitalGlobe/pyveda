@@ -3,7 +3,7 @@ import tarfile
 import tempfile
 import mmap
 import json
-from pyveda.utils import url_to_numpy
+from pyveda.utils import url_to_numpy, url_unpickle 
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 from pyveda.veda.api import DataSampleClient, VedaCollectionProxy
 from pyveda.config import VedaConfig
@@ -222,7 +222,7 @@ class PredictionSampleClient(DataSampleClient):
   @property
   def prediction(self):
       url = "{}/predictions/result/{}".format(cfg.host, self.id)
-      return url_to_numpy(url, cfg.conn.access_token)
+      return url_unpickle(url, cfg.conn.access_token)
 
 class PredictionSet(VedaCollectionProxy):
     """ Methods for accessing training data pairs """

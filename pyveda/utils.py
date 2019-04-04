@@ -17,6 +17,8 @@ from affine import Affine
 import pycurl
 from tempfile import NamedTemporaryFile
 from skimage.io import imread
+import pickle
+
 
 
 def url_to_array(url, token):
@@ -54,6 +56,25 @@ def url_to_numpy(url, token):
           temp.close()
           _curl.close()
           return np.load(temp.name)
+      except Exception as err:
+          print('Error fetching image...', err)
+
+def url_unpickle(url, token):
+    _curl = pycurl.Curl()
+    _curl.setopt(_curl.URL, url)
+    _curl.setopt(pycurl.NOSIGNAL, 1)
+    _curl.setopt(pycurl.HTTPHEADER, ['Authorization: Bearer {}'.format(token)])
+    with NamedTemporaryFile(prefix="veda", suffix=".npy", delete=False) as temp:
+      try:
+          _curl.setopt(_curl.WRITEDATA, temp.file)
+          _curl.perform()
+          code = _curl.getinfo(pycurl.HTTP_CODE)
+          if code != 200:
+             raise TypeError("Request for {} returned unexpected error code: {}".format(url, code))
+          temp.file.flush()
+          temp.close()
+          _curl.close()
+          return pickle.load(open(temp.name, "rb"))
       except Exception as err:
           print('Error fetching image...', err)
 
