@@ -84,12 +84,12 @@ class mltypes:
 
     @classmethod
     def types_match(cls, a, b):
-        for obj in (a, b):
-            try:
-                obj = cls.get_mltype(obj)
-            except MLTypeError:
-                return False
-        return type(a) is type(b)
+        try:
+            aobj = cls.get_mltype(a)
+            bobj = cls.get_mltype(b)
+        except MLTypeError:
+            return False
+        return type(aobj) is type(bobj)
 
     @classmethod
     def is_mltype(cls, obj):
@@ -99,7 +99,7 @@ class mltypes:
             return cls.metatype_map[obj.mltype]()
         for mltype in cls.metatype_map.values():
             if isinstance(obj, mltype):
-                return obj
+                return mltype()
         return False
 
     @classmethod
