@@ -135,11 +135,11 @@ def adapt_serializers(vset):
 
     img_io = list(image_ios).pop()
     img_class = adapt_serializer(img_io)
-    setattr(vset, "_image_class", img_class)
+    setattr(vset, "_image_class_", img_class)
 
     lbl_io = get_serializer(label_ios)
     lbl_class = adapt_serializer(lbl_io)
-    setattr(vset, "_label_class", lbl_class)
+    setattr(vset, "_label_class_", lbl_class)
 
     return vset
 
