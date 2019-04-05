@@ -19,9 +19,8 @@ class H5VariableArray(SerializedVariableArray,
     by a contiguous index range given by two integers
     """
 
-    def __init__(self, vset, arr, group,
+    def __init__(self, vset, group, arr,
                  input_fn=None, output_fn=None):
-
         super().__init__(vset, group, arr,
                          input_fn=input_fn,
                          output_fn=output_fn)
@@ -35,7 +34,7 @@ class H5VariableArray(SerializedVariableArray,
         return self._itr_
 
     def __iter__(self):
-        self._itr = self._arr.iterrows(self._start, self._stop)
+        self._itr_ = self._arr.iterrows(self._start, self._stop)
         return self
 
     def __next__(self):
@@ -106,23 +105,21 @@ class H5DataBase(BaseDataSet):
                 self._load_existing(fname, mode)
                 return
 
-        super(H5DataBase, self).__init__(**kwargs)
-
         self._fileh = tables.open_file(fname, mode=mode, title=title)
-        self._configure_instance()
+        super(H5DataBase, self).__init__(**kwargs)
         self._build_filetree()
 
     def _configure_instance(self):
-        self._image_class = None
-        self._label_class = None
-        self._image_array = None
-        self._label_array = None
+        self._image_class_ = None
+        self._label_class_ = None
+        self._image_array_ = None
+        self._label_array_ = None
         super()._configure_instance()
         adapt_serializers(self)
 
     def _register_prophooks(self):
         super()._register_prophooks()
-        wfn = lambda v, n: setattr(self._root._v_attrs, n, v)
+        wfn = lambda n, v: setattr(self._root._v_attrs, n, v)
         self._prc.mltype.register(wfn)
         self._prc.classes.register(wfn)
         self._prc.image_shape.register(wfn)
@@ -158,27 +155,23 @@ class H5DataBase(BaseDataSet):
 
     @property
     def _image_class(self):
-        if self._image_class is None:
+        if self._image_class_ is None:
             adapt_serializers(self)
-        return self._image_class
+        return self._image_class_
 
     @property
     def _label_class(self):
-        if self._label_class is None:
+        if self._label_class_ is None:
             adapt_serializers(self)
-        return self._label_class
+        return self._label_class_
 
     @property
     def _image_array(self):
-        if self._image_array is None:
-            self._image_array = self._image_class(self, self._root.images)
-        return self._image_array
+        return self._root.images
 
     @property
     def _label_array(self):
-        if self._label_array is None:
-            self._label_array = self._label_class(self, self._root.labels)
-        return self._label_array
+        return self._root.labels
 
     def flush(self):
         self._fileh.flush()
