@@ -90,11 +90,11 @@ class PropCallbackExecutor(BaseDescriptor):
         super().__set__(instance, value)
         registry = getattr(instance, self.registry_target, None)
         if registry:
-            for cb in registry[self.name].callbacks:
+            for cb in registry[self.name]:
                 if inspect.ismethod(cb):
-                    cb(value, self.name)
+                    cb(self.name, value)
                 else:
-                    cb(instance, value, self.name)
+                    cb(self.name, value)
 
 
 class NumpyDataTyped(PropCallbackExecutor):
