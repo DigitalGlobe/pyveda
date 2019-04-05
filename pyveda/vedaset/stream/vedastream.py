@@ -45,7 +45,7 @@ class BufferedSampleArray(BaseSampleArray):
             # the thread running the asyncio loop to fetch more data while the
             # source generator is not yet exhausted
             dps = self._vset._q.get()
-            label, image = dps
+            label, image, _id = dps
             self._n_consumed += 1
             return [image, label]
 
