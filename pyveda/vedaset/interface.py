@@ -153,11 +153,12 @@ class WrappedIterator(object):
         return next(self._source)
 
 
-class BaseVariableArray(WrappedIterator):
-    def __init__(self, vset, group, arr):
+class BaseVariableArray(object):
+    def __init__(self, vset, group, arr=None):
         self._vset = vset
         self._group = group
-        self._source = arr
+        self._arr = arr
+        self._itr = iter(self._arr)
 
     @property
     def _vidx(self):
@@ -173,7 +174,7 @@ class BaseVariableArray(WrappedIterator):
 
     @property
     def allocated(self):
-        return self._vidx.allocated
+        return self._stop - self._start
 
     def _gettr(self, obj):
         return obj
@@ -183,21 +184,25 @@ class BaseVariableArray(WrappedIterator):
 
     def append(self, obj):
         obj = self._settr(obj)
-        self._source.append(obj)
+        self._arr.append(obj)
 
     def append_batch(self, objs):
         for obj in objs:
             obj = self._settr(obj)
-            self._source.append(obj)
+            self._arr.append(obj)
 
     def __getitem__(self, key):
-        obj = super(BaseVariableArray, self).__getitem__(key)
+        obj = self._arr.__getitem__(key)
         if isinstance(key, int):
             return self._gettr(obj)
         return type(obj)([self._gettr(d) for d in obj])
 
+    def __iter__(self):
+        self._itr = iter(self._arr)
+        return self
+
     def __next__(self):
-        obj = super(BaseVariableArray, self).__next__()
+        obj = self._itr.__next__()
         return self._gettr(obj)
 
     def __len__(self):
