@@ -15,6 +15,8 @@ class BaseSampleArray(object):
     def __init__(self, vset, group):
         self._vset = vset
         self._group = group
+        self.images = vset._img_factory(group)
+        self.labels = vset._lbl_factory(group)
 
     def __getattr__(self, name):
         if name in self._proxied:
@@ -23,16 +25,27 @@ class BaseSampleArray(object):
 
     @property
     def allocated(self):
-        start, stop = self._vset._vidx[self._group]
-        return int(stop - start)
+        return self.images.allocated
 
     @property
     def images(self):
-        return self._vset._image_array
+        if self._images is None:
+            self._images = self._vset._img_factory(self._group)
+        return self._images
+
+    @images.setter
+    def images(self, images):
+        self._images = images
 
     @property
     def labels(self):
-        return self._vset._label_array
+        if self._labels is None:
+            self._labels = self._vset._lbl_factory(self._group)
+        return self._labels
+
+    @labels.setter
+    def labels(self, labels):
+        self._labels = labels
 
     def __getitem__(self, key):
         return [self.images[key],
@@ -63,11 +76,11 @@ class BaseDataSet(object):
         self._validate = None
         self._vidx_ = None
 
-        self._set_dprops(**kwargs)
         self._prc = RegisterCatalog(OpRegister)
-        self._configure_instance()
         self._register_prophooks()
+        self._set_dprops(**kwargs)
 
+        self._configure_instance()
     @classmethod
     def _set_dprop(cls, obj, dname, dval):
         try:
@@ -98,7 +111,7 @@ class BaseDataSet(object):
             self._update_indexes()
         return self._vidx_
 
-    def _update_indexes(self):
+    def _update_indexes(self, *args):
         if not is_partitionable(self):
             self._vidx_ = None
             raise NotImplementedError
@@ -106,6 +119,9 @@ class BaseDataSet(object):
         indexes = slices_from_partition(self.count, self.partition)
         for g, (start, stop) in zip(self.groups, indexes):
             self._vidx_[g] = (start, stop)
+        self._train = None
+        self._test = None
+        self._validate = None
 
     def _unpack(self):
         """
@@ -147,4 +163,10 @@ class BaseDataSet(object):
     def _label_array(self):
         raise NotImplementedError
 
+    def _img_factory(self, group):
+        arr = self._image_array
+        return self._image_class(self, group, arr)
 
+    def _lbl_factory(self, group):
+        arr = self._label_array
+        return self._label_class(self, group, arr)
