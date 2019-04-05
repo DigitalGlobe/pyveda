@@ -118,7 +118,6 @@ class BufferedDataStream(BaseDataSet):
         self._fetcher = None
         self._loop = None
         self._q = queue.Queue()
-        self._buf = collections.deque(maxlen=bufsize)
         self._thread = None
 
         self._write_index = write_index
@@ -128,14 +127,26 @@ class BufferedDataStream(BaseDataSet):
             self._start_consumer()
 
     @property
+    def _data_buf(self):
+        if self._fetcher: # Add more protection, eg loop running and fetch active
+            return self._fetcher.data_buf
+        raise AttributeError("Client inactive; no data available")
+
+    @property
     def _image_array(self):
-        _, imgs, _ = zip(*self._buf)
-        return self._variable_class(self, imgs)
+        try:
+            _, imgs, _ = zip(*self._data_buf.view)
+        except AttributeError:
+            imgs = []
+        return imgs
 
     @property
     def _label_array(self):
-        lbls, _, _ = zip(*self._buf)
-        return self._variable_class(self, lbls)
+        try:
+            lbls, _, _ = zip(*self._data_buf.view)
+        except AttributeError:
+            lbls = []
+        return lbls
 
     @property
     def exhausted(self):
