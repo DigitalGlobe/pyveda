@@ -81,6 +81,7 @@ class BaseDataSet(object):
         self._set_dprops(**kwargs)
 
         self._configure_instance()
+
     @classmethod
     def _set_dprop(cls, obj, dname, dval):
         try:
@@ -162,6 +163,14 @@ class BaseDataSet(object):
     @property
     def _label_array(self):
         raise NotImplementedError
+
+    @property
+    def _image_class(self):
+        return self._variable_class
+
+    @property
+    def _label_class(self):
+        return self._variable_class
 
     def _img_factory(self, group):
         arr = self._image_array
