@@ -65,9 +65,12 @@ class RegisterCatalog(object):
         self.factory = factory
 
     def __getattr__(self, attr):
-        self.__dict__[attr] = self.factory()
-        return self.__dict__[attr]
+        return self.__getitem__(attr)
 
+    def __getitem__(self, key):
+        if key not in self.__dict__:
+            self.__dict__[key] = self.factory()
+        return self.__dict__[key]
 
 class OpRegister(object):
     def __init__(self):
@@ -158,23 +161,33 @@ class BaseVariableArray(object):
         self._vset = vset
         self._group = group
         self._arr = arr
-        self._itr = iter(self._arr)
+
+    @property
+    def _itr(self):
+        if self._itr_ is None:
+            self._itr_ = iter(self._arr)
+        return self._itr_
+
+    @_itr.setter
+    def _itr(self, itr):
+        self._itr_ = itr
 
     @property
     def _vidx(self):
-        return getattr(self._vset._vidx, self._group)
+        return self._vset._vidx[self._group]
 
     @property
     def _start(self):
-        return self._vidx.start
+        return self._vidx[0]
 
     @property
     def _stop(self):
-        return self._vidx.stop
+        return self._vidx[1]
 
     @property
     def allocated(self):
-        return self._stop - self._start
+        start, stop = self._vidx
+        return int(stop - start)
 
     def _gettr(self, obj):
         return obj
@@ -198,7 +211,6 @@ class BaseVariableArray(object):
         return type(obj)([self._gettr(d) for d in obj])
 
     def __iter__(self):
-        self._itr = iter(self._arr)
         return self
 
     def __next__(self):
@@ -242,9 +254,8 @@ class PartitionedIndexArray(BaseVariableArray):
 
 
 class SerializedVariableArray(BaseVariableArray):
-    def __init__(self, input_fn=lambda x: x,
-                 output_fn=lambda x: x, *args, **kwargs):
-
+    def __init__(self, *args, input_fn=lambda x: x,
+                 output_fn=lambda x: x, **kwargs):
         super(SerializedVariableArray, self).__init__(*args, **kwargs)
         self._ipf = input_fn
         self._opf = output_fn
