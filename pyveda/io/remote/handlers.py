@@ -4,6 +4,8 @@ import os
 from tempfile import NamedTemporaryFile
 from shapely.geometry import shape, box
 from pyveda.utils import from_bounds
+from pyveda.vedaset.abstract import mltypes
+from pyveda.exceptions import MLTypeError
 import numpy as np
 
 from skimage.draw import polygon
@@ -143,7 +145,7 @@ class ObjectDetectionHandler(BaseLabelHandler):
 
 
 def set_handlers(vset):
-    image_hanlders = (bytes_to_array,)
+    image_handlers = (bytes_to_array,)
     label_handlers = (BinaryClassificationHandler,
                       InstanceSegmentationHandler,
                       ObjectDetectionHandler,)
