@@ -22,6 +22,11 @@ class BaseSampleArray(object):
         raise AttributeError
 
     @property
+    def allocated(self):
+        start, stop = self._vset._vidx[self._group]
+        return int(stop - start)
+
+    @property
     def images(self):
         return self._vset._image_array
 
