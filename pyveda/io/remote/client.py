@@ -19,6 +19,7 @@ import json
 import collections
 import logging
 import logging.handlers
+import inspect
 
 from pyveda.io.utils import write_trace_profile
 from pyveda.config import VedaConfig
@@ -72,7 +73,7 @@ class PhaseBuffer(object):
         self._cycle_num = 1
         self._full_cycles = 0
         self._phased = False
-        self._ibuf = deque(maxlen=maxlen)
+        self._ibuf = collections.deque(maxlen=maxlen)
 
     @property
     def count(self):
@@ -319,7 +320,6 @@ class HTTPDataClient(HTTPClientTracer):
             logger.info("BATCH FETCH COMPLETE")
             return results
 
-
     async def consume_reqs(self):
         while True:
             try:
@@ -339,14 +339,14 @@ class HTTPDataClient(HTTPClientTracer):
         self._source_exhausted = asyncio.Event(loop=loop)
         self._qreq = asyncio.Queue(maxsize=self.max_concurrent_reqs, loop=loop)
         self._qwrite = asyncio.Queue(loop=loop)
-        self._buf_lock = asyncio.Lock(loop=loop)
+        self._data_lock = asyncio.Lock(loop=loop)
+        self.run_in_exec = functools.partial(run_in_executor, loop=loop)
+        self.run_with_lock = functools.partial(run_with_lock, loop=loop)
+
         self._consumers = [asyncio.ensure_future(self.consume_reqs(), loop=loop)
                            for _ in range(self.max_concurrent_reqs)]
         self._writers = [asyncio.ensure_future(self.process_data(), loop=loop)
                          for _ in range(self._n_write_workers)]
-
-        self.run_in_exec = functools.partial(run_in_exec, loop=loop)
-        self.run_with_lock = functools.partial(run_with_lock, loop=loop)
 
     def register_io_callback(self, fn, executor=None, lock=None):
         if not executor:
@@ -438,3 +438,8 @@ class HTTPDataClient(HTTPClientTracer):
         return True
 
 
+class HTTPVedaClient(HTTPDataClient):
+    def __init__(self, **kwargs):
+        super(HTTPVedaClient, self).__init__(**kwargs)
+        if self._token is None:
+            self._token = cfg.conn.access_token
