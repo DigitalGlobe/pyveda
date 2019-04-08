@@ -55,8 +55,8 @@ def slices_from_partition(total, partition):
     start = 0
     for i, alloc in enumerate(allocations):
         stop = start + alloc if i + 1 < nparts else total
-        idxs.append((start, stop))
-        start = stop
+        idxs.append((int(start), int(stop - 1)))
+        start = int(stop)
     return idxs
 
 
@@ -187,7 +187,7 @@ class BaseVariableArray(object):
     @property
     def allocated(self):
         start, stop = self._vidx
-        return int(stop - start)
+        return int(stop + 1 - start)
 
     def _gettr(self, obj):
         return obj
