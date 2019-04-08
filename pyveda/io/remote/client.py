@@ -178,16 +178,14 @@ class HTTPClientTracer(object):
 
 idfn = lambda x: x
 
-def run_in_executor(fn, loop=None, executor=None):
+def run_in_executor(fn=idfn, loop=None, executor=None):
     @wraps(fn)
     async def wrapper(*args):
         res = await loop.run_in_executor(executor, fn, *args)
         return res
     return wrapper
 
-def run_with_lock(fn, loop=None, lock=None):
-    if not lock:
-        lock = asyncio.Lock(loop=loop)
+def run_with_lock(fn=idfn, lock=None, loop=None):
     @wraps(fn)
     async def wrapper(*args):
         async with lock:
@@ -209,6 +207,7 @@ class HTTPDataClient(HTTPClientTracer):
                  session_limit=30,
                  max_concurrent_requests=200,
                  max_memarrays=100,
+                 batch_size=100,
                  suppress_callback_errors = True,
                  suppress_http_errors = True,
                  on_data=idfn,
@@ -252,7 +251,7 @@ class HTTPDataClient(HTTPClientTracer):
         self._n_img_payload_threads = num_img_payload_threads
         self._n_write_workers = num_write_workers
         self._n_write_threads = num_write_threads
-        self._write_executor = write_executor(max_workers=num_write_threads)
+        self._io_executor = write_executor(max_workers=num_write_threads)
         self._lbl_payload_executor = lbl_payload_executor(max_workers=num_lbl_payload_threads)
         self._img_payload_executor = img_payload_executor(max_workers=num_img_payload_threads)
 
@@ -264,11 +263,12 @@ class HTTPDataClient(HTTPClientTracer):
                                                      executor=self._img_payload_executor,
                                                      fn=img_payload_handler)
         if not buf:
-            buf = PhaseBuffer(period=max_memarrays, maxlen=max_memarrays)
+            buf = PhaseBuffer(period=batch_size, maxlen=max_memarrays)
         self.data_buf = buf
 
         self.io_callbacks = []
         self.cpu_callbacks = []
+        self._logger = logger
 
     @property
     def headers(self):
@@ -348,34 +348,55 @@ class HTTPDataClient(HTTPClientTracer):
         self._writers = [asyncio.ensure_future(self.process_data(), loop=loop)
                          for _ in range(self._n_write_workers)]
 
-    def register_io_callback(self, fn, executor=None, lock=None):
+    def register_io_callback(self, fn, executor=None, use_lock=False, lock=None):
         if not executor:
             executor = self._io_executor
-        cb = functools.partial(self.run_in_exec, fn=fn, executor=executor)
-        if lock:
-            cb = functools.partial(self.run_with_lock, fn=fn, lock=lock)
-        #self.io_callbacks.register(cb)
-        self.io_callbacks.append(cb)
+        if use_lock:
+            if not lock:
+                lock = asyncio.Lock(loop=self.loop)
 
-    def register_cpu_callback(self, fn, executor=None, lock=None):
+        def wrap(fn):
+            if lock:
+                async def wrapped(*args, **kwargs):
+                    async with lock:
+                        return await self.loop.run_in_executor(executor, fn, *args)
+            else:
+                async def wrapped(*args, **kwargs):
+                    return await self.loop.run_in_executor(executor, fn, *args)
+            return wrapped
+
+        self.io_callbacks.append(wrap(fn))
+
+    def register_cpu_callback(self, fn, executor=None, use_lock=False, lock=None):
         if not executor:
             executor = self._cpu_executor
-        cb = functools.partial(self.run_in_exec, fn=fn, executor=executor)
-        if lock:
-            cb = functools.partial(self.run_with_lock, fn=fn, lock=lock)
-        #self.cpu_callbacks.register(cb)
-        self.cpu_callbacks.append(cb)
+        if use_lock:
+            if not lock:
+                lock = asyncio.Lock(loop=self.loop)
+
+        def wrap(fn):
+            if lock:
+                async def wrapped(*args, **kwargs):
+                    async with lock:
+                        return await self.loop.run_in_executor(executor, fn, *args)
+            else:
+                async def wrapped(*args, **kwargs):
+                    return await self.loop.run_in_executor(executor, fn, *args)
+            return wrapped
+
+        self.cpu_callbacks.append(wrap(fn))
 
     async def kill_workers(self):
         await self._qwrite.join()
         # Next line runs io on any remaining data in the buffer
         if not self.data_buf.phased:
-            await self.run_io_callbacks(self.data_buf.current_sample)
+            await self.run_iocallbacks(self.data_buf.current_sample)
         for fut in self._consumers:
             fut.cancel()
         for fut in self._writers:
             fut.cancel()
         done, pending = await asyncio.wait(self._writers)
+        logger.info("Shutdown successful")
         return True
 
     def run_loop(self, loop=None):
@@ -412,7 +433,7 @@ class HTTPDataClient(HTTPClientTracer):
                     if self.data_buf.phased: # Get the view, release the lock
                         dstack = self.data_buf.current_sample
                 if dstack:
-                    await self.run_io_callbacks(dstack)
+                    await self.run_iocallbacks(dstack)
                 self._qwrite.task_done()
 
             except CancelledError as ce:
@@ -422,7 +443,7 @@ class HTTPDataClient(HTTPClientTracer):
     async def run_iocallbacks(self, dstack):
         for cb in self.io_callbacks:
             try:
-                await cb(data)
+                await cb(dstack)
             except Exception as e:
                 logger.info(
                     "User exception in io callback: {}".format(e))
