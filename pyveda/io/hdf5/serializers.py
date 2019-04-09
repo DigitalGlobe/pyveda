@@ -81,7 +81,7 @@ class IOInstanceSegmentation(IOH5Interface):
 
 
 class IOObjectDetection(IOH5Interface):
-    mltype = "obj_detection"
+    mltype = "object_detection"
 
     @staticmethod
     def _input_fn(item):

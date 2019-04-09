@@ -105,7 +105,7 @@ class BufferedDataStream(BaseDataSet):
     _sample_class = BufferedSampleArray
     _variable_class = BufferedVariableArray
 
-    def __init__(self, source, bufsize=100, auto_startup=False,
+    def __init__(self, source=None, bufsize=100, auto_startup=False,
                  auto_shutdown=False, write_index=True, write_h5=False,
                  **kwargs):
         super(BufferedDataStream, self).__init__(**kwargs)

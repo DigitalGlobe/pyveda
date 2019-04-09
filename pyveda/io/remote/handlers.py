@@ -117,7 +117,7 @@ class InstanceSegmentationHandler(BaseLabelHandler):
 
 
 class ObjectDetectionHandler(BaseLabelHandler):
-    mltype = "obj_detection"
+    mltype = "object_detection"
     _default_dtype = np.float32
 
     def _payload_handler(self, *args, **kwargs):

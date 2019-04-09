@@ -57,7 +57,7 @@ class InstanceSegmentationType(MLtype):
 
 
 class ObjectDetectionType(MLtype):
-    name = "obj_detection"
+    name = "object_detection"
 
 
 _metatype_map = dict([(meta.name, meta) for meta in
