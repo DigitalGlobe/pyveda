@@ -178,24 +178,6 @@ class HTTPClientTracer(object):
 
 idfn = lambda x: x
 
-def run_in_executor(fn=idfn, loop=None, executor=None):
-    @wraps(fn)
-    async def wrapper(*args):
-        res = await loop.run_in_executor(executor, fn, *args)
-        return res
-    return wrapper
-
-def run_with_lock(fn=idfn, lock=None, loop=None):
-    @wraps(fn)
-    async def wrapper(*args):
-        async with lock:
-            if inspect.iscoroutinefunction(fn):
-                res = await fn(*args)
-            else:
-                res = fn(*args)
-        return res
-    return wrapper
-
 
 class HTTPDataClient(HTTPClientTracer):
     def __init__(self,
@@ -340,9 +322,6 @@ class HTTPDataClient(HTTPClientTracer):
         self._qreq = asyncio.Queue(maxsize=self.max_concurrent_reqs, loop=loop)
         self._qwrite = asyncio.Queue(loop=loop)
         self._data_lock = asyncio.Lock(loop=loop)
-        self.run_in_exec = functools.partial(run_in_executor, loop=loop)
-        self.run_with_lock = functools.partial(run_with_lock, loop=loop)
-
         self._consumers = [asyncio.ensure_future(self.consume_reqs(), loop=loop)
                            for _ in range(self.max_concurrent_reqs)]
         self._writers = [asyncio.ensure_future(self.process_data(), loop=loop)
