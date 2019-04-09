@@ -220,11 +220,8 @@ class BufferedDataStream(BaseDataSet):
     def _stop_consumer(self):
         self._consumer_fut.cancel()
         f = asyncio.run_coroutine_threadsafe(
-            self._fetcher.kill_workers(), loop=self._loop)
+            self._fetcher.produce_reqs(reqs=[None]), loop=self._loop)
         f.result() # Wait for workers to shutdown gracefully
-        for task in asyncio.Task.all_tasks():
-            task.cancel()
-        self._loop.create_task(self._fetcher.session.close())
         self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join()
         self._loop.close()
