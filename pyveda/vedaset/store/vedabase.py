@@ -8,7 +8,7 @@ from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.base import BaseDataSet, BaseSampleArray
 from pyveda.vedaset.interface import SerializedVariableArray, PartitionedIndexArray, ArrayTransformPlugin
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
-#from pyveda.vv.labelizer import Labelizer
+from pyveda.vv.labelizer import Labelizer
 
 
 class H5VariableArray(SerializedVariableArray,
@@ -227,5 +227,3 @@ class VedaBase(H5DataBase):
     @classmethod
     def from_vtype(cls, fname, **vtype):
         return cls(fname, **vtype)
-
-
