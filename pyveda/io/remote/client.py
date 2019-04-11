@@ -23,6 +23,7 @@ import logging.handlers
 import inspect
 
 from pyveda.io.utils import write_trace_profile
+from pyveda.vedaset.interface import OpRegister
 from pyveda.config import VedaConfig
 from pyveda.utils import tail
 
@@ -251,8 +252,9 @@ class HTTPDataClient(HTTPClientTracer):
             buf = PhaseBuffer(period=batch_size, maxlen=max_memarrays)
         self.data_buf = buf
 
-        self.io_callbacks = []
-        self.cpu_callbacks = []
+        self.io_callbacks = OpRegister()
+        self.cpu_callbacks = OpRegister()
+        self.filters = OpRegister()
 
         self._loop = None
         if loop:
@@ -350,6 +352,20 @@ class HTTPDataClient(HTTPClientTracer):
         self._writers = [asyncio.ensure_future(self.process_data(), loop=loop)
                          for _ in range(self._n_write_workers)]
 
+    def register_filter(self, fn, run_in_executor=False, executor=None):
+        if not executor:
+            executor = self._cpu_executor
+
+        def wrap(fn):
+            async def wrapped(*args, **kwargs):
+                await asyncio.sleep(0.0)
+                if run_in_executor:
+                    return await self.loop.run_in_executor(executor, fn, *args)
+                return fn(*args, **kwargs)
+            return wrapped
+
+        self.filters.register(wrap(fn))
+
     def register_io_callback(self, fn, executor=None, use_lock=False, lock=None):
         if not executor:
             executor = self._io_executor
@@ -367,7 +383,7 @@ class HTTPDataClient(HTTPClientTracer):
                     return await self.loop.run_in_executor(executor, fn, *args)
             return wrapped
 
-        self.io_callbacks.append(wrap(fn))
+        self.io_callbacks.register(wrap(fn))
 
     def register_cpu_callback(self, fn, executor=None, use_lock=False, lock=None):
         if not executor:
@@ -386,7 +402,7 @@ class HTTPDataClient(HTTPClientTracer):
                     return await self.loop.run_in_executor(executor, fn, *args)
             return wrapped
 
-        self.cpu_callbacks.append(wrap(fn))
+        self.cpu_callbacks.register(wrap(fn))
 
     async def kill_workers(self, no_wait=False):
         if not no_wait:
@@ -416,10 +432,6 @@ class HTTPDataClient(HTTPClientTracer):
             await self.produce_reqs(reqs=reqs, **kwargs)
         await self._kill_trigger.wait()
         res = await self.kill_workers()
-
-    async def filter_data(self, data):
-        await asyncio.sleep(0)
-        return data
 
     async def process_data(self):
         while True:
@@ -455,6 +467,13 @@ class HTTPDataClient(HTTPClientTracer):
                     "User exception in io callback: {}".format(e))
                 if not self.suppress_cb_errs:
                     raise
+
+    async def filter_data(self, data):
+        for cb in self.filters:
+            result = await cb(data)
+            if not result:
+                return False
+        return data
 
     async def produce_reqs(self, reqs=[], shutdown=False, **kwargs):
         for req in reqs:
