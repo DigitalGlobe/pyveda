@@ -236,7 +236,7 @@ class BufferedDataStream(BaseDataSet):
         self._thread.start()
         time.sleep(1.0)
         self._consumer_fut = asyncio.run_coroutine_threadsafe(
-            self._client.start_fetch(self._loop), loop=self._loop)
+            self._client.start_fetch(), loop=self._loop)
         if init_buff:
             self._initialize_buffer()
 
