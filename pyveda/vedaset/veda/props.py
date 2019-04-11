@@ -71,7 +71,10 @@ VEDAPROPS = {"name": StrMappedProp,
              "sensors": ListMappedProp,
              "bounds": ListMappedProp,
              "userId": StrMappedProp,
+             "userEmail": StrMappedProp,
              "public": BoolMappedProp,
              "count": IntMappedProp,
-             "percent_cached": IntMappedProp
+             "percent_cached": IntMappedProp,
+             "background_ratio": IntMappedProp,
+             "histogram": ListMappedProp
              }

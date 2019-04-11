@@ -59,9 +59,8 @@ class BufferedSampleArray(BaseSampleArray):
                 batch.append(self.__next__())
             yield batch
 
-    def batch_generator(self, batch_size, shuffle=True, channels_last=False,
-                        rescale=False, flip_horizontal=False, flip_vertical=False,
-                        **kwargs):
+   def batch_generator(self, batch_size, shuffle=True, channels_last=False, expand_dims=False, rescale=False, flip_horizontal=False, flip_vertical=False,
+                        custom_label_transform=None, custom_batch_transform=None, custom_image_transform=None, pad=None, **kwargs):
         """
         Generatates Batch of Images/Lables on a VedaStream partition.
         #Arguments
@@ -70,13 +69,20 @@ class BufferedSampleArray(BaseSampleArray):
             channels_last: Boolean. To return image data as Height-Width-Depth,
             instead of the default Depth-Height-Width
             rescale: boolean. Rescale image values between 0 and 1.
-            flip_horizontal: Boolean. Horizontally flip image and lables.
-            flip_vertical: Boolean. Vertically flip image and lables
+            flip_horizontal: Boolean. Horizontally flip image and labels.
+            flip_vertical: Boolean. Vertically flip image and labels
+            custom_label_transform: Function. User defined function that takes a y value (ie a bbox for object detection)
+                                    and manipulates it as necessary for the model.
+            custom_image_transform: Function. User defined function that takes an x value and returns the modified image array.
+            pad: Int. New larger dimension to transform image into.
         """
         return VedaStreamGenerator(self, batch_size=batch_size, shuffle=shuffle,
-                                   channels_last=channels_last, rescale=rescale,
-                                   flip_horizontal=flip_horizontal,
-                                   flip_vertical=flip_vertical, **kwargs)
+                                channels_last=channels_last, expand_dims = expand_dims,rescale=rescale,
+                                flip_horizontal=flip_horizontal, flip_vertical=flip_vertical,
+                                custom_label_transform=custom_label_transform,
+                                custom_batch_transform=custom_batch_transform,
+                                custom_image_transform=custom_image_transform,
+                                pad=pad, **kwargs)
 
     @property
     def exhausted(self):

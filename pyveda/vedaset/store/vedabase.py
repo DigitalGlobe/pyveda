@@ -48,34 +48,37 @@ class H5VariableArray(SerializedVariableArray,
 
 class H5SampleArray(BaseSampleArray):
 
-    def batch_generator(self, batch_size,
-                        shuffle=True,
-                        channels_last=False,
-                        rescale=False,
-                        flip_horizontal=False,
-                        flip_vertical=False,
-                        **kwargs):
-        """
-        Generatates Batch of Images/Lables on a VedaBase partition.
-        #Arguments
-            batch_size: int. batch size
-            shuffle: Boolean.
-            channels_last: Boolean. To return image data as Height-Width-Depth,
-            instead of the default Depth-Height-Width
-            rescale: boolean. Rescale image values between 0 and 1.
-            flip_horizontal: Boolean. Horizontally flip image and lables.
-            flip_vertical: Boolean. Vertically flip image and lables
-        """
-        return VedaStoreGenerator(self, batch_size=batch_size, shuffle=shuffle,
-                                  channels_last=channels_last, rescale=rescale,
-                                  flip_horizontal=flip_horizontal,
-                                  flip_vertical=flip_vertical, **kwargs)
-
     def __iter__(self):
         # Reset internal state
         self.images.__iter__()
         self.labels.__iter__()
         return self
+
+    def batch_generator(self, batch_size, steps=None, loop=True, shuffle=True, channels_last=False, expand_dims=False, rescale=False,
+                        flip_horizontal=False, flip_vertical=False, label_transform=None,
+                        batch_label_transform=None, image_transform=None, pad=None, **kwargs):
+        """
+        Generatates Batch of Images/Lables on a VedaBase partition.
+
+        Args
+            cache (VedaBase or VedaStream partition): Partition (train, test, or validate)
+            batch_size (int): Number of samples in batch
+            steps (int): Number of steps of batches to run in one epoch. If not provided, will calculate maximum possible number of complete batches
+            loop (Boolean): Loop batcher indefinitely. If false, StopIteration is thrown after one epoch.
+            shuffle (Boolean): Shuffle data between epochs.
+            channels_last (Boolean): To return image data as Height-Width-Depth, instead of the default Depth-Height-Width
+            rescale (Boolean): Return images rescaled to values between 0 and 1
+            flip_horizontal (Boolean): Horizontally flip image and labels (50% probability)
+            flip_vertical (Boolean): Vertically flip image and labels (50% probability)
+            pad (int): Pad image with zeros to this dimension.
+        """
+        return VedaStoreGenerator(self, batch_size=batch_size, steps=steps, loop=loop, shuffle=shuffle,
+                                channels_last=channels_last, expand_dims = expand_dims, rescale=rescale,
+                                flip_horizontal=flip_horizontal, flip_vertical=flip_vertical,
+                                label_transform=label_transform,
+                                batch_label_transform=batch_label_transform,
+                                image_transform=image_transform,
+                                pad=pad, **kwargs)
 
     def clean(self, count=None):
         """

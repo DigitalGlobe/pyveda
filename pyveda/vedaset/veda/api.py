@@ -68,7 +68,7 @@ class BaseClient(BaseEndpointConstructor):
         """ Builds a query string from kwargs for fetching points """
         params.update(**kwargs)
         if enc_classes and self.classes:
-            params["classes"] = ",".join(self.classes)
+            params["classes"] = json.dumps(self.classes)
         return urlencode(params)
 
 
@@ -466,17 +466,22 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     def __geo_interface__(self):
         return box(*self.bounds).__geo_interface__
 
-    def clean(self, count=None):
+    def clean(self, count=None, include_background_tiles=True):
         """
         Page through VedaCollection data and flag bad data.
         Params:
-            count: the number of tiles to clean
+            count (int): the number of tiles to clean
+            include_background_tiles (bool): include tiles that do not have labels on them
+        Returns:
+            l: a Labelizer() object
         """
         classes = self.classes
         mltype = self.mltype
-        Labelizer(self, mltype, count, classes).clean()
+        l = Labelizer(self, mltype, count, classes, include_background_tiles)
+        l.clean()
+        return l
 
-    def preview(self, count=None):
+    def preview(self, count=10, include_background_tiles=True):
         """
         Page through VedaCollection data and flag bad data.
         Params:
@@ -484,4 +489,4 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         """
         classes = self.classes
         mltype = self.mltype
-        Labelizer(self, mltype, count, classes).preview()
+        Labelizer(self, mltype, count, classes, include_background_tiles).preview()

@@ -28,7 +28,7 @@ from pyveda.vedaset import stream, store
 from pyveda.vedaset import veda
 
 class Labelizer():
-    def __init__(self, vset, mltype, count, classes):
+    def __init__(self, vset, mltype, count, classes, include_background_tiles):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
@@ -51,11 +51,40 @@ class Labelizer():
                 self.count = len(self.vedaset)
         self.index = 0
         self.mltype = mltype
-        self.datapoint = self.vedaset[self.index]
-        self.image = self._create_images()
         self.classes = classes
-        self.labels = self._create_labels()
         self.flagged_tiles = []
+        self.iflagged_tiles = []
+        self.include_background_tiles = include_background_tiles
+        self._get_next()  #create images, labels, and datapoint
+
+
+    def _get_next(self):
+        self.datapoint = self.vedaset[self.index]
+        if self.include_background_tiles:
+            self.image = self._create_images()
+            self.labels = self._create_labels()
+        else:
+            _check_for_background_tile = self._check_for_background_tile()
+            if _check_for_background_tile:
+                self.image = self._create_images()
+                self.labels = self._create_labels()
+            else:
+                self._get_next()
+
+    def _check_for_background_tile(self):
+        lbl = self._create_labels()
+        if self.mltype == 'object_detection' or self.mltype == 'segmentation':
+            for i, shp in enumerate(lbl):
+                if len(shp) is not 0:
+                    return True
+            else:
+                return False
+        if self.mltype == 'classification':
+            for i, shp in enumerate(lbl):
+                if shp != 0:
+                    return True
+            else:
+                return False
 
     def _create_images(self):
         """
@@ -104,7 +133,6 @@ class Labelizer():
             buttons.append(btn)
         return buttons
 
-
     def _create_flag_buttons(self):
         """
         Creates ipywidget widget buttons for tiles that have been flagged for review.
@@ -124,15 +152,11 @@ class Labelizer():
         """
         if b.description == 'Yes':
             self.index += 1
-            self.datapoint = self.vedaset[self.index]
-            self.image = self._create_images()
-            self.labels = self._create_labels()
+            self._get_next()
         elif b.description == 'No':
-            self.flagged_tiles.append(self.datapoint)
             self.index += 1
-            self.datapoint = self.vedaset[self.index]
-            self.image = self._create_images()
-            self.labels = self._create_labels()
+            self.flagged_tiles.append(self.datapoint)
+            self._get_next()
         elif b.description == 'Exit':
             self.index = self.count
         self.clean()
@@ -144,39 +168,43 @@ class Labelizer():
             clear_output()
             return
 
-
     def _handle_flag_buttons(self, b):
         """
         Callback and handling of widget buttons for flagged tiles.
         """
         try:
             if b.description == 'Keep':
-                self.datapoint = next(self.flagged_tiles)
+                self.datapoint = next(self.iflagged_tiles)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
             elif b.description == 'Remove':
                 self.datapoint.remove() ##only works for VCP, currently
-                self.datapoint = next(self.flagged_tiles)
+                self.datapoint = next(self.iflagged_tiles)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
             self.clean_flags()
         except StopIteration:
             print("All flagged tiles have been cleaned.")
 
+    def _recolor_images(self):
+        img = self.image.astype('float32')
+        img[:,:,0] /= np.max(img[:,:,0])
+        img[:,:,1] /= np.max(img[:,:,1])
+        img[:,:,2] /= np.max(img[:,:,2])
+        return(img)
+
     def _display_image(self):
         """
         Displays image tile for a given vedaset object.
         """
-        img = self.image
-        try:
-            img = img/np.amax(img)
-        except TypeError:
-            img = img
+        if self.image.dtype == 'uint16':
+            img = self._recolor_images()
+        else:
+            img = self.image
         plt.figure(figsize = (10, 10))
-        ax = plt.subplot()
-        ax.axis("off")
-        ax.imshow(img)
-        # return(img)
+        self.ax = plt.subplot()
+        self.ax.axis("off")
+        self.ax.imshow(img)
 
     def _display_obj_detection(self, title=True):
         """
@@ -185,16 +213,15 @@ class Labelizer():
         if title==True:
             plt.title('Is this tile correct?', fontsize=14)
         legend_elements = []
-        ax = plt.subplot()
         for i, shp in enumerate(self.labels):
             if len(shp) is not 0:
                 edge_color = np.random.rand(3,)
                 handle = patches.Patch(edgecolor=edge_color, fill=False, label = self.classes[i])
                 legend_elements.append(handle)
-                ax.legend(handles=legend_elements, loc='lower center',
+                self.ax.legend(handles=legend_elements, loc='lower center',
                          bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
                 for pxb in shp:
-                    ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
+                    self.ax.add_patch(patches.Rectangle((pxb[0],pxb[1]),(pxb[2]-pxb[0]),\
                             (pxb[3]-pxb[1]),edgecolor=edge_color,
                             fill=False, lw=2))
 
@@ -218,7 +245,6 @@ class Labelizer():
         """
         if title==True:
             plt.title('Is this tile correct?', fontsize=14)
-        ax = plt.subplot()
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             legend_elements = []
             for i, shp in enumerate(self.labels):
@@ -226,27 +252,27 @@ class Labelizer():
                     face_color = np.random.rand(3,)
                     handle = patches.Patch(color=face_color, label = self.classes[i])
                     legend_elements.append(handle)
-                    ax.legend(handles=legend_elements, loc='lower center',
+                    self.ax.legend(handles=legend_elements, loc='lower center',
                              bbox_to_anchor=(0.5,-0.1), ncol=3, fancybox=True, fontsize=12)
                 for coord in shp:
                     if coord['type']=='Polygon':
                         geom = Polygon(coord['coordinates'][0])
                         x,y = geom.exterior.xy
-                        ax.fill(x,y, color=face_color, alpha=0.4)
-                        ax.plot(x,y, lw=3, color=face_color)
+                        self.ax.fill(x,y, color=face_color, alpha=0.4)
+                        self.ax.plot(x,y, lw=3, color=face_color)
         else:
-            legend_colors = [(0.5,0.5,0.5)]
+            legend_colors = [(0.5,0.5,0.5,0)]
             cmap_name = 'segmentation_labels'
             for i, shp in enumerate(self.classes):
                 color = np.random.rand(3,)
                 legend_colors.append(color)
             cm = LinearSegmentedColormap.from_list(cmap_name, legend_colors, N=100)
-            im = ax.imshow(self.labels, alpha=0.5, cmap=cm)
+            im = self.ax.imshow(self.labels, alpha=0.5, cmap=cm)
             values = np.unique(self.labels.ravel())
             colors = [im.cmap(im.norm(value)) for value in values]
             try:
                 lpatches = [patches.Patch(color=colors[i+1], label=a) for i,a in enumerate(self.classes)]
-                ax.legend(handles=lpatches, bbox_to_anchor=(0.5,-0.1))
+                self.ax.legend(handles=lpatches, bbox_to_anchor=(0.5,-0.1))
             except:
                 pass
 
@@ -259,14 +285,13 @@ class Labelizer():
         for b in buttons:
             b.on_click(self._handle_flag_buttons)
         if self.datapoint is not None:
-            plt.title('Is this tile correct?', fontsize=14)
             self._display_image()
             if self.mltype == 'object_detection':
                 self._display_obj_detection()
             if self.mltype == 'classification':
                 self._display_classification()
             if self.mltype == 'segmentation':
-                ax._display_segmentation()
+                self._display_segmentation()
             print('Do you want to remove this tile?')
             display(HBox(buttons))
 
@@ -295,8 +320,8 @@ class Labelizer():
         else:
             try:
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
-                self.flagged_tiles = iter(self.flagged_tiles)
-                self.datapoint = next(self.flagged_tiles)
+                self.iflagged_tiles = iter(self.flagged_tiles)
+                self.datapoint = next(self.iflagged_tiles)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
                 self.clean_flags()
@@ -318,7 +343,4 @@ class Labelizer():
             if self.mltype == 'segmentation':
                 self._display_segmentation(title=False)
             plt.show()
-            self.index += 1
-            self.datapoint = self.vedaset[self.index]
-            self.image = self._create_images()
-            self.labels = self._create_labels()
+            self._get_next()
