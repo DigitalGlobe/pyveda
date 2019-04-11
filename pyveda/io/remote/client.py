@@ -422,7 +422,7 @@ class HTTPDataClient(HTTPClientTracer):
     def run_loop(self, loop=None):
         if not loop and not self.loop:
             loop = asyncio.get_event_loop()
-        self.set_loop(loop):
+        self.set_loop(loop)
         if not self.loop.is_running():
             self.loop.run_forever()
 
