@@ -144,6 +144,11 @@ class H5DataBase(BaseDataSet):
 
         self._image_class.create_array()
         self._label_class.create_array()
+        self._build_tables()
+
+    @classmethod
+    def _build_tables(cls):
+        pass
 
     @property
     def _attrs(self):
@@ -194,6 +199,23 @@ class H5DataBase(BaseDataSet):
     def __del__(self):
         self.close()
 
+
+class VedaBase(H5DataBase):
+
+    class _MetaSample(tables.IsDescription):
+        vid = tables.StringCol(36)
+
+    @ignore_nnw
+    def _build_tables(self):
+        self._fileh.create_table(self._root,
+                                 "metadata",
+                                 self._MetaSample,
+                                 "Veda Sample Metadata")
+
+    @property
+    def metadata(self):
+        return self._root.metadata
+
     @classmethod
     def from_path(cls, fname, **kwargs):
         inst = cls(fname, **kwargs)
@@ -202,4 +224,5 @@ class H5DataBase(BaseDataSet):
     @classmethod
     def from_vtype(cls, fname, **vtype):
         return cls(fname, **vtype)
+
 
