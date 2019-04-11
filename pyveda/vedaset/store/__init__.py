@@ -1,1 +1,1 @@
-from .vedabase import H5DataBase
+from .vedabase import H5DataBase, VedaBase
