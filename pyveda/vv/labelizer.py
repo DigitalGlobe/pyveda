@@ -94,7 +94,7 @@ class Labelizer():
         """
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             img = self.datapoint.image
-        if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
+        elif isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
                       store.vedabase.WrappedDataNode)):
             img = np.moveaxis(self.datapoint[0], 0, -1)
         return img
@@ -107,7 +107,7 @@ class Labelizer():
         """
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             labels = self.datapoint.label.values()
-        if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
+        elif isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
                       store.vedabase.WrappedDataNode)):
             labels = self.datapoint[1]
         return labels
