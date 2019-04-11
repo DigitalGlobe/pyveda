@@ -245,6 +245,7 @@ class HTTPDataClient(HTTPClientTracer):
                                                      executor=self._img_payload_executor,
                                                      fn=img_payload_handler)
         if not buf:
+            batch_size = min(batch_size, max_memarrays)
             buf = PhaseBuffer(period=batch_size, maxlen=max_memarrays)
         self.data_buf = buf
 
@@ -366,10 +367,11 @@ class HTTPDataClient(HTTPClientTracer):
         self.cpu_callbacks.append(wrap(fn))
 
     async def kill_workers(self):
+        await self._qreq.join()
         await self._qwrite.join()
         # Next line runs io on any remaining data in the buffer
         if not self.data_buf.phased:
-            await self.run_iocallbacks(self.data_buf.current_sample)
+            await self.run_io_callbacks(self.data_buf.current_sample)
         for fut in self._consumers:
             fut.cancel()
         for fut in self._writers:
@@ -412,14 +414,14 @@ class HTTPDataClient(HTTPClientTracer):
                     if self.data_buf.phased: # Get the view, release the lock
                         dstack = self.data_buf.current_sample
                 if dstack:
-                    await self.run_iocallbacks(dstack)
+                    await self.run_io_callbacks(dstack)
                 self._qwrite.task_done()
 
             except CancelledError as ce:
                 break
         return True
 
-    async def run_iocallbacks(self, dstack):
+    async def run_io_callbacks(self, dstack):
         for cb in self.io_callbacks:
             try:
                 await cb(dstack)
