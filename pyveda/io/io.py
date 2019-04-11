@@ -5,29 +5,27 @@ from functools import partial
 from pyveda.config import VedaConfig
 from pyveda.io.remote.client import ThreadedAsyncioRunner, HTTPDataClient
 
-def write_v_sample_obj(vb, data):
+def write_v_sample_obj(vb, data, write_meta=True):
     """
     Writes a veda sample (label, image, veda ID)
     to a vedabase object.
     """
-    label, image, *data = data
-    vb._image_array.append(image)
-    vb._label_array.append(label)
-    write_v_sample_id(vb, *data)
+    labels, images, meta, *data = zip(*data)
+    vb.train.images.append(np.array(images))
+    vb.train.labels.append(np.array(labels))
+    if write_meta:
+        write_v_sample_meta(vb, meta)
     return data
 
-
-def write_v_sample_id(vb, data):
+def write_v_sample_meta(vb, meta):
     """
     Writes a veda ID to a vedabase index table.
     """
-    vid, *data = data
-    row = vb._tables.veda_ids.row
-    row["veda_id"] = vid
-    row.append()
-    vb._tables.veda_ids.flush()
-    return data
-
+    row = vb.metadata.row
+    for vid, *m in meta:
+        row["vid"] = vid
+        row.append()
+    vb.metadata.flush()
 
 is_iterator = lambda x: isinstance(x, inspect.collections.Iterator)
 
