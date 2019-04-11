@@ -5,7 +5,7 @@ import mmap
 import json
 from pyveda.io.utils import url_to_numpy, url_unpickle
 from requests_toolbelt.multipart.encoder import MultipartEncoder
-from pyveda.veda.api import DataSampleClient, VedaCollectionProxy
+from pyveda.vedaset.veda.api import DataSampleClient, VedaCollectionProxy
 from pyveda.config import VedaConfig
 
 cfg = VedaConfig()
