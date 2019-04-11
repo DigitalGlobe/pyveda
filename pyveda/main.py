@@ -154,20 +154,19 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
         coll = from_id(dataset_id=dataset_id)
     if dataset_name:
         coll = from_name(dataset_name = dataset_name)
-    vb = VedaBase.from_path(filename,
-                          mltype=coll.mltype,
-                          klasses=coll.classes,
-                          image_shape=coll.imshape,
-                          image_dtype=coll.dtype,
-                          overwrite=overwrite,
-                          **kwargs)
-    if count is None:
-        count = coll.count
+    count = count or coll.count
+    vb = VedaBase(filename,
+                  overwrite=overwrite,
+                  mltype=coll.mltype,
+                  classes=coll.classes,
+                  image_shape=coll.imshape,
+                  image_dtype=coll.dtype,
+                  partition=partition,
+                  count=count,
+                  **kwargs)
+
     urlgen = coll.gen_sample_ids(count=count)
-    token = cfg.conn.access_token
-    build_vedabase(vb, urlgen, partition, count, token,
-                       label_threads=1, image_threads=10, **kwargs)
-    vb.flush()
+    build_vedabase(vb, urlgen, **kwargs)
     return vb
 
 
