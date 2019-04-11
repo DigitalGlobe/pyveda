@@ -38,7 +38,7 @@ class BufferedSampleArray(BaseSampleArray):
                 pass
             else:
                 asyncio.run_coroutine_threadsafe(
-                    self._vset._fetcher.produce_reqs(reqs=[nreqs]),
+                    self._vset._client.produce_reqs(reqs=[nreqs]),
                     loop=self._vset._loop)
 
             # The following get() blocks, as it should, when we're waiting for
@@ -138,7 +138,7 @@ class BufferedDataStream(BaseDataSet):
         self._exhausted = False
         self._bufsize = bufsize if bufsize < self.count else self.count
 
-        self._fetcher = None
+        self._client = None
         self._loop = None
         self._q = queue.Queue()
         self._thread = None
@@ -151,8 +151,8 @@ class BufferedDataStream(BaseDataSet):
 
     @property
     def _data_buf(self):
-        if self._fetcher: # Add more protection, eg loop running and fetch active
-            return self._fetcher.data_buf
+        if self._client: # Add more protection, eg loop running and fetch active
+            return self._client.data_buf
         raise AttributeError("Client inactive; no data available")
 
     @property
@@ -201,10 +201,10 @@ class BufferedDataStream(BaseDataSet):
                 break
 
         f = asyncio.run_coroutine_threadsafe(
-            self._fetcher.produce_reqs(reqs=reqs), loop=self._loop)
+            self._client.produce_reqs(reqs=reqs), loop=self._loop)
         f.result()
 
-    def _configure_fetcher(self, **kwargs):
+    def _configure_client(self, **kwargs):
         if self._write_h5:
             vb = VedaBase.from_vtype("temp.h5", self._unpack())
             write_fn = partial(vb_write_fn, vb=vb)
@@ -212,38 +212,38 @@ class BufferedDataStream(BaseDataSet):
             self._vb = vb
 
         img_h, lbl_h = set_handlers(self)
-        self._fetcher = HTTPVedaClient(total_count=self.count,
+        self._client = HTTPVedaClient(total_count=self.count,
                                        img_payload_handler=img_h,
                                        lbl_payload_handler=lbl_h,
                                        on_data=self._q.put_nowait,
                                        **kwargs)
 
-    def _configure_worker(self, fetcher=None, loop=None):
-        if not self._fetcher:
-            self._configure_fetcher()
+    def _configure_worker(self, client=None, loop=None):
+        if not self._client:
+            self._configure_client()
         if not loop:
             loop = asyncio.new_event_loop()
         self._loop = loop
         self._thread = threading.Thread(
-            target=partial(self._fetcher.run_loop, loop=loop))
+            target=partial(self._client.run_loop, loop=loop))
 
     def _start_consumer(self, init_buff=True):
-        if not self._fetcher:
-            self._configure_fetcher()
+        if not self._client:
+            self._configure_client()
         if not self._thread:
             self._configure_worker()
 
         self._thread.start()
         time.sleep(1.0)
         self._consumer_fut = asyncio.run_coroutine_threadsafe(
-            self._fetcher.start_fetch(self._loop), loop=self._loop)
+            self._client.start_fetch(self._loop), loop=self._loop)
         if init_buff:
             self._initialize_buffer()
 
     def _stop_consumer(self):
         self._consumer_fut.cancel()
         f = asyncio.run_coroutine_threadsafe(
-            self._fetcher.produce_reqs(reqs=[None]), loop=self._loop)
+            self._client.produce_reqs(reqs=[None]), loop=self._loop)
         f.result() # Wait for workers to shutdown gracefully
         self._loop.call_soon_threadsafe(self._loop.stop)
         self._thread.join()
