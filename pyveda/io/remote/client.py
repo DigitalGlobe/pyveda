@@ -183,7 +183,7 @@ idfn = lambda x: x
 
 class HTTPDataClient(HTTPClientTracer):
     def __init__(self,
-                 total_count=0,
+                 total_count=100,
                  session=None,
                  token=None,
                  max_retries=5,
@@ -218,7 +218,6 @@ class HTTPDataClient(HTTPClientTracer):
         self.max_retries = max_retries
         self.timeout = timeout
         self.session = session
-        self._total_count = total_count
         self._token = token
         self._session_limit = session_limit
         self._connector = connector
