@@ -12,6 +12,7 @@ import threading
 import numpy as np
 
 from tempfile import NamedTemporaryFile
+from itertools import chain
 import os
 import sys
 import functools
@@ -207,6 +208,7 @@ class HTTPDataClient(HTTPClientTracer):
                  connector=aiohttp.TCPConnector,
                  run_tracer=False,
                  buf=None,
+                 loop=None,
                  *args, **kwargs):
 
         self.max_concurrent_reqs = min(total_count, max_concurrent_requests)
@@ -251,7 +253,27 @@ class HTTPDataClient(HTTPClientTracer):
 
         self.io_callbacks = []
         self.cpu_callbacks = []
+
+        self._loop = None
+        if loop:
+            self.set_loop(loop)
         self._logger = logger
+
+    @property
+    def loop(self):
+        return self._loop
+
+    @loop.setter
+    def loop(self, loop):
+        raise AttributeError(
+            "Access denied; for loop assignment, call {}.set_loop".format(type(self)))
+
+    def set_loop(self, loop, force=False):
+        if self.loop and not force:
+            return False
+        self._loop = loop
+        asyncio.set_event_loop(loop)
+        return True
 
     @property
     def headers(self):
@@ -293,13 +315,15 @@ class HTTPDataClient(HTTPClientTracer):
                     raise
         return data
 
-    async def start_fetch(self, loop):
-        async with aiohttp.ClientSession(loop=loop,
+    async def start_fetch(self, reqs=[], **kwargs):
+        assert self.loop.is_running()
+        async with aiohttp.ClientSession(loop=self.loop,
                                          connector=self._connector(limit=self._session_limit),
                                          headers=self.headers,
                                          trace_configs=self._trace_configs) as session:
+            self.session = session
             logger.info("BATCH FETCH START")
-            results = await self.drive_fetch(session, loop)
+            results = await self.drive_fetch(reqs=reqs, **kwargs)
             logger.info("BATCH FETCH COMPLETE")
             return results
 
@@ -316,10 +340,8 @@ class HTTPDataClient(HTTPClientTracer):
             except CancelledError:
                 break
 
-    def _configure(self, session, loop):
-        self.session = session
-        self.loop = loop
-        self._source_exhausted = asyncio.Event(loop=loop)
+    def _configure(self, loop):
+        self._kill_trigger = asyncio.Event(loop=loop)
         self._qreq = asyncio.Queue(maxsize=self.max_concurrent_reqs, loop=loop)
         self._qwrite = asyncio.Queue(loop=loop)
         self._data_lock = asyncio.Lock(loop=loop)
@@ -366,9 +388,10 @@ class HTTPDataClient(HTTPClientTracer):
 
         self.cpu_callbacks.append(wrap(fn))
 
-    async def kill_workers(self):
-        await self._qreq.join()
-        await self._qwrite.join()
+    async def kill_workers(self, no_wait=False):
+        if not no_wait:
+            await self._qreq.join()
+            await self._qwrite.join()
         # Next line runs io on any remaining data in the buffer
         if not self.data_buf.phased:
             await self.run_io_callbacks(self.data_buf.current_sample)
@@ -381,15 +404,17 @@ class HTTPDataClient(HTTPClientTracer):
         return True
 
     def run_loop(self, loop=None):
-        if not loop:
+        if not loop and not self.loop:
             loop = asyncio.get_event_loop()
-        self.loop = loop
-        asyncio.set_event_loop(loop)
-        loop.run_forever()
+        self.set_loop(loop):
+        if not self.loop.is_running():
+            self.loop.run_forever()
 
-    async def drive_fetch(self, session, loop):
-        self._configure(session, loop)
-        await self._source_exhausted.wait()
+    async def drive_fetch(self, reqs=[], **kwargs):
+        self._configure(self.loop)
+        if reqs:
+            await self.produce_reqs(reqs=reqs, **kwargs)
+        await self._kill_trigger.wait()
         res = await self.kill_workers()
 
     async def filter_data(self, data):
@@ -431,12 +456,15 @@ class HTTPDataClient(HTTPClientTracer):
                 if not self.suppress_cb_errs:
                     raise
 
-    async def produce_reqs(self, reqs=[]):
+    async def produce_reqs(self, reqs=[], shutdown=False, **kwargs):
         for req in reqs:
+            await asyncio.sleep(0.0)
             if req is None:
-                self._source_exhausted.set()
+                self._kill_trigger.set()
                 return True
             await self._qreq.put(req)
+        if shutdown:
+            self._kill_trigger.set()
         return True
 
 
