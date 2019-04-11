@@ -1,9 +1,11 @@
 import os
 import inspect
+import asyncio
 import numpy as np
 from functools import partial
 from pyveda.config import VedaConfig
-from pyveda.io.remote.client import ThreadedAsyncioRunner, HTTPDataClient
+from pyveda.io.remote.handlers import set_handlers
+from pyveda.io.remote.client import ThreadedAsyncioRunner, HTTPVedaClient
 
 def write_v_sample_obj(vb, data, write_meta=True):
     """
@@ -38,7 +40,7 @@ def is_stream_based_accessor(accessor):
 
 
 def is_file_based_accessor(accessor):
-    if type(accessor).__name__ == "H5DataBase":
+    if type(accessor).__name__ in ("H5DataBase", "VedaBase",):
         return True
     if hasattr(accessor, "__v_iotype__"):
         return accessor.__v_iotype__ == "FileIOBased"
@@ -64,27 +66,37 @@ def ensure_iterator(obj):
     return False
 
 
-def configure_client(vset, source=None, token=None, **kwargs):
-    if not token:
-        token = VedaConfig().conn.access_token
+def configure_client(vset,
+                     on_data=lambda x: x,
+                     filters=[],
+                     io_callbacks=[],
+                     loop=None,
+                     **kwargs):
 
-    source = source or getattr(vset, "_source_factory", None)
-    if source:
-        source = ensure_iterator(source)
-    if not source:
-        raise ValueError("why u do that")
+    img_h, lbl_h = set_handlers(vset)
 
-    if is_file_based_accessor(accessor):
-        write_fn = partial(write_v_sample_obj(vb=vset))
-        abf = VedasetFetcher(source,
-                             token=token,
-                             total_count=vset.count,
-                             write_fn=write_fn)
+    if is_file_based_accessor(vset):
+        cb = partial(write_v_sample_obj, vset)
+        io_callbacks.append(cb)
 
+    if is_stream_based_accessor(vset):
+        on_data = vset._q.put_nowait
 
+    client = HTTPVedaClient(img_payload_handler=img_h,
+                            lbl_payload_handler=lbl_h,
+                            on_data=on_data,
+                            **kwargs)
 
-    if is_stream_based_accessor(accessor):
-        pass
+    if not loop:
+        loop = asyncio.new_event_loop()
+    client.set_loop(loop)
+
+    for f in filters:
+        client.register_filter(f)
+    for f in io_callbacks:
+        client.register_io_callback(f, use_lock=True)
+
+    return client
 
 
 
@@ -105,22 +117,14 @@ class IOTaskExecutor(object):
             tar(loop=tar._loop)
 
 
+def build_vedabase(vbase, source, **kwargs):
+    client = configure_client(vbase, **kwargs)
 
+    with ThreadedAsyncioRunner(client.run_loop,
+                               client.start_fetch,
+                               loop=client.loop) as tar:
+        tar(reqs=source, shutdown=True)
 
-
-
-def build_vedabase(database, source, partition, total, token, label_threads=1, image_threads=10):
-    abf = HTTPDataClient(source, total_count=total, token=token,
-                          write_fn=partial(vedabase_batch_write, database=database, partition=partition),
-                          img_batch_transform=database._image_klass._batch_transform,
-                          lbl_batch_transform=database._label_klass._batch_transform,
-                          img_payload_handler=database._image_klass._payload_handler,
-                          lbl_payload_handler=partial(database._label_klass._payload_handler,
-                                                      klasses=database.classes,
-                                                      out_shape=database.image_shape),
-                          num_lbl_payload_threads=label_threads, num_img_payload_threads=image_threads)
-
-    with ThreadedAsyncioRunner(abf.run_loop, abf.start_fetch) as tar:
-        tar(loop=tar._loop)
+    return vbase
 
 
