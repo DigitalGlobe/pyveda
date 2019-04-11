@@ -8,7 +8,7 @@ pv.config.set_conn(conn)
 
 from pyveda.vedaset import VedaBase
 from pyveda.fetch.compat import build_vedabase
-from pyveda.vedaset.store.vedabase import WrappedDataNode
+from pyveda.vedaset.store.vedabase import H5SampleArray
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 
 import unittest
@@ -82,7 +82,7 @@ class VedaBaseTest(unittest.TestCase):
         build_vedabase(vb, urlgen, partition, count, token,
                            label_threads=1, image_threads=10)
         vb.flush()
-        
+
         self.assertEqual(type(vb), VedaBase)
         self.assertEqual(vb.mltype, coll.mltype)
         self.assertEqual(vb.classes, coll.classes)
@@ -93,7 +93,7 @@ class VedaBaseTest(unittest.TestCase):
         #self.assertEqual(vb.framework, self.framework)
         #vb.framework = 'Keras'
         #self.assertEqual(vb.framework, 'Keras')
-        self.assertEqual(len(vb), 0) 
-        self.assertEqual(type(vb.train), WrappedDataNode)
-        self.assertEqual(type(vb.test), WrappedDataNode)
-        self.assertEqual(type(vb.validate), WrappedDataNode)
+        self.assertEqual(len(vb), 0)
+        self.assertEqual(type(vb.train), H5SampleArray)
+        self.assertEqual(type(vb.test), H5SampleArray)
+        self.assertEqual(type(vb.validate), H5SampleArray)
