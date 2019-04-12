@@ -21,6 +21,23 @@ def tail(n, iterable):
     return iter(collections.deque(iterable, maxlen=n))
 
 
+def update_options(*dict_args, immutable=[]):
+    """
+    Given any number of dicts, shallow copy and merge into a new dict,
+    precedence goes to key value pairs in latter dicts.
+    """
+    immutable = set(immutable)
+    result = {}
+    for d in dict_args:
+        defined = set(result.keys())
+        additional = set(d.keys())
+        for key in defined.intersection(immutable).intersection(additional):
+            raise AttributeError(
+                "Overwrite attempt on frozen attr: {} already defined".format(key))
+        result.update(d)
+    return result
+
+
 def check_unexpected_kwargs(kwargs, **unexpected):
     for key, message in unexpected.items():
         if key in kwargs:
