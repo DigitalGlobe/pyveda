@@ -1,6 +1,6 @@
 ''' Tests for Veda data accessor handlers '''
 
-from pyveda.fetch.handlers import *
+from pyveda.io.remote.handlers import *
 import unittest
 from unittest import skip
 
