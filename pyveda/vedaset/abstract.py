@@ -1,122 +1,112 @@
 from abc import ABC, abstractmethod
-
-class ABCDataVariable(ABC):
-
-    _vtyp = "ABCDataVariale"
-    pass
+from pyveda.exceptions import MLTypeError
 
 
-class ABCDataSample(ABC):
-
-    _vtyp = "ABCDataSample"
-    pass
-
-
-
-class ABCVariableIterator(ABC):
-    """Low level data access api to homogeneous sequences of data in PyVeda"""
-    _vtyp = "ABCVariableIterator"
-
-    @abstractmethod
-    def __len__(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def __getitem__(self, item):
-        raise NotImplementedError
-
-    @abstractmethod
-    def __iter__(self):
-        raise NotImplementedError
-
-    #@abstractmethod
-    #def __next__(self):
-    #    raise NotImplementedError
+class MetaDataSchema(type):
+    def __instancecheck__(cls, obj):
+        for dsc in cls._descriptors:
+            try:
+                v = cls.__getattribute__(obj)
+            except Exception:
+                return False
+        return True
 
 
-class ABCSampleIterator(ABC):
-    """Pair-wise access patterns defined on a group of BaseVedaSequences"""
-    _vtyp = "ABCSampleIterator"
-
-    @abstractmethod
-    def __len__(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def __getitem__(self, item):
-        raise NotImplementedError
-
-    @abstractmethod
-    def __iter__(self, spec):
-        raise NotImplementedError
-
-    @abstractmethod
-    def __next__(self):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def images(self):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def labels(self):
-        raise NotImplementedError
+class BaseDataSchema(metaclass=MetaDataSchema): pass
 
 
-class ABCDataSet(ABC):
-    """Core representation of partitioned Machine-Learning datasets in PyVeda"""
-    _vtyp = "ABCDataSet"
-
-    @abstractmethod
-    def __len__(self):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def train(self):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def test(self):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def validate(self):
-        raise NotImplementedError
+class DataSampleSchema(BaseDataSchema):
+    _descriptors = ["count",
+                    "mltype",
+                    "classes",
+                    "partition",
+                    "image_shape",
+                    "image_dtype"]
 
 
-class ABCMetaProps(ABC):
+class MetaMLtype(type):
+    def __subclasscheck__(cls, C):
+        if super().__subclasscheck__(C.__class__):
+            return True
+        if hasattr(C, "mltype"):
+            if super().__subclasscheck__(C.mltype.__class__):
+                return True
+            if isinstance(C.mltype, str):
+                return cls._match_from_string(C.mltype)
+        return False
 
-    _vtyp = "ABCMetaProps"
-
-    @property
-    @abstractmethod
-    def mltype(self):
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def classes(self):
-        raise NotImplementedError
-
-
-class BaseVariableArray(ABCVariableIterator):
-
-    _vtype = "BaseVariableArray"
+    __instancecheck__ = __subclasscheck__
 
 
-class BaseSampleArray(ABCSampleIterator):
+class MLtype(metaclass=MetaMLtype):
+    @classmethod
+    def _match_from_string(cls, mlstr):
+        if mlstr.lower() == cls.__name__.lower():
+            return True
+        if mlstr.lower() == getattr(cls, "name", "").lower():
+            return True
+        return False
 
-    _vtyp = "BaseSampleArray"
+
+class BinaryClassificationType(MLtype):
+    name = "classification"
 
 
-class BaseDataSet(ABCDataSet, ABCMetaProps):
+class InstanceSegmentationType(MLtype):
+    name = "segmentation"
 
-    _vtyp = "BaseDataSet"
 
+class ObjectDetectionType(MLtype):
+    name = "object_detection"
+
+
+_metatype_map = dict([(meta.name, meta) for meta in
+                      [BinaryClassificationType,
+                       InstanceSegmentationType,
+                       ObjectDetectionType]])
+
+class mltypes:
+    """
+    Intended for usage as main mltype api framework
+    """
+    mltype = MLtype
+    metatype_map = _metatype_map
+
+    @classmethod
+    def from_string(cls, s, *args, **kwargs):
+        typname = s.lower()
+        try:
+            metatype = cls.metatype_map[typname]
+        except KeyError:
+            raise MLTypeError(
+                "Cast error: unrecognized mltype string name '{}'".format(typname))
+        return metatype(*args, **kwargs)
+
+    @classmethod
+    def types_match(cls, a, b):
+        try:
+            aobj = cls.get_mltype(a)
+            bobj = cls.get_mltype(b)
+        except MLTypeError:
+            return False
+        return type(aobj) is type(bobj)
+
+    @classmethod
+    def is_mltype(cls, obj):
+        if obj in cls.metatype_map.values():
+            return obj()
+        if getattr(obj, "mltype", None) in cls.metatype_map:
+            return cls.metatype_map[obj.mltype]()
+        for mltype in cls.metatype_map.values():
+            if isinstance(obj, mltype):
+                return mltype()
+        return False
+
+    @classmethod
+    def get_mltype(cls, obj):
+        mltype = cls.is_mltype(obj)
+        if mltype: return mltype
+        raise MLTypeError(
+            "'{}' is not of type 'mltypes.mltype'".format(obj))
 
 

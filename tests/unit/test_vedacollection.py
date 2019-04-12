@@ -7,7 +7,7 @@ import pyveda as pv
 pv.config.set_dev()
 pv.config.set_conn(conn)
 
-from pyveda.veda.api import DataSampleClient, VedaCollectionProxy
+from pyveda.vedaset.veda.api import DataSampleClient, VedaCollectionProxy
 import json
 from shapely.geometry import shape, box
 from shapely.geometry.polygon import Polygon

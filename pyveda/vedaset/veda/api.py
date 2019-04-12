@@ -13,9 +13,10 @@ import requests
 from tempfile import NamedTemporaryFile
 from shapely.geometry import box
 
-from pyveda.utils import features_to_pixels, url_to_array
-from pyveda.veda.props import prop_wrap, VEDAPROPS
-from pyveda.veda.loaders import from_geo, from_tarball
+from pyveda.utils import features_to_pixels
+from pyveda.io.utils import url_to_array
+from pyveda.vedaset.veda.props import prop_wrap, VEDAPROPS
+from pyveda.vedaset.veda.loaders import from_geo, from_tarball
 from pyveda.config import VedaConfig
 
 from pyveda.vv.labelizer import Labelizer
@@ -325,7 +326,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         label_url = "{}/datapoints/{}?{}".format(self.host, _id, qs)
         image_url = "{}/datapoints/{}/image.tif".format(self.host, _id)
         #return (_id, [label_url, image_url])
-        return (label_url, image_url)
+        return (label_url, image_url, (_id,))
 
     def append_from_geojson(self, geojson, image, **kwargs):
         """

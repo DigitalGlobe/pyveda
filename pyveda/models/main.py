@@ -1,11 +1,11 @@
-import os 
+import os
 import tarfile
 import tempfile
 import mmap
 import json
-from pyveda.utils import url_to_numpy, url_unpickle 
+from pyveda.io.utils import url_to_numpy, url_unpickle
 from requests_toolbelt.multipart.encoder import MultipartEncoder
-from pyveda.veda.api import DataSampleClient, VedaCollectionProxy
+from pyveda.vedaset.veda.api import DataSampleClient, VedaCollectionProxy
 from pyveda.config import VedaConfig
 
 cfg = VedaConfig()
@@ -15,7 +15,7 @@ def search(url, params={}):
     r.raise_for_status()
     return r.json()
 
-def create_archive(model, weights, library): 
+def create_archive(model, weights, library):
     """ Creates a tar from a model """
     dirpath = tempfile.mkdtemp()
     name =  "{}/model.tar.gz".format(dirpath)
@@ -27,21 +27,21 @@ def create_archive(model, weights, library):
         if weights is not None:
             tar.add(weights, arcname='weights.h5')
     return name
-        
+
 
 class Model(object):
-    """ 
-      Defines a Model object for saving and accessing models in Veda. 
+    """
+      Defines a Model object for saving and accessing models in Veda.
 
       Args:
           name (str): a name for the model
-          model_path (str): path to the serialized model file  
-          weights_path (str): path to the serialized model weights 
-          archive (str): a path to a local tar.gz archive for the model 
+          model_path (str): path to the serialized model file
+          weights_path (str): path to the serialized model weights
+          archive (str): a path to a local tar.gz archive for the model
           mltype (str): the mltype of the model
           bounds (list): a bounding box (minx, miny, maxx, maxy)
-          imshape (tuple): the shape of the images the model expects 
-          training_set (VedaCollection): a veda training data collection. Used as a reference 
+          imshape (tuple): the shape of the images the model expects
+          training_set (VedaCollection): a veda training data collection. Used as a reference
                                          to the data the model was trained from. If provided, bounds, shape,
                                          dtype, and mltype will be inherited.
           library (str): The ml framework used for training the model (keras, pytorch, tensorflow)
@@ -58,8 +58,8 @@ class Model(object):
 
         assert self.mltype is not None, "Must define an mltype as one of `classification`, `object_detection`, or `segmentation`"
         assert self.library is not None, "Must define `library` as one of `keras`, `pytorch`, or `tensorflow`"
-           
-        if 'archive' in kwargs: 
+
+        if 'archive' in kwargs:
             self.archive = kwargs.get('archive')
         elif model_path is not None or weights_path is not None:
             self.archive = create_archive(model_path, weights_path, library)
@@ -105,14 +105,14 @@ class Model(object):
         return self
 
     def predict(self, bounds, image=None, **kwargs):
-        ''' 
-          Run predictions for an AOI within an RDA image based image. 
+        '''
+          Run predictions for an AOI within an RDA image based image.
 
           Args:
             bounds (list): bounding box AOI
             image (RDAImage): An ERDA based image to use for streaming tiles
         '''
-        if image is None: 
+        if image is None:
             rda_id = kwargs.get('rda_id')
             rda_node = kwargs.get('rda_node')
         else:
@@ -123,7 +123,7 @@ class Model(object):
         meta = {
             "name": kwargs.get('name', self.name),
             "description": kwargs.get("description", None),
-            "dtype": self.dtype, 
+            "dtype": self.dtype,
             "mltype": self.mltype,
             "imshape": kwargs.get('imshape', self.imshape),
             "public": False,
@@ -144,7 +144,7 @@ class Model(object):
         doc = cfg.conn.post(self.links["predict"]["href"], json=payload).json()
         return PredictionSet.from_doc(doc)
 
-        
+
     def update(self, new_data, save=True):
         self.meta.update(new_data)
         if save:
@@ -182,7 +182,7 @@ class Model(object):
         self.meta.update(meta)
         for k,v in self.meta.items():
             setattr(self, k, v)
-    
+
     def _construct_meta(self, name, library, **kwargs):
         has_vcp = False
         vcp = kwargs.get('training_set')
@@ -195,8 +195,8 @@ class Model(object):
         else:
             vcp_id = vcp
             overrides = {}
-  
-        # override any values from VCP that may be in from kwargs 
+
+        # override any values from VCP that may be in from kwargs
         for v in override_vals:
             if v in kwargs:
                 overrides[v] = kwargs.get(v)

@@ -1,5 +1,5 @@
 ''' Tests for functions in veda.api.py '''
-from pyveda.veda.api import VedaCollectionProxy
+from pyveda.vedaset.veda.api import VedaCollectionProxy
 from unittest.mock import patch
 import pyveda as pv
 pv.config.set_dev()

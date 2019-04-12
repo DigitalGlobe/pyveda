@@ -25,7 +25,7 @@ import numpy as np
 import requests
 from pyveda.auth import Auth
 from pyveda.vedaset import stream, store
-from pyveda import veda
+from pyveda.vedaset import veda, abstract
 
 class Labelizer():
     def __init__(self, vset, mltype, count, classes, include_background_tiles):
@@ -94,8 +94,8 @@ class Labelizer():
         """
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             img = self.datapoint.image
-        if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
-                      store.vedabase.WrappedDataNode)):
+        elif isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
+                      store.vedabase.H5SampleArray)):
             img = np.moveaxis(self.datapoint[0], 0, -1)
         return img
 
@@ -107,8 +107,8 @@ class Labelizer():
         """
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             labels = self.datapoint.label.values()
-        if isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
-                      store.vedabase.WrappedDataNode)):
+        elif isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
+                      store.vedabase.H5SampleArray)):
             labels = self.datapoint[1]
         return labels
 
@@ -311,12 +311,22 @@ class Labelizer():
                  (self.index, self.count))
             display(HBox(buttons))
             self._display_image()
-            if self.mltype == 'object_detection':
-                self._display_obj_detection()
-            if self.mltype == 'classification':
-                self._display_classification()
-            if self.mltype == 'segmentation':
-                self._display_segmentation()
+            if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+                if self.mltype == 'object_detection':
+                    self._display_obj_detection()
+                if self.mltype == 'classification':
+                    self._display_classification()
+                if self.mltype == 'segmentation':
+                    self._display_segmentation()
+            else:
+                if isinstance(self.mltype, abstract.BinaryClassificationType):
+                    self._display_classification()
+                if isinstance(self.mltype, abstract.ObjectDetectionType):
+                    self._display_obj_detection()
+                if isinstance(self.mltype, abstract.SegmentationType):
+                    self._display_segmentation()
+
+
         else:
             try:
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))

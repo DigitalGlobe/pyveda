@@ -4,10 +4,10 @@ from contextlib import contextmanager
 from pyveda.config import VedaConfig
 from pyveda.exceptions import RemoteCollectionNotFound
 from pyveda.vedaset import VedaBase, VedaStream
-from pyveda.veda.loaders import from_geo, from_tarball
-from pyveda.fetch.compat import build_vedabase
-from pyveda.veda.api import _bec, VedaCollectionProxy
-from pyveda.models import Model 
+from pyveda.vedaset.veda.loaders import from_geo, from_tarball
+from pyveda.io.io import build_vedabase
+from pyveda.vedaset.veda.api import _bec, VedaCollectionProxy
+from pyveda.models import Model
 
 cfg = VedaConfig()
 
@@ -58,7 +58,7 @@ def search(params={}, filters={}, **kwargs):
             if _map_contains_submap(s["properties"], filters, **kwargs)]
 
 def model_from_id(model_id):
-    """ 
+    """
       Initialize a Model class from an id
 
       Args:
@@ -134,7 +134,7 @@ def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10]
 
 
 def store(filename, dataset_id=None, dataset_name=None, count=None,
-          partition=[70,20,10], **kwargs):
+          partition=[70,20,10], overwrite=False, **kwargs):
     """ Download a collection locally into a VedaBase hdf5 store
 
     Args:
@@ -154,19 +154,19 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
         coll = from_id(dataset_id=dataset_id)
     if dataset_name:
         coll = from_name(dataset_name = dataset_name)
-    vb = VedaBase.from_path(filename,
-                          mltype=coll.mltype,
-                          klasses=coll.classes,
-                          image_shape=coll.imshape,
-                          image_dtype=coll.dtype,
-                          **kwargs)
-    if count is None:
-        count = coll.count
+    count = count or coll.count
+    vb = VedaBase(filename,
+                  overwrite=overwrite,
+                  mltype=coll.mltype,
+                  classes=coll.classes,
+                  image_shape=coll.imshape,
+                  image_dtype=coll.dtype,
+                  partition=partition,
+                  count=count,
+                  **kwargs)
+
     urlgen = coll.gen_sample_ids(count=count)
-    token = cfg.conn.access_token
-    build_vedabase(vb, urlgen, partition, count, token,
-                       label_threads=1, image_threads=10, **kwargs)
-    vb.flush()
+    build_vedabase(vb, urlgen, **kwargs)
     return vb
 
 
@@ -174,7 +174,7 @@ def _load_stream(vc, *args, **kwargs):
     ''' Opens a Veda collection from the server
 
     Args:
-        vc(): ?
+        vc: a VedaCollection instance
 
     Returns:
         VedaStream
@@ -193,6 +193,7 @@ def _load_store(filename, **kwargs):
     '''
     return VedaBase.from_path(filename, **kwargs)
 
+# Required: tilesize, mltype,
 def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSECT",
                               default_label=None, label_field=None,
                               workers=1, cache_type="stream",

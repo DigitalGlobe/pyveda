@@ -1,40 +1,59 @@
 import os
-from functools import partial, wraps
-from collections import OrderedDict, defaultdict
+from functools import partial
 import numpy as np
 import tables
-from pyveda.utils import mktempfilename, _atom_from_dtype, ignore_warnings
+from pyveda.io.hdf5.serializers import adapt_serializers
+from pyveda.vedaset.utils import ignore_NaturalNameWarning as ignore_nnw
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
-from pyveda.vedaset.store.arrays import ClassificationArray, SegmentationArray, ObjDetectionArray, NDImageArray
-from pyveda.vedaset.abstract import BaseSampleArray, BaseDataSet
+from pyveda.vedaset.base import BaseDataSet, BaseSampleArray
+from pyveda.vedaset.interface import SerializedVariableArray, PartitionedIndexArray, ArrayTransformPlugin
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
 from pyveda.vv.labelizer import Labelizer
-
-FRAMEWORKS = ["TensorFlow", "PyTorch", "Keras"]
-
-MLTYPE_MAP = {"classification": ClassificationArray,
-              "segmentation": SegmentationArray,
-              "object_detection": ObjDetectionArray}
-
-DATA_GROUPS = {"TRAIN": "Data designated for model training",
-               "TEST": "Data designated for model testing",
-               "VALIDATE": "Data designated for model validation"}
-
-ignore_NaturalNameWarning = partial(ignore_warnings, _warning=tables.NaturalNameWarning)
+from pyveda.utils import update_options
 
 
-class WrappedDataNode(object):
-    def __init__(self, node, trainer):
-        self._node = node
-        self._vset = trainer
+class H5VariableArray(SerializedVariableArray,
+                      PartitionedIndexArray,
+                      ArrayTransformPlugin):
+    """
+    This wraps a pytables array with access determined
+    by a contiguous index range given by two integers
+    """
 
-    @property
-    def images(self):
-        return self._vset._image_array_factory(self._node.images, self._vset, output_transform = self._vset._fw_loader)
+    def __init__(self, vset, group, arr,
+                 input_fn=None, output_fn=None):
+        super().__init__(vset, group, arr,
+                         input_fn=input_fn,
+                         output_fn=output_fn)
+
+        self._itr_ = None
 
     @property
-    def labels(self):
-        return self._vset._label_array_factory(self._node.hit_table, self._node.labels,  self._vset)
+    def _itr(self):
+        if self._itr_ is None:
+            self._itr_ = self._arr.iterrows(self._start, self._stop)
+        return self._itr_
+
+    def __iter__(self):
+        self._itr_ = self._arr.iterrows(self._start, self._stop)
+        return self
+
+    def __next__(self):
+       try:
+            return super().__next__()
+       except StopIteration as si:
+            self._itr_ = None
+            raise
+
+
+
+class H5SampleArray(BaseSampleArray):
+
+    def __iter__(self):
+        # Reset internal state
+        self.images.__iter__()
+        self.labels.__iter__()
+        return self
 
     def batch_generator(self, batch_size, steps=None, loop=True, shuffle=True, channels_last=False, expand_dims=False, rescale=False,
                         flip_horizontal=False, flip_vertical=False, label_transform=None,
@@ -62,24 +81,7 @@ class WrappedDataNode(object):
                                 image_transform=image_transform,
                                 pad=pad, **kwargs)
 
-    def __getitem__(self, spec):
-        if isinstance(spec, int):
-            return [self.images[spec], self.labels[spec]]
-        else:
-            return list(self.__iter__(spec))
-
-    def __iter__(self, spec=None):
-        if not spec:
-            spec = slice(0, len(self), 1)
-        gimg = self.images.__iter__(spec)
-        glbl = self.labels.__iter__(spec)
-        while True:
-            yield (gimg.__next__(), glbl.__next__())
-
-    def __len__(self):
-        return len(self._node.images)
-
-    def clean(self, count=None):
+    def clean(self, count=None, include_background_tiles=True):
         """
         Page through VedaStream data and flag bad data.
         Params:
@@ -87,118 +89,99 @@ class WrappedDataNode(object):
         """
         classes = self._vset.classes
         mltype = self._vset.mltype
-        Labelizer(self, mltype, count, classes).clean()
+        Labelizer(self, mltype, count, classes, include_background_tiles).clean()
 
 
 class H5DataBase(BaseDataSet):
     """
-    An interface for consuming and reading local data intended to be used with machine learning training
+    An interface for consuming and reading local data intended to be used with
+    machine learning training
     """
-    def __init__(self, fname, mltype=None, klasses=None, image_shape=None,
-                 image_dtype=None, title="NoTitle", framework=None,
-                 overwrite=False, mode="a"):
-        self._framework = framework
-        self._fw_loader = lambda x: x
+    _sample_class = H5SampleArray
+    _variable_class = H5VariableArray
+    _frozen = ("mltype", "image_shape", "image_dtype", "classes")
 
+    def __init__(self, fname, title="SBWM", overwrite=False, mode="a", **kwargs):
+        exists = False
         if os.path.exists(fname):
-            # TODO need to figure how to deal with existing files.
             if overwrite:
                 os.remove(fname)
-            else:
-                self._load_existing(fname, mode)
-                return
+            if mode == "w":
+                raise IOError(
+                    "Opening the file in write mode will overwrite the file")
+            exists = True
 
-        self._fileh = tables.open_file(fname, mode="a", title=title)
-        self._fileh.root._v_attrs.mltype = mltype
-        self._fileh.root._v_attrs.klasses = klasses
-        self._fileh.root._v_attrs.image_shape = image_shape
-        self._fileh.root._v_attrs.image_dtype = image_dtype
+        self._fileh = tables.open_file(fname, mode=mode, title=title)
+        props = self._get_fprops()
+        kwargs = update_options(props, kwargs, immutable=self._frozen)
+        super(H5DataBase, self).__init__(**kwargs)
+        if not exists:
+            self._build_filetree()
 
-        self._configure_instance()
-        self._build_filetree()
+    def _configure_instance(self):
+        self._image_class_ = None
+        self._label_class_ = None
+        self._image_array_ = None
+        self._label_array_ = None
+        super()._configure_instance()
+        adapt_serializers(self)
 
-    def _load_existing(self, fname, mode="a"):
-        if mode == "w":
-            raise ValueError("Opening the file in write mode will overwrite the file")
-        self._fileh = tables.open_file(fname, mode=mode)
-        self._configure_instance()
+    def _register_prophooks(self):
+        super()._register_prophooks()
+        wfn = lambda n, v: setattr(self._root._v_attrs, n, v)
+        self._prc.mltype.register(wfn)
+        self._prc.classes.register(wfn)
+        self._prc.image_shape.register(wfn)
+        self._prc.image_dtype.register(wfn)
+        self._prc.partition.register(wfn)
+        self._prc.count.register(wfn)
 
-    def _configure_instance(self, *args, **kwargs):
-        self._image_klass = NDImageArray
-        self._label_klass = MLTYPE_MAP[self.mltype]
-        self._classifications = dict([(klass, tables.UInt8Col(pos=idx + 1)) for idx, klass in enumerate(self.classes)])
+    def _get_fprops(self):
+        return dict([(name, self._attrs[name]) for name
+                     in self._attrs._f_list()])
 
-    def _build_filetree(self, dg=DATA_GROUPS):
+    @ignore_nnw
+    def _build_filetree(self):
         # Build group nodes
-        for name, desc in dg.items():
-            self._fileh.create_group("/", name.lower(), desc)
-        # Build table, array leaves
-        self._create_tables(self._classifications, filters=tables.Filters(0))
-        self._create_arrays(self._image_klass, self.image_dtype)
-        self._create_arrays(self._label_klass)
+        for name in self.groups:
+            self._fileh.create_group(
+                "/", name.lower(), "Records of ML experimentation phases")
 
-    def _image_array_factory(self, *args, **kwargs):
-        return self._image_klass(*args, **kwargs)
+        self._image_class.create_array()
+        self._label_class.create_array()
+        self._build_tables()
 
-    def _label_array_factory(self, *args, **kwargs):
-        return self._label_klass(*args, **kwargs)
-
-    @ignore_NaturalNameWarning
-    def _create_arrays(self, data_klass, data_dtype=None):
-        for name, group in self._groups.items():
-            data_klass.create_array(self, group, data_dtype)
-
-    @ignore_NaturalNameWarning
-    def _create_tables(self, classifications, filters=tables.Filters(0)):
-        for name, group in self._groups.items():
-            self._fileh.create_table(group, "hit_table", classifications,
-                                     "Label Hit Record", filters)
-
-    def _build_label_tables(self, rebuild=True):
+    @classmethod
+    def _build_tables(cls):
         pass
 
     @property
-    def mltype(self):
-        return self._fileh.root._v_attrs.mltype
+    def _attrs(self):
+        return self._fileh.root._v_attrs
 
     @property
-    def classes(self):
-        return self._fileh.root._v_attrs.klasses
+    def _root(self):
+        return self._fileh.root
 
     @property
-    def image_shape(self):
-        return self._fileh.root._v_attrs.image_shape
+    def _image_class(self):
+        if self._image_class_ is None:
+            adapt_serializers(self)
+        return self._image_class_
 
     @property
-    def image_dtype(self):
-        return self._fileh.root._v_attrs.image_dtype
+    def _label_class(self):
+        if self._label_class_ is None:
+            adapt_serializers(self)
+        return self._label_class_
 
     @property
-    def _groups(self):
-        return {group._v_name: group for group in self._fileh.root._f_iter_nodes("Group")}
+    def _image_array(self):
+        return self._root.images
 
     @property
-    def framework(self):
-        return self._framework
-
-    @framework.setter
-    def framework(self, fw):
-        if fw and fw not in FRAMEWORKS:
-            raise FrameworkNotSupported("Image adaptor not supported for {}".format(fw))
-        self._framework = fw
-        self._fw_loader = lambda x: x # TODO: Custom loaders here
-
-    @property
-    def train(self):
-        return WrappedDataNode(self._fileh.root.train, self)
-
-    @property
-    def test(self):
-        return WrappedDataNode(self._fileh.root.test, self)
-
-    @property
-    def validate(self):
-        return WrappedDataNode(self._fileh.root.validate, self)
+    def _label_array(self):
+        return self._root.labels
 
     def flush(self):
         self._fileh.flush()
@@ -206,11 +189,8 @@ class H5DataBase(BaseDataSet):
     def close(self):
         self._fileh.close()
 
-    def remove(self):
-        raise NotImplementedError
-
     def __len__(self):
-        return sum([len(self.train), len(self.test), len(self.validate)])
+        return len(self._fileh.root.images)
 
     def __enter__(self):
         return self
@@ -224,11 +204,28 @@ class H5DataBase(BaseDataSet):
     def __del__(self):
         self.close()
 
+
+class VedaBase(H5DataBase):
+
+    class _MetaSample(tables.IsDescription):
+        vid = tables.StringCol(36)
+
+    @ignore_nnw
+    def _build_tables(self):
+        self._fileh.create_table(self._root,
+                                 "metadata",
+                                 self._MetaSample,
+                                 "Veda Sample Metadata")
+
+    @property
+    def metadata(self):
+        return self._root.metadata
+
     @classmethod
     def from_path(cls, fname, **kwargs):
         inst = cls(fname, **kwargs)
         return inst
 
-    #@classmethod
-    #def from_vc(cls, vc, **kwargs):
-    #    # Load an empty H5DataBase from a VC
+    @classmethod
+    def from_vtype(cls, fname, **vtype):
+        return cls(fname, **vtype)
