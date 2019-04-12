@@ -88,7 +88,7 @@ class BaseDataSet(object):
             p = getattr(cls, dname)
             p.__set__(obj, dval)
         except Exception as e:
-            print(e)
+            raise
 
     def _set_dprops(self, quiet=False, **kwargs):
         for k, v in kwargs.items():
@@ -110,12 +110,13 @@ class BaseDataSet(object):
     def _vidx(self):
         if self._vidx_ is None:
             self._update_indexes()
+        if not self._vidx_:
+            raise AttributeError("A count and partition must be set to index")
         return self._vidx_
 
     def _update_indexes(self, *args):
         if not is_partitionable(self):
-            self._vidx_ = None
-            raise NotImplementedError
+            return
         self._vidx_ = OrderedDict()
         indexes = slices_from_partition(self.count, self.partition)
         for g, (start, stop) in zip(self.groups, indexes):
