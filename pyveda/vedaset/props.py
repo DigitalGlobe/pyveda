@@ -41,9 +41,19 @@ class BaseDescriptor(object):
 class Typed(BaseDescriptor):
     expected_type = type(None)
 
+    def __get__(self, instance, klass):
+        val = super().__get__(instance, klass)
+        try:
+            return self.expected_type(val)
+        except:
+            return val
+
     def __set__(self, instance, value):
         if not isinstance(value, self.expected_type):
-            raise TypeError('Expected ' + str(self.expected_type))
+            try:
+                value = self.expected_type(value)
+            except Exception:
+                raise TypeError('Expected ' + str(self.expected_type))
         super().__set__(instance, value)
 
 
