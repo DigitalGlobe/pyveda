@@ -9,6 +9,7 @@ from pyveda.vedaset.base import BaseDataSet, BaseSampleArray
 from pyveda.vedaset.interface import SerializedVariableArray, PartitionedIndexArray, ArrayTransformPlugin
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
 from pyveda.vv.labelizer import Labelizer
+from pyveda.utils import update_options
 
 
 class H5VariableArray(SerializedVariableArray,
@@ -98,19 +99,24 @@ class H5DataBase(BaseDataSet):
     """
     _sample_class = H5SampleArray
     _variable_class = H5VariableArray
+    _frozen = ("mltype", "image_shape", "image_dtype", "classes")
 
     def __init__(self, fname, title="SBWM", overwrite=False, mode="a", **kwargs):
-
+        exists = False
         if os.path.exists(fname):
             if overwrite:
                 os.remove(fname)
-            else:
-                self._load_existing(fname, mode)
-                return
+            if mode == "w":
+                raise IOError(
+                    "Opening the file in write mode will overwrite the file")
+            exists = True
 
         self._fileh = tables.open_file(fname, mode=mode, title=title)
+        props = self._get_fprops()
+        kwargs = update_options(props, kwargs, immutable=self._frozen)
         super(H5DataBase, self).__init__(**kwargs)
-        self._build_filetree()
+        if not exists:
+            self._build_filetree()
 
     def _configure_instance(self):
         self._image_class_ = None
@@ -130,13 +136,9 @@ class H5DataBase(BaseDataSet):
         self._prc.partition.register(wfn)
         self._prc.count.register(wfn)
 
-    def _load_existing(self, fname, mode="a"):
-        if mode == "w":
-            raise ValueError("Opening the file in write mode will overwrite the file")
-        self._fileh = tables.open_file(fname, mode=mode)
-        p = dict([(name, self._attrs[name]) for name in self._attrs.f_list()])
-        self._set_dprops(quiet=True, **p)
-        self._register_prophooks()
+    def _get_fprops(self):
+        return dict([(name, self._attrs[name]) for name
+                     in self._attrs._f_list()])
 
     @ignore_nnw
     def _build_filetree(self):
