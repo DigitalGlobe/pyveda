@@ -102,7 +102,8 @@ def from_name(dataset_name):
         else:
             raise ValueError("Must provide dataset_id or dataset_name arguments")
 
-def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10], **kwargs):
+def open(dataset_id=None, dataset_name=None, filename=None,
+         partition=[70,20,10], **kwargs):
     """
     Main interface to access to remote, local and synced datasets
 

@@ -251,9 +251,15 @@ class BufferedDataStream(BaseDataSet):
 
     @classmethod
     def from_vc(cls, vc, **kwargs):
-        return cls(vc.mltype, vc.classes,
-                   vc.count, vc.gen_sample_ids(**kwargs),
-                   vc.imshape, **kwargs)
+        count = kwargs.get("count") or vc.count
+        source = vc.gen_sample_ids(count)
+        return cls(source,
+                   mltype=vc.mltype,
+                   classes=vc.classes,
+                   image_shape=vc.imshape,
+                   image_dtype=vc.dtype,
+                   count=count,
+                   **kwargs)
 
     def __enter__(self):
         self._start_consumer()
