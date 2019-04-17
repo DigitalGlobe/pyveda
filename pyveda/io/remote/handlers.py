@@ -78,7 +78,7 @@ class InstanceSegmentationHandler(BaseLabelHandler):
             shapes = payload[klass]
             if shapes:
                 try:
-                    out_array = SegmentationHandler._create_mask(shapes, value, out_array)
+                    out_array = InstanceSegmentationHandler._create_mask(shapes, value, out_array)
                 except Exception as e:
                     pass
         return out_array
@@ -92,7 +92,7 @@ class InstanceSegmentationHandler(BaseLabelHandler):
         value = 1
         for k, features in item['data']['label'].items():
             try:
-                out_array = SegmentationHandler._create_mask(features, value, out_array)
+                out_array = InstanceSegmentationHandler._create_mask(features, value, out_array)
                 value += 1
             except TypeError as e:
                 pass
