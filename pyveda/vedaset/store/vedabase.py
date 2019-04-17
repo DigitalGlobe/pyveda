@@ -102,6 +102,9 @@ class H5DataBase(BaseDataSet):
     _frozen = ("mltype", "image_shape", "image_dtype", "classes")
 
     def __init__(self, fname, title="SBWM", overwrite=False, mode="a", **kwargs):
+
+        if not fname.endswith('.h5'):
+            raise ValueError("filename must end in .h5")
         exists = False
         if os.path.exists(fname):
             if overwrite:
