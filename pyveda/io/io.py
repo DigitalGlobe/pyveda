@@ -13,8 +13,8 @@ def write_v_sample_obj(vb, data, write_meta=True):
     to a vedabase object.
     """
     labels, images, meta, *data = zip(*data)
-    vb.train.images.append(np.array(images))
-    vb.train.labels.append(np.array(labels))
+    vb.train.images.append_batch(images)
+    vb.train.labels.append_batch(labels)
     if write_meta:
         write_v_sample_meta(vb, meta)
     return data
