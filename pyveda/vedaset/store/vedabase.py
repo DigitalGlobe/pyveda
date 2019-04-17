@@ -106,10 +106,11 @@ class H5DataBase(BaseDataSet):
         if os.path.exists(fname):
             if overwrite:
                 os.remove(fname)
-            if mode == "w":
+            else:
+                exists = True
+            if mode == "w" and exists:
                 raise IOError(
                     "Opening the file in write mode will overwrite the file")
-            exists = True
 
         self._fileh = tables.open_file(fname, mode=mode, title=title)
         props = self._get_fprops()
