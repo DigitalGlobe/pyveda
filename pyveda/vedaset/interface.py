@@ -200,9 +200,12 @@ class BaseVariableArray(object):
         self._arr.append(obj)
 
     def append_batch(self, objs):
-        for obj in objs:
-            obj = self._settr(obj)
-            self._arr.append(obj)
+        arr = np.array(objs)
+        try:
+            self.append(arr)
+        except Exception as e:
+            for obj in objs:
+                self.append(obj)
 
     def __getitem__(self, key):
         obj = self._arr.__getitem__(key)
