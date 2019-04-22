@@ -323,8 +323,8 @@ class Labelizer():
                     self._display_classification()
                 if isinstance(self.mltype, abstract.ObjectDetectionType):
                     self._display_obj_detection()
-                if isinstance(self.mltype, abstract.SegmentationType):
-                    self._display_segmentation()
+                # if isinstance(self.mltype, abstract.SegmentationType):
+                #     self._display_segmentation()
         else:
             try:
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
@@ -356,7 +356,7 @@ class Labelizer():
                     self._display_classification(title=False)
                 if isinstance(self.mltype, abstract.ObjectDetectionType):
                     self._display_obj_detection(title=False)
-                if isinstance(self.mltype, abstract.SegmentationType):
-                    self._display_segmentation(title=False)
+                # if isinstance(self.mltype, abstract.SegmentationType):
+                #     self._display_segmentation(title=False)
             plt.show()
             self._get_next()
