@@ -325,8 +325,6 @@ class Labelizer():
                     self._display_obj_detection()
                 if isinstance(self.mltype, abstract.SegmentationType):
                     self._display_segmentation()
-
-
         else:
             try:
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
@@ -346,11 +344,19 @@ class Labelizer():
         display(HBox(buttons))
         for c in range(0, self.count):
             self._display_image()
-            if self.mltype == 'object_detection':
-                self._display_obj_detection(title=False)
-            if self.mltype == 'classification':
-                self._display_classification(title=False)
-            if self.mltype == 'segmentation':
-                self._display_segmentation(title=False)
+            if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+                if self.mltype == 'object_detection':
+                    self._display_obj_detection(title=False)
+                if self.mltype == 'classification':
+                    self._display_classification(title=False)
+                if self.mltype == 'segmentation':
+                    self._display_segmentation(title=False)
+            else:
+                if isinstance(self.mltype, abstract.BinaryClassificationType):
+                    self._display_classification(title=False)
+                if isinstance(self.mltype, abstract.ObjectDetectionType):
+                    self._display_obj_detection(title=False)
+                if isinstance(self.mltype, abstract.SegmentationType):
+                    self._display_segmentation(title=False)
             plt.show()
             self._get_next()
