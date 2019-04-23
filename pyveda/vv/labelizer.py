@@ -237,9 +237,15 @@ class Labelizer():
             if binary_class != 0:
                 positive_classes.append(self.classes[i])
         if title==True:
-            plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
+            if positive_classes:
+                plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
+            else:
+                plt.title('Does this tile contain: no labeled objects?', fontsize=14)
         else:
-            plt.title('Tile contains: %s' % ', '.join(positive_classes), fontsize=14)
+            if positive_classes:
+                plt.title('Tile contains: %s' % ', '.join(positive_classes), fontsize=14)
+            else:
+                plt.title('Tile contains: no labeled objects', fontsize=14)
 
     def _display_segmentation(self, title=True):
         """
