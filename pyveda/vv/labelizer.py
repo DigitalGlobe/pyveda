@@ -49,7 +49,7 @@ class Labelizer():
                 self.count = self.vedaset.count
             except:
                 self.count = len(self.vedaset)
-        self.index = 0
+        self.index = None
         self.mltype = mltype
         self.classes = classes
         self.flagged_tiles = []
@@ -59,6 +59,10 @@ class Labelizer():
 
 
     def _get_next(self):
+        if self.index is not None:
+            self.index +=1
+        else:
+            self.index = 0
         self.datapoint = self.vedaset[self.index]
         if self.include_background_tiles:
             self.image = self._create_images()
@@ -151,10 +155,8 @@ class Labelizer():
         Callback and handling of widget buttons.
         """
         if b.description == 'Yes':
-            self.index += 1
             self._get_next()
         elif b.description == 'No':
-            self.index += 1
             self.flagged_tiles.append(self.datapoint)
             self._get_next()
         elif b.description == 'Exit':
@@ -323,8 +325,8 @@ class Labelizer():
                     self._display_classification()
                 if isinstance(self.mltype, abstract.ObjectDetectionType):
                     self._display_obj_detection()
-                # if isinstance(self.mltype, abstract.SegmentationType):
-                #     self._display_segmentation()
+                if isinstance(self.mltype, abstract.InstanceSegmentationType):
+                    self._display_segmentation()
         else:
             try:
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
@@ -356,7 +358,8 @@ class Labelizer():
                     self._display_classification(title=False)
                 if isinstance(self.mltype, abstract.ObjectDetectionType):
                     self._display_obj_detection(title=False)
-                # if isinstance(self.mltype, abstract.SegmentationType):
-                #     self._display_segmentation(title=False)
+                if isinstance(self.mltype, abstract.InstanceSegmentationType):
+                    self._display_segmentation(title=False)
             plt.show()
+            self.index += 1
             self._get_next()
