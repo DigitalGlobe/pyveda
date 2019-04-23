@@ -288,12 +288,20 @@ class Labelizer():
             b.on_click(self._handle_flag_buttons)
         if self.datapoint is not None:
             self._display_image()
-            if self.mltype == 'object_detection':
-                self._display_obj_detection()
-            if self.mltype == 'classification':
-                self._display_classification()
-            if self.mltype == 'segmentation':
-                self._display_segmentation()
+            if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+                if self.mltype == 'object_detection':
+                    self._display_obj_detection()
+                if self.mltype == 'classification':
+                    self._display_classification()
+                if self.mltype == 'segmentation':
+                    self._display_segmentation()
+            else:
+                if isinstance(self.mltype, abstract.BinaryClassificationType):
+                    self._display_classification()
+                if isinstance(self.mltype, abstract.ObjectDetectionType):
+                    self._display_obj_detection()
+                if isinstance(self.mltype, abstract.InstanceSegmentationType):
+                    self._display_segmentation()
             print('Do you want to remove this tile?')
             display(HBox(buttons))
 
