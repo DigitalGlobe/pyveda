@@ -369,5 +369,4 @@ class Labelizer():
                 if isinstance(self.mltype, abstract.InstanceSegmentationType):
                     self._display_segmentation(title=False)
             plt.show()
-            self.index += 1
             self._get_next()
