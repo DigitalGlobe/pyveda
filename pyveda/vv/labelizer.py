@@ -379,8 +379,7 @@ class Labelizer():
 
     def remove_black_tiles(self):
         for c in range(self.count):
-            print(np.amax(self.image))
-            print(self.datapoint.id)
             if np.amax(self.image) == 0:
                 self.datapoint.remove()
+                print('removing tile %s' % self.datapoint.id)
             self._get_next()
