@@ -490,3 +490,10 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         classes = self.classes
         mltype = self.mltype
         Labelizer(self, mltype, count, classes, include_background_tiles).preview()
+
+    def remove_black_tiles(self):
+        include_background_tiles=True
+        classes = self.classes
+        mltype = self.mltype
+        count = None
+        Labelizer(self, mltype, count, classes, include_background_tiles).remove_black_tiles()

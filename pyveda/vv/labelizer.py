@@ -376,3 +376,11 @@ class Labelizer():
                     self._display_segmentation(title=False)
             plt.show()
             self._get_next()
+
+    def remove_black_tiles(self):
+        for c in range(self.count):
+            print(np.amax(self.image))
+            print(self.datapoint.id)
+            if np.amax(self.image) == 0:
+                self.datapoint.remove()
+            self._get_next()
