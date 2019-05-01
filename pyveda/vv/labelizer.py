@@ -28,7 +28,7 @@ from pyveda.vedaset import stream, store
 from pyveda.vedaset import veda, abstract
 
 class Labelizer():
-    def __init__(self, vset, mltype, count, classes, include_background_tiles):
+    def __init__(self, vset, mltype=None, count=None, classes=None, include_background_tiles=None):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
@@ -49,7 +49,7 @@ class Labelizer():
                 self.count = self.vedaset.count
             except:
                 self.count = len(self.vedaset)
-        self.index = 0
+        self.index = None
         self.mltype = mltype
         self.classes = classes
         self.flagged_tiles = []
@@ -59,6 +59,10 @@ class Labelizer():
 
 
     def _get_next(self):
+        if self.index is not None:
+            self.index +=1
+        else:
+            self.index = 0
         self.datapoint = self.vedaset[self.index]
         if self.include_background_tiles:
             self.image = self._create_images()
@@ -151,10 +155,8 @@ class Labelizer():
         Callback and handling of widget buttons.
         """
         if b.description == 'Yes':
-            self.index += 1
             self._get_next()
         elif b.description == 'No':
-            self.index += 1
             self.flagged_tiles.append(self.datapoint)
             self._get_next()
         elif b.description == 'Exit':
@@ -235,9 +237,15 @@ class Labelizer():
             if binary_class != 0:
                 positive_classes.append(self.classes[i])
         if title==True:
-            plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
+            if positive_classes:
+                plt.title('Does this tile contain: %s?' % ', '.join(positive_classes), fontsize=14)
+            else:
+                plt.title('Does this tile contain: no labeled objects?', fontsize=14)
         else:
-            plt.title('Tile contains: %s' % ', '.join(positive_classes), fontsize=14)
+            if positive_classes:
+                plt.title('Tile contains: %s' % ', '.join(positive_classes), fontsize=14)
+            else:
+                plt.title('Tile contains: no labeled objects', fontsize=14)
 
     def _display_segmentation(self, title=True):
         """
@@ -286,12 +294,20 @@ class Labelizer():
             b.on_click(self._handle_flag_buttons)
         if self.datapoint is not None:
             self._display_image()
-            if self.mltype == 'object_detection':
-                self._display_obj_detection()
-            if self.mltype == 'classification':
-                self._display_classification()
-            if self.mltype == 'segmentation':
-                self._display_segmentation()
+            if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+                if self.mltype == 'object_detection':
+                    self._display_obj_detection()
+                if self.mltype == 'classification':
+                    self._display_classification()
+                if self.mltype == 'segmentation':
+                    self._display_segmentation()
+            else:
+                if isinstance(self.mltype, abstract.BinaryClassificationType):
+                    self._display_classification()
+                if isinstance(self.mltype, abstract.ObjectDetectionType):
+                    self._display_obj_detection()
+                if isinstance(self.mltype, abstract.InstanceSegmentationType):
+                    self._display_segmentation()
             print('Do you want to remove this tile?')
             display(HBox(buttons))
 
@@ -323,10 +339,8 @@ class Labelizer():
                     self._display_classification()
                 if isinstance(self.mltype, abstract.ObjectDetectionType):
                     self._display_obj_detection()
-                if isinstance(self.mltype, abstract.SegmentationType):
+                if isinstance(self.mltype, abstract.InstanceSegmentationType):
                     self._display_segmentation()
-
-
         else:
             try:
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
@@ -346,11 +360,26 @@ class Labelizer():
         display(HBox(buttons))
         for c in range(0, self.count):
             self._display_image()
-            if self.mltype == 'object_detection':
-                self._display_obj_detection(title=False)
-            if self.mltype == 'classification':
-                self._display_classification(title=False)
-            if self.mltype == 'segmentation':
-                self._display_segmentation(title=False)
+            if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+                if self.mltype == 'object_detection':
+                    self._display_obj_detection(title=False)
+                if self.mltype == 'classification':
+                    self._display_classification(title=False)
+                if self.mltype == 'segmentation':
+                    self._display_segmentation(title=False)
+            else:
+                if isinstance(self.mltype, abstract.BinaryClassificationType):
+                    self._display_classification(title=False)
+                if isinstance(self.mltype, abstract.ObjectDetectionType):
+                    self._display_obj_detection(title=False)
+                if isinstance(self.mltype, abstract.InstanceSegmentationType):
+                    self._display_segmentation(title=False)
             plt.show()
+            self._get_next()
+
+    def remove_black_tiles(self):
+        for c in range(self.count):
+            if np.amax(self.image) == 0:
+                self.datapoint.remove()
+                print('removing tile %s' % self.datapoint.id)
             self._get_next()

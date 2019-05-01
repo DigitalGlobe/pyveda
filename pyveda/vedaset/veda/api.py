@@ -477,7 +477,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         """
         classes = self.classes
         mltype = self.mltype
-        l = Labelizer(self, mltype, count, classes, include_background_tiles)
+        l = Labelizer(self, mltype=mltype, count=count, classes=classes, include_background_tiles=include_background_tiles)
         l.clean()
         return l
 
@@ -485,8 +485,12 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         """
         Page through VedaCollection data and flag bad data.
         Params:
-            count: the number of tiles to clean
+            count: the number of tiles to preview
         """
         classes = self.classes
         mltype = self.mltype
-        Labelizer(self, mltype, count, classes, include_background_tiles).preview()
+        Labelizer(self,  mltype=mltype, count=count, classes=classes, include_background_tiles=include_background_tiles).preview()
+
+    def remove_black_tiles(self):
+        count = None
+        Labelizer(self, count=count).remove_black_tiles()
