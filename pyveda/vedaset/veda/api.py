@@ -402,17 +402,26 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         doc['properties']['id'] = _id
         return cls.from_doc(doc)
 
+    # def __iter__(self):
+    #     self.n = 0
+    #     return self
+    #
+    # def __next__(self):
+    #     if self.n <= self.count:
+    #         dp = self.fetch_samples_from_slice(self.n, num_points=1)
+    #         self.n += 1
+    #         return dp[0]
+    #     else:
+    #         raise StopIteration
+
     def __iter__(self):
-        self.n = 0
+        self._ids = self.gen_sample_ids(get_urls=False)
         return self
 
     def __next__(self):
-        if self.n <= self.count:
-            dp = self.fetch_samples_from_slice(self.n, num_points=1)
-            self.n += 1
-            return dp[0]
-        else:
-            raise StopIteration
+        id = next(self._ids)
+        dp = self.fetch_sample_from_id(id)
+        return dp
 
     def __getitem__(self, slc):
         """ Enable slicing of the data by index/slice """
