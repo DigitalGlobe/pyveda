@@ -48,8 +48,13 @@ class BaseSampleArray(object):
         self._labels = labels
 
     def __getitem__(self, key):
-        return [self.images[key],
-                self.labels[key]]
+        if isinstance(key, int):
+            return [self.images[key],
+                    self.labels[key]]
+        elif isinstance(key, slice):
+            return zip(*[self.images[key],
+                         self.labels[key]])
+        raise NotImplementedError("Numpy-style fancy-indexing not supported")
 
     def __len__(self):
         return self.images.allocated

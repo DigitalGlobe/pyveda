@@ -211,7 +211,7 @@ class BaseVariableArray(object):
         obj = self._arr.__getitem__(key)
         if isinstance(key, int):
             return self._gettr(obj)
-        return type(obj)([self._gettr(d) for d in obj])
+        return [self._gettr(d) for d in obj]
 
     def __iter__(self):
         return self
