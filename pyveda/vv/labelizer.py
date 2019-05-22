@@ -42,6 +42,8 @@ class Labelizer():
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
         self.vedaset = vset
+        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+            self.vedaset = iter(self.vedaset)
         if count is not None:
             self.count = count
         else:
@@ -55,6 +57,7 @@ class Labelizer():
         self.flagged_tiles = []
         self.iflagged_tiles = []
         self.include_background_tiles = include_background_tiles
+        self.id = []
         self._get_next()  #create images, labels, and datapoint
 
 
@@ -63,7 +66,7 @@ class Labelizer():
             self.index +=1
         else:
             self.index = 0
-        self.datapoint = self.vedaset[self.index]
+        self.datapoint = self.vedaset[self.index] ###get next item in index
         if self.include_background_tiles:
             self.image = self._create_images()
             self.labels = self._create_labels()

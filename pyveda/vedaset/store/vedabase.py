@@ -8,7 +8,7 @@ from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 from pyveda.vedaset.base import BaseDataSet, BaseSampleArray
 from pyveda.vedaset.interface import SerializedVariableArray, PartitionedIndexArray, ArrayTransformPlugin
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
-from pyveda.vv.labelizer import Labelizer
+from pyveda import vv
 from pyveda.utils import update_options
 
 
@@ -89,17 +89,12 @@ class H5SampleArray(BaseSampleArray):
         """
         classes = self._vset.classes
         mltype = self._vset.mltype
-        Labelizer(self, mltype, count, classes, include_background_tiles).clean()
+        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles).clean()
 
     def preview(self, count=10, include_background_tiles=True):
-        """
-        Page through VedaCollection data and flag bad data.
-        Params:
-            count: the number of tiles to clean
-        """
         classes = self._vset.classes
         mltype = self._vset.mltype
-        Labelizer(self, mltype, count, classes, include_background_tiles).preview()
+        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles).preview()
 
 class H5DataBase(BaseDataSet):
     """
