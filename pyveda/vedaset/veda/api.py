@@ -410,7 +410,7 @@ class VedaCollectionProxy(_VedaCollectionProxy):
         if self.n <= self.count:
             dp = self.fetch_samples_from_slice(self.n, num_points=1)
             self.n += 1
-            return dp[0]
+            return dp
         else:
             raise StopIteration
 
