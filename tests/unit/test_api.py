@@ -15,8 +15,8 @@ class VedaAPIFunctionsTest(unittest.TestCase):
     def tearDownClass(self):
         pass
 
-    @patch('pyveda.veda.api.VedaCollectionProxy.status')
-    @patch('pyveda.veda.api.from_geo')
+    @patch('pyveda.vedaset.veda.api.VedaCollectionProxy.status')
+    @patch('pyveda.vedaset.veda.api.from_geo')
     def test_appendfromgeojson(self, from_geo, status):
         ''' Test the append_from_geojson method '''
         type = np.dtype('uint8')

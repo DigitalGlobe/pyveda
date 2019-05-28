@@ -7,7 +7,7 @@ pv.config.set_dev()
 pv.config.set_conn(conn)
 
 from pyveda.vedaset import VedaBase
-from pyveda.fetch.compat import build_vedabase
+from pyveda.io.io import build_vedabase
 from pyveda.vedaset.store.vedabase import H5SampleArray
 from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
 
@@ -74,26 +74,20 @@ class VedaBaseTest(unittest.TestCase):
         partition=[70,20,10]
         vb = VedaBase.from_path(self.h5,
                           mltype=coll.mltype,
-                          klasses=coll.classes,
+                          classes=coll.classes,
                           image_shape=coll.imshape,
                           image_dtype=coll.dtype)
-        urlgen = coll.gen_sample_ids(count=count)
-        token = coll.conn.access_token
-        build_vedabase(vb, urlgen, partition, count, token,
-                           label_threads=1, image_threads=10)
-        vb.flush()
 
         self.assertEqual(type(vb), VedaBase)
-        self.assertEqual(vb.mltype, coll.mltype)
+        self.assertEqual(vb.mltype.name, coll.mltype)
         self.assertEqual(vb.classes, coll.classes)
-        self.assertEqual(vb.image_shape, coll.imshape)
+        self.assertEqual(vb.image_shape, tuple(coll.imshape))
         self.assertEqual(vb.image_dtype, coll.dtype)
         #with self.assertRaises(FrameworkNotSupported):
         #    vb.framework = 'foo'
         #self.assertEqual(vb.framework, self.framework)
         #vb.framework = 'Keras'
         #self.assertEqual(vb.framework, 'Keras')
-        self.assertEqual(len(vb), 0)
         self.assertEqual(type(vb.train), H5SampleArray)
         self.assertEqual(type(vb.test), H5SampleArray)
         self.assertEqual(type(vb.validate), H5SampleArray)
