@@ -387,10 +387,14 @@ class VedaCollectionProxy(_VedaCollectionProxy):
     @classmethod
     def from_doc(cls, doc):
         """ Helper method that converts a db doc to a VedaCollection"""
-        if 'id' in doc['properties']:
-            doc['properties']['dataset_id'] = doc['properties']['id']
-            del doc['properties']['id']
-        return cls(**doc['properties'])
+        props = doc['properties']
+        if 'id' in props:
+            props['dataset_id'] = props.pop('id')
+
+        if 'imshape' in props:
+            props['imshape'] = tuple(props['imshape'])
+
+        return cls(**props)
 
     @classmethod
     def from_id(cls, _id):

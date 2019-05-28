@@ -81,7 +81,7 @@ class VedaBaseTest(unittest.TestCase):
         self.assertEqual(type(vb), VedaBase)
         self.assertEqual(vb.mltype.name, coll.mltype)
         self.assertEqual(vb.classes, coll.classes)
-        self.assertEqual(vb.image_shape, tuple(coll.imshape))
+        self.assertEqual(vb.image_shape, coll.imshape)
         self.assertEqual(vb.image_dtype, coll.dtype)
         #with self.assertRaises(FrameworkNotSupported):
         #    vb.framework = 'foo'
