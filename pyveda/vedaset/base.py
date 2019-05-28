@@ -100,7 +100,7 @@ class BaseDataSet(object):
             if k not in self._vprops.keys():
                 if not quiet:
                     raise ValueError(
-                        "Unexpected initialization argument!")
+                            f"Unexpected initialization argument: `{k}={v}`!")
             self._set_dprop(self, k, v)
 
     def _configure_instance(self):
