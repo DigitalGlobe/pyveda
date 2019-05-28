@@ -180,13 +180,17 @@ class Labelizer():
                 self.image = self._create_images()
                 self.labels = self._create_labels()
             elif b.description == 'Remove':
-                self.datapoint.remove() ##only works for VCP, currently
+                self.remove_dp()
                 self.datapoint = next(self.iflagged_tiles)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
             self.clean_flags()
         except StopIteration:
             print("All flagged tiles have been cleaned.")
+
+    def remove_dp(self):
+        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+            self.datapoint.remove()
 
     def _recolor_images(self):
         img = self.image.astype('float32')
