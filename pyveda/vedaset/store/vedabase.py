@@ -103,9 +103,9 @@ class H5DataBase(BaseDataSet):
     """
     _sample_class = H5SampleArray
     _variable_class = H5VariableArray
-    _frozen = ("mltype", "image_shape", "image_dtype", "classes", "dataset_id")
+    _frozen = ("mltype", "image_shape", "image_dtype", "classes")
 
-    def __init__(self, fname, dataset_id, title="SBWM", overwrite=False, mode="a", **kwargs):
+    def __init__(self, fname, title="SBWM", overwrite=False, mode="a", **kwargs):
 
         if not fname.endswith('.h5'):
             raise ValueError("filename must end in .h5")
@@ -236,7 +236,7 @@ class VedaBase(H5DataBase):
     @property
     def vedaset_id(self):
         try:
-            _id = self._root._v_attrs._dataset_id
+            _id = self._root._v_attrs._vedaset_id
         except:
             raise VedaSetNotDefined("No dataset cached")
         return _id
