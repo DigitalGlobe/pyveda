@@ -11,7 +11,7 @@ from pyveda.io.remote.client import HTTPVedaClient
 from pyveda.vedaset.base import BaseSampleArray, BaseDataSet
 from pyveda.vedaset.interface import BaseVariableArray, ArrayTransformPlugin
 from pyveda.frameworks.batch_generator import VedaStreamGenerator
-#from pyveda.vv.labelizer import Labelizer
+from pyveda.vv.labelizer import Labelizer
 
 
 class BufferedVariableArray(ArrayTransformPlugin):
@@ -122,6 +122,11 @@ class BufferedSampleArray(BaseSampleArray):
         classes = self._vset.classes
         mltype = self._vset.mltype
         Labelizer(self, mltype, count, classes).clean()
+
+    def preview(self, count=10, include_background_tiles=True):
+        classes = self._vset.classes
+        mltype = self._vset.mltype
+        Labelizer(self, mltype, count, classes, include_background_tiles).preview()
 
 
 class BufferedDataStream(BaseDataSet):
@@ -270,5 +275,3 @@ class BufferedDataStream(BaseDataSet):
 
     def __len__(self):
         return self.count
-
-
