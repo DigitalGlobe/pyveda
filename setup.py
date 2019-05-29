@@ -6,11 +6,8 @@ req_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "requirement
 with open(req_path) as f:
     reqs = f.read().splitlines()
 
-if sys.version_info[0:2] >= (3,4):
-    reqs.append("aiohttp")
-
 setup(name='pyveda',
-      version='0.0.5',
+      version='0.0.6',
       author='DigitalGlobe',
       author_email='',
       description='Python API for interfacing with veda',
