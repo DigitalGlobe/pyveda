@@ -81,7 +81,7 @@ class H5SampleArray(BaseSampleArray):
                                 image_transform=image_transform,
                                 pad=pad, **kwargs)
 
-    def clean(self, count=None, include_background_tiles=True):
+    def clean(self, fname, count=None, include_background_tiles=True):
         """
         Page through VedaStream data and flag bad data.
         Params:
@@ -89,7 +89,7 @@ class H5SampleArray(BaseSampleArray):
         """
         classes = self._vset.classes
         mltype = self._vset.mltype
-        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles).clean()
+        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles, fname=fname).clean()
 
     def preview(self, count=10, include_background_tiles=True):
         classes = self._vset.classes

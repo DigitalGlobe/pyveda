@@ -59,8 +59,8 @@ class Labelizer():
         self.include_background_tiles = include_background_tiles
         self.id = []
         self.fname = fname
-            if fname:
-                self.vb_vcp = store.vedabase.VedaBase.from_path(fname=self.fname)
+        if fname:
+            self.vb_vcp = store.vedabase.VedaBase.from_path(fname=self.fname)
         self._get_next()  #create images, labels, and datapoint
 
 
