@@ -214,7 +214,7 @@ class H5DataBase(BaseDataSet):
 
 
 class VedaBase(H5DataBase):
-    def __init__(self, vedaset_id=None, *args, **kwargs):
+    def __init__(self, vedaset_id="None", *args, **kwargs):
         super(VedaBasem self).__init__(*args, **kwargs)
         if vedaset_id is not None:
             self._root._v_attrs["vedaset_id"] = vedaset_id
