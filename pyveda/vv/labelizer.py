@@ -197,7 +197,7 @@ class Labelizer():
     def remove_dp(self):
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             self.datapoint.remove()
-        else isinstance(self.vedaset,  store.vedabase.H5SampleArray):
+        elif isinstance(self.vedaset,  store.vedabase.H5SampleArray):
             vb_dp_id = self.vb_vcp.metadata[self.index]
             vb_dp = veda.api.VedaCollectionProxy.fetch_sample_from_id(vb_dp_id)
             vb_dp.remove()
