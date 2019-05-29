@@ -103,9 +103,9 @@ class H5DataBase(BaseDataSet):
     """
     _sample_class = H5SampleArray
     _variable_class = H5VariableArray
-    _frozen = ("mltype", "image_shape", "image_dtype", "classes")
+    _frozen = ("mltype", "image_shape", "image_dtype", "classes", "dataset_id")
 
-    def __init__(self, fname, title="SBWM", overwrite=False, mode="a", **kwargs):
+    def __init__(self, fname, dataset_id, title="SBWM", overwrite=False, mode="a", **kwargs):
 
         if not fname.endswith('.h5'):
             raise ValueError("filename must end in .h5")
@@ -143,6 +143,7 @@ class H5DataBase(BaseDataSet):
         self._prc.image_dtype.register(wfn)
         self._prc.partition.register(wfn)
         self._prc.count.register(wfn)
+        self._prc.dataset_id.register(wfn)
 
     def _get_fprops(self):
         return dict([(name, self._attrs[name]) for name
