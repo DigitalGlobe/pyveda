@@ -143,7 +143,6 @@ class H5DataBase(BaseDataSet):
         self._prc.image_dtype.register(wfn)
         self._prc.partition.register(wfn)
         self._prc.count.register(wfn)
-        self._prc.dataset_id.register(wfn)
 
     def _get_fprops(self):
         return dict([(name, self._attrs[name]) for name
@@ -215,6 +214,10 @@ class H5DataBase(BaseDataSet):
 
 
 class VedaBase(H5DataBase):
+    def __init__(self, vedaset_id=None, *args, **kwargs):
+        super(VedaBasem self).__init__(*args, **kwargs)
+        if vedaset_id is not None:
+            self._root._v_attrs["vedaset_id"] = vedaset_id
 
     class _MetaSample(tables.IsDescription):
         vid = tables.StringCol(36)
