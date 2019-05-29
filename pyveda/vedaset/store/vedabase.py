@@ -233,6 +233,14 @@ class VedaBase(H5DataBase):
     def metadata(self):
         return self._root.metadata
 
+    @property
+    def vedaset_id(self):
+        try:
+            _id = self._root._v_attrs._dataset_id
+        except:
+            raise VedaSetNotDefined("No dataset cached")
+        return _id
+
     @classmethod
     def from_path(cls, fname, **kwargs):
         inst = cls(fname, **kwargs)
