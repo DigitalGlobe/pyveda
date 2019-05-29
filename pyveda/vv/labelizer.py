@@ -28,7 +28,7 @@ from pyveda.vedaset import stream, store
 from pyveda.vedaset import veda, abstract
 
 class Labelizer():
-    def __init__(self, vset, mltype=None, count=None, classes=None, include_background_tiles=None):
+    def __init__(self, vset, mltype=None, count=None, classes=None, include_background_tiles=None, fname=fname):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
@@ -55,6 +55,9 @@ class Labelizer():
         self.flagged_tiles = []
         self.iflagged_tiles = []
         self.include_background_tiles = include_background_tiles
+        self.fname = fname
+        if fname:
+            self.vb_vcp = store.vedabase.VedaBase.from_path(fname=self.fname)
         self._get_next()  #create images, labels, and datapoint
 
 
@@ -191,6 +194,12 @@ class Labelizer():
     def remove_dp(self):
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             self.datapoint.remove()
+        else isinstance(self.vedaset,  store.vedabase.H5SampleArray):
+            vb_dp_id = self.vb_vcp.metadata[self.index]
+            vb_dp = veda.api.VedaCollectionProxy.fetch_sample_from_id(vb_dp_id)
+            vb_dp.remove()
+
+
 
     def _recolor_images(self):
         img = self.image.astype('float32')
