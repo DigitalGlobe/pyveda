@@ -164,7 +164,7 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
                   image_dtype=coll.dtype,
                   partition=partition,
                   count=count,
-                  dataset_id = coll.dataset_id,
+                  dataset_id = coll.id,
                   **kwargs)
 
     urlgen = coll.gen_sample_ids(count=count)
