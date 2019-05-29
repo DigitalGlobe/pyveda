@@ -6,3 +6,9 @@ class FrameworkNotSupported(NotImplementedError):
 
 class RemoteCollectionNotFound(Exception):
     pass
+
+class NotSupportedException(Exception):
+    pass
+
+class MLTypeError(TypeError):
+    pass

@@ -4,9 +4,10 @@ from contextlib import contextmanager
 from pyveda.config import VedaConfig
 from pyveda.exceptions import RemoteCollectionNotFound
 from pyveda.vedaset import VedaBase, VedaStream
-from pyveda.veda.loaders import from_geo, from_tarball
-from pyveda.fetch.compat import build_vedabase
-from pyveda.veda.api import _bec, VedaCollectionProxy
+from pyveda.vedaset.veda.loaders import from_geo, from_tarball
+from pyveda.io.io import build_vedabase
+from pyveda.vedaset.veda.api import _bec, VedaCollectionProxy
+from pyveda.models import Model
 
 cfg = VedaConfig()
 
@@ -16,7 +17,8 @@ __all__ = ["search",
            "from_id",
            "from_name",
            "create_from_geojson",
-           "create_from_tarball"]
+           "create_from_tarball",
+           "model_from_id"]
 
 def _map_contains_submap(mmap, submap, hard_match=True):
     """ Checks if a submap is contained in a master map.
@@ -55,6 +57,18 @@ def search(params={}, filters={}, **kwargs):
     return [VedaCollectionProxy.from_doc(s) for s in results
             if _map_contains_submap(s["properties"], filters, **kwargs)]
 
+def model_from_id(model_id):
+    """
+      Initialize a Model class from an id
+
+      Args:
+          model_id (str): the id of the model
+
+      Returns:
+          model (Model): the pyveda model class for the tis
+    """
+    return Model.from_id(model_id)
+
 def from_id(dataset_id):
     ''' Returns the dataset as a VedaCollectionProxy from an ID if it exists.
 
@@ -88,7 +102,8 @@ def from_name(dataset_name):
         else:
             raise ValueError("Must provide dataset_id or dataset_name arguments")
 
-def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10], **kwargs):
+def open(dataset_id=None, dataset_name=None, filename=None,
+         partition=[70,20,10], **kwargs):
     """
     Main interface to access to remote, local and synced datasets
 
@@ -120,7 +135,7 @@ def open(dataset_id=None, dataset_name=None, filename=None, partition=[70,20,10]
 
 
 def store(filename, dataset_id=None, dataset_name=None, count=None,
-          partition=[70,20,10], **kwargs):
+          partition=[70,20,10], overwrite=False, **kwargs):
     """ Download a collection locally into a VedaBase hdf5 store
 
     Args:
@@ -140,19 +155,19 @@ def store(filename, dataset_id=None, dataset_name=None, count=None,
         coll = from_id(dataset_id=dataset_id)
     if dataset_name:
         coll = from_name(dataset_name = dataset_name)
-    vb = VedaBase.from_path(filename,
-                          mltype=coll.mltype,
-                          klasses=coll.classes,
-                          image_shape=coll.imshape,
-                          image_dtype=coll.dtype,
-                          **kwargs)
-    if count is None:
-        count = coll.count
+    count = count or coll.count
+    vb = VedaBase(filename,
+                  overwrite=overwrite,
+                  mltype=coll.mltype,
+                  classes=coll.classes,
+                  image_shape=coll.imshape,
+                  image_dtype=coll.dtype,
+                  partition=partition,
+                  count=count,
+                  **kwargs)
+
     urlgen = coll.gen_sample_ids(count=count)
-    token = cfg.conn.access_token
-    build_vedabase(vb, urlgen, partition, count, token,
-                       label_threads=1, image_threads=10, **kwargs)
-    vb.flush()
+    build_vedabase(vb, urlgen, **kwargs)
     return vb
 
 
@@ -160,7 +175,7 @@ def _load_stream(vc, *args, **kwargs):
     ''' Opens a Veda collection from the server
 
     Args:
-        vc(): ?
+        vc: a VedaCollection instance
 
     Returns:
         VedaStream
@@ -179,12 +194,14 @@ def _load_store(filename, **kwargs):
     '''
     return VedaBase.from_path(filename, **kwargs)
 
+# Required: tilesize, mltype,
 def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSECT",
                               default_label=None, label_field=None,
                               workers=1, cache_type="stream",
                               dtype=None, description='',
                               mltype="classification", public=False,
                               partition=[100,0,0], mask=None,
+                              background_ratio=0.0,
                               **kwargs):
     """ Loads geojson and an image into a new collection of data
 
@@ -222,7 +239,22 @@ def create_from_geojson(geojson, image, name, tilesize=[256,256], match="INTERSE
                    dtype=dtype, description=description,
                    mltype=mltype, public=public, sensors=sensors,
                    partition=partition, mask=mask,
+                   background_ratio=background_ratio,
                    **kwargs)
     return VedaCollectionProxy.from_doc(doc)
 
-create_from_tarball = from_tarball
+def create_from_tarball(s3path, name, mltype="classification", imshape=[3,256,256]):
+    ''' Creates a new collection from tarball
+
+    Args:
+        s3path (str): The url to the tarball.
+        name (str): A name for the collection.
+        mltype (str): The type model this data may be used for training. One of 'classification', 'object detection', 'segmentation'.
+        imshape (list): Shape of image data. Multiband should be X,N,M. Single band should be 1,N,M.
+
+    Returns:
+        VedaCollectionProxy
+    '''
+    assert isinstance(name, str), ValueError('Name must be defined as a string')
+    doc = from_tarball(s3path, name=name, mltype=mltype, imshape=imshape)
+    return VedaCollectionProxy.from_doc(doc)

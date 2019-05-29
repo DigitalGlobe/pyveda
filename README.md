@@ -16,11 +16,6 @@ Latest Docs [https://pyveda.readthedocs.io/en/latest/](https://pyveda.readthedoc
 
 API Docs [https://veda-api.geobigdata.io/docs](https://veda-api.geobigdata.io/docs)
 
-## Contributors 
+## Contributing
 
-Chris Helm
-Jamie Polackwich
-Marc Pfister
-Jed Verity
-Chloe Hampton
-Martha Morrissey
+Community contribution is important to this project. We encourage issue creation both in the form of detailed bug reports, api usage questions, and feature requests. Accompanying pull requests are not required, but very much appreciated. For more information, contact Jamison Polackwich <jamie.polackwich@digitalglobe.com>.

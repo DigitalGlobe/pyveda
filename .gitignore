@@ -1,3 +1,7 @@
 **/*.pyc
 pyveda.egg-info
 docs/_build
+tags*
+
+.pyveda.fetch.aiohttp.client.log
+.pyveda.io.remote.client.log*
