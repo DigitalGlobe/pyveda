@@ -7,7 +7,7 @@ with open(req_path) as f:
     reqs = f.read().splitlines()
 
 setup(name='pyveda',
-      version='0.0.5',
+      version='0.0.6',
       author='DigitalGlobe',
       author_email='',
       description='Python API for interfacing with veda',
