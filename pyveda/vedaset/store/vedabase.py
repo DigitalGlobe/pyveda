@@ -234,7 +234,7 @@ class VedaBase(H5DataBase):
     @property
     def dataset_id(self):
         try:
-            _id = self._root._v_attrs._dataset_id
+            _id = self._root._v_attrs.dataset_id
         except:
             raise VedaSetNotDefined("No dataset cached")
         return _id
