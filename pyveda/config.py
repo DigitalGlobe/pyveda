@@ -1,3 +1,4 @@
+import logging
 import os
 from pyveda.auth import Auth
 
@@ -59,8 +60,8 @@ class _Config:
         self._HOST = os.environ.get("SANDMAN_API", defhost)
         try:
             self._CONN = Auth().gbdx_connection
-        except:
-            pass
+        except Exception as err:
+            logging.error(f'Error creating connection: `{err}`')
 
     @property
     def HOST(self):
@@ -80,7 +81,8 @@ def set_dev():
     config._HOST = DEV
 
 def set_local():
-    config._HOST = LOCAL
+    config._CONN = Auth(oauth=False).gbdx_connection
+    config._HOST = os.environ.get('SANDMAN_API', LOCAL)
 
 def set_host(host):
     config._HOST = host
