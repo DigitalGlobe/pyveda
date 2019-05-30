@@ -102,7 +102,7 @@ class BaseDataSet(object):
                     raise ValueError(
                             f"Unexpected initialization argument: `{k}={v}`!")
             else:
-                self._set_dprop(self, k, v) ##pass silently on kwargs that aren't specified by the class by default
+                self._set_dprop(self, k, v)
 
     def _configure_instance(self):
         if is_partitionable(self):
