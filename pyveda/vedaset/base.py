@@ -95,13 +95,14 @@ class BaseDataSet(object):
         except Exception as e:
             raise
 
-    def _set_dprops(self, quiet=False, **kwargs):
+    def _set_dprops(self, quiet=True, **kwargs):
         for k, v in kwargs.items():
             if k not in self._vprops.keys():
                 if not quiet:
                     raise ValueError(
                             f"Unexpected initialization argument: `{k}={v}`!")
-            self._set_dprop(self, k, v)
+            else:
+                self._set_dprop(self, k, v) ##pass silently on kwargs that aren't specified by the class by default
 
     def _configure_instance(self):
         if is_partitionable(self):
