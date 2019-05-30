@@ -96,6 +96,8 @@ class BaseDataSet(object):
             raise
 
     def _set_dprops(self, quiet=False, **kwargs):
+        print(self._vprops.keys())
+        print(kwargs.items())
         for k, v in kwargs.items():
             if k not in self._vprops.keys():
                 if not quiet:
