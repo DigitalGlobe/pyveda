@@ -212,13 +212,13 @@ class H5DataBase(BaseDataSet):
 
 
 class VedaBase(H5DataBase):
-    def __init__(self, fname, dataset_id="None", *args, **kwargs):
-        super().__init__(fname, *args, **kwargs)
-        if dataset_id is not None:
-            self._root._v_attrs["dataset_id"] = dataset_id
-
     class _MetaSample(tables.IsDescription):
         vid = tables.StringCol(36)
+
+    def __init__(self, *args, dataset_id=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if dataset_id is not None:
+            self._root._v_attrs["dataset_id"] = dataset_id
 
     @ignore_nnw
     def _build_tables(self):
@@ -235,8 +235,8 @@ class VedaBase(H5DataBase):
     def dataset_id(self):
         try:
             _id = self._root._v_attrs.dataset_id
-        except:
-            raise VedaSetNotDefined("No dataset cached")
+        except AttributeError:
+            return None
         return _id
 
     @classmethod
