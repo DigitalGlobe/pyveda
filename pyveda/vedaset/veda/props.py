@@ -28,7 +28,15 @@ class ListMappedProp(GenericMappedProp):
 
     def __set__(self, obj, val):
         if val not in obj._meta[self.name]:
-            obj._meta.append(val)
+            obj._meta[self.name].append(val)
+
+
+class TupleMappedProp(GenericMappedProp):
+    def __set__(self, obj, val):
+        if isinstance(val, list):
+            val = tuple(val)
+
+        super().__set__(obj, val)
 
 
 class DtypeMappedProp(GenericMappedProp):
@@ -63,7 +71,7 @@ VEDAPROPS = {"name": StrMappedProp,
              "classes": ListMappedProp,
              "dtype": DtypeMappedProp,
              "userId": StrMappedProp,
-             "imshape": ListMappedProp,
+             "imshape": TupleMappedProp,
              "releases": StrMappedProp,
              "mltype": StrMappedProp,
              "tilesize": ListMappedProp,

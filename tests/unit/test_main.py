@@ -1,17 +1,14 @@
 ''' Tests for functions in main.py '''
 
 import os, sys
+import numpy as np
 from auth_mock import conn, my_vcr
-
-from pyveda.veda.api import VedaCollectionProxy
-from pyveda.vedaset import VedaStream
-from pyveda.vedaset import VedaBase
-from pyveda.models import Model
-
 from unittest.mock import patch
 
-import numpy as np
 import pyveda as pv
+from pyveda.models import Model
+from pyveda.vedaset import VedaBase, VedaStream
+from pyveda.vedaset.veda.api import VedaCollectionProxy
 
 pv.config.set_dev()
 pv.config.set_conn(conn)
@@ -25,13 +22,12 @@ class MainFunctionsTest(unittest.TestCase):
     def setUpClass(self):
         self.id = '1245073f-dae9-40ac-ac5c-52ca349ae8dd'
         self.h5 = './test.h5'
-
-    @classmethod
-    def tearDownClass(self):
-        try:
+        if os.path.exists(self.h5):
             os.remove(self.h5)
-        except OSError:
-            pass
+
+    def tearDown(self):
+        if os.path.exists(self.h5):
+            os.remove(self.h5)
 
     def test_mapcontainssubmap(self):
         pass
@@ -61,8 +57,7 @@ class MainFunctionsTest(unittest.TestCase):
     def test_store(self):
         vcp = pv.from_id(self.id)
         self.assertRaises(ValueError, pv.store, vcp)
-        #self.assertRaises(HTTPError, pv.store, dataset_id = self.id, filename = self.h5)
-        self.assertTrue(isinstance(pv.store(dataset_id = self.id, filename = self.h5, count = 10), VedaBase))
+        self.assertTrue(isinstance(pv.store(self.h5, dataset_id=self.id, count=10), VedaBase))
 
     @my_vcr.use_cassette('tests/unit/cassettes/test_main_loadexisting.yaml', filter_headers=['authorization'])
     def test_loadexisting(self):

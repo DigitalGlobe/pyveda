@@ -71,8 +71,9 @@ class VCFetchTest(unittest.TestCase):
         ids = self.vc.gen_sample_ids(size=50, get_urls=True)
         nid = next(ids)
         self.assertTrue(isinstance(nid, tuple))
-        self.assertEqual(len(nid), 2)
-        self.assertEqual(nid[0][:5], 'https')
+        self.assertEqual(len(nid), 3)
+        assert nid[0].startswith('https://')
+        assert nid[1].startswith('https://')
 
 
     @my_vcr.use_cassette('tests/unit/cassettes/test_vcfetch_getatr.yaml', filter_headers=['authorization'])

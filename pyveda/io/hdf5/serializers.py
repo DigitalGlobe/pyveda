@@ -5,7 +5,7 @@ import ujson as json
 from functools import partial
 from pyveda.vedaset.abstract import mltypes
 from pyveda.io.utils import _atom_from_dtype
-from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported
+from pyveda.exceptions import LabelNotSupported, FrameworkNotSupported, MLTypeError
 
 
 class IOH5Interface(object):
