@@ -106,7 +106,6 @@ class H5DataBase(BaseDataSet):
     _frozen = ("mltype", "image_shape", "image_dtype", "classes")
 
     def __init__(self, fname, title="SBWM", overwrite=False, mode="a", **kwargs):
-
         if not fname.endswith('.h5'):
             raise ValueError("filename must end in .h5")
         exists = False
@@ -118,7 +117,6 @@ class H5DataBase(BaseDataSet):
             if mode == "w" and exists:
                 raise IOError(
                     "Opening the file in write mode will overwrite the file")
-
         self._fileh = tables.open_file(fname, mode=mode, title=title)
         props = self._get_fprops()
         kwargs = update_options(props, kwargs, immutable=self._frozen)
@@ -214,8 +212,8 @@ class H5DataBase(BaseDataSet):
 
 
 class VedaBase(H5DataBase):
-    def __init__(self, vedaset_id="None", *args, **kwargs):
-        super(VedaBase, self).__init__(*args, **kwargs)
+    def __init__(self, fname, vedaset_id="None", *args, **kwargs):
+        super().__init__(fname, *args, **kwargs)
         if vedaset_id is not None:
             self._root._v_attrs["vedaset_id"] = vedaset_id
 
