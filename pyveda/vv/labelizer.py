@@ -26,6 +26,7 @@ import requests
 from pyveda.auth import Auth
 from pyveda.vedaset import stream, store
 from pyveda.vedaset import veda, abstract
+from pyveda import main
 
 class Labelizer():
     def __init__(self, vset, mltype=None, count=None, classes=None, include_background_tiles=None, fname=None):
@@ -61,8 +62,8 @@ class Labelizer():
         self.fname = fname
         if fname:
             self.vb_root = store.vedabase.VedaBase.from_path(fname=self.fname)
-            self.vb_vcp_id = ... #TODO: Figure out how to get vcp id from vb
-            self.vb_vcp = veda.api.VedaCollectionProxy.from_id(self.vb_vcp_id)
+            self.vb_vcp_id = self.vb_root.dataset_id
+            self.vb_vcp = main.from_id(self.vb_vcp_id)
         self._get_next()  #create images, labels, and datapoint
 
 
@@ -200,7 +201,8 @@ class Labelizer():
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             self.datapoint.remove()
         elif isinstance(self.vedaset,  store.vedabase.H5SampleArray):
-            vb_dp_id = self.vb_root.metadata[self.index]
+            vb_dp_id = self.vb_root.metadata[self.index][0].decode('utf-8')
+            print(vb_dp_id)
             vb_dp = self.vb_vcp.fetch_sample_from_id(vb_dp_id)
             vb_dp.remove()
 
