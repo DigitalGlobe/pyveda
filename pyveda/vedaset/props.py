@@ -150,9 +150,6 @@ class FeatureClassTyped(ListTyped, PropCallbackExecutor):
 class SampleCountTyped(IntTyped, PropCallbackExecutor):
     __vname__ = "count"
 
-class VedasetIdTyped(StringTyped, PropCallbackExecutor):
-    __vname__= "dataset_id"
-
 
 _vdataprops = (SampleCountTyped,
               FeatureClassTyped,
@@ -160,6 +157,6 @@ _vdataprops = (SampleCountTyped,
               MLtypeTyped,
               ImageShapedTyped,
               NumpyDataTyped,
-              VedasetIdTyped,)
+              )
 
 VDATAPROPS = dict([(kls.__vname__, kls) for kls in _vdataprops])
