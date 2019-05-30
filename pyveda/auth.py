@@ -48,7 +48,7 @@ class _Auth(object):
             self.gbdx_connection = gbdx_auth.get_session(kwargs.get('config_file'))
 
         # for local dev, cant use oauth2
-        if HOST == 'http://host.docker.internal:3002':
+        if not kwargs.get('oauth', True):
             self.gbdx_connection = localhost(self.gbdx_connection)
 
         def expire_token(r, *args, **kw):
