@@ -69,25 +69,36 @@ class VedaBaseTest(unittest.TestCase):
 
     @my_vcr.use_cassette('tests/unit/cassettes/test_vedabase.yaml', filter_headers=['authorization'])
     def test_vb_init(self):
-        coll = pv.from_id('67a16de1-7baf-44bf-a779-2bf97a37c3bd')
+        vid = '67a16de1-7baf-44bf-a779-2bf97a37c3bd'
+        coll = pv.from_id(vid)
         count = 10
         partition=[70,20,10]
         vb = VedaBase.from_path(self.h5,
                           mltype=coll.mltype,
                           classes=coll.classes,
                           image_shape=coll.imshape,
-                          image_dtype=coll.dtype)
+                          image_dtype=coll.dtype,
+                          dataset_id=coll.id)
 
-        self.assertEqual(type(vb), VedaBase)
+        self.assertIsInstance(vb, VedaBase)
+        # Testing attributes
         self.assertEqual(vb.mltype.name, coll.mltype)
         self.assertEqual(vb.classes, coll.classes)
         self.assertEqual(vb.image_shape, coll.imshape)
         self.assertEqual(vb.image_dtype, coll.dtype)
-        #with self.assertRaises(FrameworkNotSupported):
-        #    vb.framework = 'foo'
-        #self.assertEqual(vb.framework, self.framework)
-        #vb.framework = 'Keras'
-        #self.assertEqual(vb.framework, 'Keras')
-        self.assertEqual(type(vb.train), H5SampleArray)
-        self.assertEqual(type(vb.test), H5SampleArray)
-        self.assertEqual(type(vb.validate), H5SampleArray)
+        self.assertEqual(vb.dataset_id, vid)
+        # Testing group objects
+        self.assertIsInstance(vb.train, H5SampleArray)
+        self.assertIsInstance(vb.test, H5SampleArray)
+        self.assertIsInstance(vb.validate, H5SampleArray)
+
+        # Test attribute persistence when re-opening filename
+        vb.close()
+        vb = VedaBase(self.h5)
+        self.assertEqual(vb.mltype.name, coll.mltype)
+        self.assertEqual(vb.classes, coll.classes)
+        self.assertEqual(vb.image_shape, coll.imshape)
+        self.assertEqual(vb.image_dtype, coll.dtype)
+        self.assertEqual(vb.dataset_id, vid)
+        
+        vb.close()

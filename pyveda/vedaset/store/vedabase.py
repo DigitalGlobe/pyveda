@@ -81,7 +81,7 @@ class H5SampleArray(BaseSampleArray):
                                 image_transform=image_transform,
                                 pad=pad, **kwargs)
 
-    def clean(self, count=None, include_background_tiles=True):
+    def clean(self, fname, count=None, include_background_tiles=True):
         """
         Page through VedaStream data and flag bad data.
         Params:
@@ -89,7 +89,7 @@ class H5SampleArray(BaseSampleArray):
         """
         classes = self._vset.classes
         mltype = self._vset.mltype
-        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles).clean()
+        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles, fname=fname).clean()
 
     def preview(self, count=10, include_background_tiles=True):
         classes = self._vset.classes
@@ -106,7 +106,6 @@ class H5DataBase(BaseDataSet):
     _frozen = ("mltype", "image_shape", "image_dtype", "classes")
 
     def __init__(self, fname, title="SBWM", overwrite=False, mode="a", **kwargs):
-
         if not fname.endswith('.h5'):
             raise ValueError("filename must end in .h5")
         exists = False
@@ -118,7 +117,6 @@ class H5DataBase(BaseDataSet):
             if mode == "w" and exists:
                 raise IOError(
                     "Opening the file in write mode will overwrite the file")
-
         self._fileh = tables.open_file(fname, mode=mode, title=title)
         props = self._get_fprops()
         kwargs = update_options(props, kwargs, immutable=self._frozen)
@@ -214,9 +212,13 @@ class H5DataBase(BaseDataSet):
 
 
 class VedaBase(H5DataBase):
-
     class _MetaSample(tables.IsDescription):
         vid = tables.StringCol(36)
+
+    def __init__(self, *args, dataset_id=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if dataset_id is not None:
+            self._root._v_attrs["dataset_id"] = dataset_id
 
     @ignore_nnw
     def _build_tables(self):
@@ -228,6 +230,14 @@ class VedaBase(H5DataBase):
     @property
     def metadata(self):
         return self._root.metadata
+
+    @property
+    def dataset_id(self):
+        try:
+            _id = self._root._v_attrs.dataset_id
+        except AttributeError:
+            return None
+        return _id
 
     @classmethod
     def from_path(cls, fname, **kwargs):

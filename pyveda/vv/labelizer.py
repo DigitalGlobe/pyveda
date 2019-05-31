@@ -26,9 +26,10 @@ import requests
 from pyveda.auth import Auth
 from pyveda.vedaset import stream, store
 from pyveda.vedaset import veda, abstract
+from pyveda import main
 
 class Labelizer():
-    def __init__(self, vset, mltype=None, count=None, classes=None, include_background_tiles=None):
+    def __init__(self, vset, mltype=None, count=None, classes=None, include_background_tiles=None, fname=None):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
@@ -58,6 +59,11 @@ class Labelizer():
         self.iflagged_tiles = []
         self.include_background_tiles = include_background_tiles
         self.id = []
+        self.fname = fname
+        if fname:
+            self.vb_root = store.vedabase.VedaBase.from_path(fname=self.fname)
+            self.vb_vcp_id = self.vb_root.dataset_id
+            self.vb_vcp = main.from_id(self.vb_vcp_id)
         self._get_next()  #create images, labels, and datapoint
 
 
@@ -66,7 +72,12 @@ class Labelizer():
             self.index +=1
         else:
             self.index = 0
-        self.datapoint = self.vedaset[self.index] ###get next item in index
+        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+            self.datapoint = next(self.vedaset)
+        elif isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
+                      store.vedabase.H5SampleArray)):
+            self.datapoint = self.vedaset[self.index] ###get next item in index
+
         if self.include_background_tiles:
             self.image = self._create_images()
             self.labels = self._create_labels()
@@ -183,13 +194,22 @@ class Labelizer():
                 self.image = self._create_images()
                 self.labels = self._create_labels()
             elif b.description == 'Remove':
-                self.datapoint.remove() ##only works for VCP, currently
+                self.remove_dp()
                 self.datapoint = next(self.iflagged_tiles)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
             self.clean_flags()
         except StopIteration:
             print("All flagged tiles have been cleaned.")
+
+    def remove_dp(self):
+        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+            self.datapoint.remove()
+        elif isinstance(self.vedaset,  store.vedabase.H5SampleArray):
+            vb_dp_id = self.vb_root.metadata[self.index][0].decode('utf-8')
+            print(vb_dp_id)
+            vb_dp = self.vb_vcp.fetch_sample_from_id(vb_dp_id)
+            vb_dp.remove()
 
     def _recolor_images(self):
         img = self.image.astype('float32')
