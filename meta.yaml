@@ -16,6 +16,7 @@ requirements:
   run:
     - setuptools
     - python
+    - numpy >=1.13.3
     - gbdx-auth >=0.2.6
     - h5py
     - pytables
@@ -23,12 +24,11 @@ requirements:
     - requests-toolbelt
     - ujson
     - shapely
-    - numpy
-    - pycurl
     - affine
   build:
     - setuptools
     - python
+    - numpy >=1.13.3
     - gbdx-auth >=0.2.6
     - h5py
     - pytables
@@ -36,6 +36,4 @@ requirements:
     - requests-toolbelt
     - ujson
     - shapely
-    - numpy
-    - pycurl
     - affine
