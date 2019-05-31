@@ -4,8 +4,10 @@ import pickle
 import numpy as np
 import ujson as json
 from functools import partial
-from skimage.io import imread
 from tempfile import NamedTemporaryFile
+
+import requests
+from skimage.io import imread
 from pyveda.utils import mklogfilename
 
 
