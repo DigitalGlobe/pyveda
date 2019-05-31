@@ -1,5 +1,4 @@
 import os
-import pycurl
 import tables
 import pickle
 import numpy as np
@@ -19,30 +18,25 @@ def write_trace_profile(fname, nreqs, trace_cache):
     return filename
 
 
-def url_to_array(url, token, load_fn=imread, ext=".tif"):
-    _curl = pycurl.Curl()
-    _curl.setopt(_curl.URL, url)
-    _curl.setopt(pycurl.NOSIGNAL, 1)
-    _curl.setopt(pycurl.HTTPHEADER, ['Authorization: Bearer {}'.format(token)])
-    with NamedTemporaryFile(prefix="veda", suffix=ext, delete=False) as temp:
-      try:
-          _curl.setopt(_curl.WRITEDATA, temp.file)
-          _curl.perform()
-          code = _curl.getinfo(pycurl.HTTP_CODE)
-          if code != 200:
-             raise TypeError("Request for {} returned unexpected error code: {}".format(url, code))
-          temp.file.flush()
-          temp.close()
-          _curl.close()
-          return load_fn(temp.name)
-      except Exception as err:
-          print('Error fetching image...', err)
+def url_to_array(url, token, load_fn=imread, ext=".tif", chunksize=1024):
+    headers = {"Authorization":"Bearer {}".format(token)}
+    conn = requests.Session()
+    conn.headers.update(headers)
+    r = conn.get(url, stream=True)
+    r.raise_for_status()
+    with NamedTemporaryFile(prefix="veda", suffix=".tif") as temp:
+        for chunk in r.iter_content(chunksize):
+            temp.file.write(chunk)
+        temp.file.flush()
+        obj = load_fn(temp.name)
+    return obj
 
 
 url_to_numpy = partial(url_to_array, load_fn=np.load, ext=".npy")
 url_unpickle = partial(url_to_array,
                        load_fn=lambda x: pickle.load(open(x, "rb")),
                        ext=".npy")
+
 
 def _atom_from_dtype(_type):
     if isinstance(_type, np.dtype):
