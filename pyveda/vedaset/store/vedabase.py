@@ -242,7 +242,7 @@ class VedaBase(H5DataBase):
     def from_vtype(cls, fname, **vtype):
         return cls(fname, **vtype)
 
-    def clean(self, fname, count=None, include_background_tiles=True):
+    def clean(self, count=None, include_background_tiles=True):
         """
         Page through VedaBase data and flag bad data.
         Params:

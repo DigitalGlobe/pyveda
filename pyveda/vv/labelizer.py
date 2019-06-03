@@ -29,7 +29,7 @@ from pyveda.vedaset import veda, abstract
 from pyveda import main
 
 class Labelizer():
-    def __init__(self, vset, mltype=None, count=None, classes=None, include_background_tiles=None, fname=None):
+    def __init__(self, vset, mltype=None, count=None, classes=None, include_background_tiles=None):
         """
           Labelizer will page through image/labels and allow users to remove/change data or labels from a VedaBase or VedaStream
           Params:
@@ -43,7 +43,6 @@ class Labelizer():
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
         self.vedaset = vset
-        # if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
         self.vedaset = iter(self.vedaset)
         if count is not None:
             self.count = count
