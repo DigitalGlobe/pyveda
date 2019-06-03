@@ -72,11 +72,8 @@ class Labelizer():
             self.index +=1
         else:
             self.index = 0
-        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
-            self.datapoint = next(self.vedaset)
-        elif isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
-                      store.vedabase.H5SampleArray)):
-            self.datapoint = self.vedaset[self.index] ###get next item in index
+        self.datapoint = next(self.vedaset)
+
 
         if self.include_background_tiles:
             self.image = self._create_images()
