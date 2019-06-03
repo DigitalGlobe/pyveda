@@ -220,6 +220,11 @@ class VedaBase(H5DataBase):
         if dataset_id is not None:
             self._root._v_attrs["dataset_id"] = dataset_id
 
+    def __iter__(self):
+        img_iter = self._root.images.iterrows()
+        lbl_iter = self._root.labels.iterrows()
+        return(zip(img_iter, lbl_iter))
+
     @ignore_nnw
     def _build_tables(self):
         self._fileh.create_table(self._root,
