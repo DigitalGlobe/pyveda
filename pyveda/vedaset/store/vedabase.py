@@ -81,21 +81,6 @@ class H5SampleArray(BaseSampleArray):
                                 image_transform=image_transform,
                                 pad=pad, **kwargs)
 
-    def clean(self, fname, count=None, include_background_tiles=True):
-        """
-        Page through VedaStream data and flag bad data.
-        Params:
-            count: the number of tiles to clean
-        """
-        classes = self._vset.classes
-        mltype = self._vset.mltype
-        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles, fname=fname).clean()
-
-    def preview(self, count=10, include_background_tiles=True):
-        classes = self._vset.classes
-        mltype = self._vset.mltype
-        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles).preview()
-
 class H5DataBase(BaseDataSet):
     """
     An interface for consuming and reading local data intended to be used with
@@ -230,7 +215,7 @@ class VedaBase(H5DataBase):
             return super().__next__()
        except StopIteration as si:
             raise
-            
+
     @ignore_nnw
     def _build_tables(self):
         self._fileh.create_table(self._root,
@@ -258,3 +243,18 @@ class VedaBase(H5DataBase):
     @classmethod
     def from_vtype(cls, fname, **vtype):
         return cls(fname, **vtype)
+
+    def clean(self, fname, count=None, include_background_tiles=True):
+        """
+        Page through VedaBase data and flag bad data.
+        Params:
+            count: the number of tiles to clean
+        """
+        classes = self._attrs.classes
+        mltype = self._attrs.mltype
+        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles, fname=fname).clean()
+
+    def preview(self, count=10, include_background_tiles=True):
+        classes = self._attrs.classes
+        mltype = self._attrs.mltype
+        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles).preview()
