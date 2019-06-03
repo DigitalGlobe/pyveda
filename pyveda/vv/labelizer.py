@@ -43,8 +43,8 @@ class Labelizer():
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
         self.vedaset = vset
-        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
-            self.vedaset = iter(self.vedaset)
+        # if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+        self.vedaset = iter(self.vedaset)
         if count is not None:
             self.count = count
         else:
@@ -110,7 +110,7 @@ class Labelizer():
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             img = self.datapoint.image
         elif isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
-                      store.vedabase.H5SampleArray)):
+                      store.vedabase.VedaBase)):
             img = np.moveaxis(self.datapoint[0], 0, -1)
         return img
 
@@ -123,7 +123,7 @@ class Labelizer():
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             labels = self.datapoint.label.values()
         elif isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
-                      store.vedabase.H5SampleArray)):
+                      store.vedabase.VedaBase)):
             labels = self.datapoint[1]
         return labels
 
@@ -202,7 +202,7 @@ class Labelizer():
     def remove_dp(self):
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             self.datapoint.remove()
-        elif isinstance(self.vedaset,  store.vedabase.H5SampleArray):
+        elif isinstance(self.vedaset,  store.vedabase.VedaBase):
             vb_dp_id = self.vb_root.metadata[self.index][0].decode('utf-8')
             print(vb_dp_id)
             vb_dp = self.vb_vcp.fetch_sample_from_id(vb_dp_id)
