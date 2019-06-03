@@ -225,6 +225,12 @@ class VedaBase(H5DataBase):
         lbl_iter = self._root.labels.iterrows()
         return(zip(img_iter, lbl_iter))
 
+    def __next__(self):
+       try:
+            return super().__next__()
+       except StopIteration as si:
+            raise
+            
     @ignore_nnw
     def _build_tables(self):
         self._fileh.create_table(self._root,
