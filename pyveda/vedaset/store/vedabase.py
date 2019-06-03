@@ -10,7 +10,6 @@ from pyveda.vedaset.interface import SerializedVariableArray, PartitionedIndexAr
 from pyveda.frameworks.batch_generator import VedaStoreGenerator
 from pyveda import vv
 from pyveda.utils import update_options
-from itertools import zip_longest
 
 
 class H5VariableArray(SerializedVariableArray,
@@ -209,7 +208,7 @@ class VedaBase(H5DataBase):
     def __iter__(self):
         img_iter = self._root.images.iterrows()
         lbl_iter = self._root.labels.iterrows()
-        self._itr = zip_longest(img_iter, lbl_iter)
+        self._itr = zip(img_iter, lbl_iter)
         return self
 
     def __next__(self):
