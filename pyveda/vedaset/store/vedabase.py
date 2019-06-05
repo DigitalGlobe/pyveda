@@ -244,15 +244,25 @@ class VedaBase(H5DataBase):
 
     def clean(self, count=None, include_background_tiles=True):
         """
-        Page through VedaBase data and flag bad data.
+        Page through VedaBase data, flag it, then remove it from the server.
+        Note: this method does not allow the user to remove data from the VedaBase itself.
         Params:
             count: the number of tiles to clean
+            include_background_tiles: Whether or not to include tiles that do not
+            have an object in them.
         """
         classes = self._attrs.classes
         mltype = self._attrs.mltype
         vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles, fname=fname).clean()
 
     def preview(self, count=10, include_background_tiles=True):
+        """
+        Page through VedaBase data and preview each datapoint.
+        Params:
+            count: the number of tiles to display at once
+            include_background_tiles: Whether or not to include tiles that do not
+            have an object in them. 
+        """
         classes = self._attrs.classes
         mltype = self._attrs.mltype
         vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles).preview()

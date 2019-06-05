@@ -65,6 +65,9 @@ class Labelizer():
 
 
     def _get_next(self):
+        '''
+        Fetches the next point in the dataset and updates the index.
+        '''
         if self.index is not None:
             self.index +=1
         else:
@@ -82,6 +85,11 @@ class Labelizer():
                 self._get_next()
 
     def _check_for_background_tile(self):
+        '''
+        Determines if a datapoint has data or is a background tile.
+        Returns:
+            bool: True if a background tile is present, else False
+        '''
         lbl = self._create_labels()
         if self.mltype == 'object_detection' or self.mltype == 'segmentation':
             for i, shp in enumerate(lbl):
@@ -124,7 +132,7 @@ class Labelizer():
 
     def _create_buttons(self):
         """
-        Creates ipywidget widget buttons
+        Creates ipywidget widget buttons for the clean method
         Returns:
             buttons: A list of ipywidget Button() objects
         """
@@ -136,6 +144,12 @@ class Labelizer():
         return buttons
 
     def _create_preview_buttons(self):
+        """
+        Creates ipywidget widget buttons for the preview method
+        Returns:
+            buttons: A list of ipywidget Button() objects
+        """
+
         buttons = []
         actions = ['Show next tile set', 'Exit']
         for b in actions:
@@ -195,6 +209,10 @@ class Labelizer():
             print("All flagged tiles have been cleaned.")
 
     def remove_dp(self):
+        """
+        Removes a flagged datapoint from the server.
+        Note: This method does not remove the flagged datapoint from a VedaBase.
+        """
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             self.datapoint.remove()
         elif isinstance(self.vedaset,  store.vedabase.VedaBase):
@@ -204,6 +222,9 @@ class Labelizer():
             vb_dp.remove()
 
     def _recolor_images(self):
+        """
+        Re-formats/re-colors uint16 data so it can be displayed optimally.
+        """
         img = self.image.astype('float32')
         img[:,:,0] /= np.max(img[:,:,0])
         img[:,:,1] /= np.max(img[:,:,1])
@@ -332,6 +353,9 @@ class Labelizer():
         Displays a polygon overlayed on image chip with associated ipywidget
         buttons. Allows user to click through each vedaset object and decide
         whether to keep or remove the object.
+
+        Note: If removing the object from a VedaBase, the object is removed on
+        the server only. Not the h5 file associated with the VedaBase.
         """
         clear_output()
         buttons = self._create_buttons()
@@ -368,6 +392,12 @@ class Labelizer():
                 print("All tiles have been cleaned.")
 
     def preview(self):
+        """
+        Method for previewing each vedaset object as image data with associated polygons.
+        Displays a polygon overlayed on image chip with associated ipywidget
+        buttons. Allows user to click through each vedaset object for viewing.
+
+        """
         clear_output()
         buttons = self._create_preview_buttons()
         for b in buttons:
@@ -393,6 +423,10 @@ class Labelizer():
             self._get_next()
 
     def remove_black_tiles(self):
+        """
+        Removes black tiles (tiles outside or bordering the catalog image) from a
+        Vedaset. 
+        """
         for c in range(self.count):
             if np.amax(self.image) == 0:
                 self.datapoint.remove()
