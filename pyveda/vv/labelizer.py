@@ -219,10 +219,15 @@ class Labelizer():
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             self.datapoint.remove()
         elif isinstance(self.vedaset,  store.vedabase.VedaBase):
-            vb_dp_id = self.vedaset.metadata[self.index][1].decode('utf-8')
-            vb_dp = self.vb_vcp.fetch_sample_from_id(vb_dp_id)
-            vb_dp.remove()
-            self.vedaset._root.metadata.cols.flagged_for_removal[index] = 1
+            self.vedaset._root.metadata.cols.flagged_for_removal[self.index] = 1
+            try:
+                vb_dp_id = self.vedaset.metadata[self.index][1].decode('utf-8')
+                vb_dp = self.vb_vcp.fetch_sample_from_id(vb_dp_id)
+                vb_dp.remove()
+            except:
+                print('already removed from server')
+                pass
+
 
     def _recolor_images(self):
         """
