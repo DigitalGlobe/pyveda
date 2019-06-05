@@ -254,7 +254,7 @@ class VedaBase(H5DataBase):
         """
         classes = self._attrs.classes
         mltype = self._attrs.mltype
-        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles, fname=fname).clean()
+        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles).clean()
 
     def preview(self, count=10, include_background_tiles=True):
         """
