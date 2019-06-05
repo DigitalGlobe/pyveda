@@ -199,6 +199,7 @@ class H5DataBase(BaseDataSet):
 class VedaBase(H5DataBase):
     class _MetaSample(tables.IsDescription):
         vid = tables.StringCol(36)
+        flagged_for_removal = tables.Int32Col()
 
     def __init__(self, *args, dataset_id=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -261,7 +262,7 @@ class VedaBase(H5DataBase):
         Params:
             count: the number of tiles to display at once
             include_background_tiles: Whether or not to include tiles that do not
-            have an object in them. 
+            have an object in them.
         """
         classes = self._attrs.classes
         mltype = self._attrs.mltype

@@ -211,15 +211,18 @@ class Labelizer():
     def remove_dp(self):
         """
         Removes a flagged datapoint from the server.
-        Note: This method does not remove the flagged datapoint from a VedaBase.
+        If the vedaset object is a VedaBase, this method also updates the
+        'flagged_for_removal' column of the VedaBase metdata. Points flagged for
+        removal will be cast as 1s. This method does not remove the flagged
+        datapoint from a VedaBase.
         """
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             self.datapoint.remove()
         elif isinstance(self.vedaset,  store.vedabase.VedaBase):
-            vb_dp_id = self.vedaset.metadata[self.index][0].decode('utf-8')
-            print(vb_dp_id)
+            vb_dp_id = self.vedaset.metadata[self.index][1].decode('utf-8')
             vb_dp = self.vb_vcp.fetch_sample_from_id(vb_dp_id)
             vb_dp.remove()
+            self.vedaset._root.metadata.cols.flagged_for_removal[index] = 1
 
     def _recolor_images(self):
         """
@@ -425,7 +428,7 @@ class Labelizer():
     def remove_black_tiles(self):
         """
         Removes black tiles (tiles outside or bordering the catalog image) from a
-        Vedaset. 
+        Vedaset.
         """
         for c in range(self.count):
             if np.amax(self.image) == 0:
