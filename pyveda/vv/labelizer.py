@@ -57,7 +57,7 @@ class Labelizer():
         self.flagged_tiles = []
         self.iflagged_tiles = []
         self.include_background_tiles = include_background_tiles
-        self.id = []
+        self.flagged_index = []
         if isinstance(self.vedaset, store.vedabase.VedaBase):
             self.vb_vcp_id = self.vedaset.dataset_id
             self.vb_vcp = main.from_id(self.vb_vcp_id)
@@ -178,6 +178,7 @@ class Labelizer():
             self._get_next()
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
+            self.flagged_index.append(self.index)
             self._get_next()
         elif b.description == 'Exit':
             self.index = self.count
@@ -219,9 +220,10 @@ class Labelizer():
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             self.datapoint.remove()
         elif isinstance(self.vedaset,  store.vedabase.VedaBase):
-            self.vedaset._root.metadata.cols.flagged_for_removal[self.index] = 1
+            i = next(self.flagged_index)
+            self.vedaset._root.metadata.cols.flagged_for_removal[i] = 1
             try:
-                vb_dp_id = self.vedaset.metadata[self.index][1].decode('utf-8')
+                vb_dp_id = self.vedaset.metadata[i][1].decode('utf-8')
                 vb_dp = self.vb_vcp.fetch_sample_from_id(vb_dp_id)
                 vb_dp.remove()
             except:
@@ -393,6 +395,7 @@ class Labelizer():
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
                 self.iflagged_tiles = iter(self.flagged_tiles)
                 self.datapoint = next(self.iflagged_tiles)
+                self.flagged_index = iter(self.flagged_index)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
                 self.clean_flags()
