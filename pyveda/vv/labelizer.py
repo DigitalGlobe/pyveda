@@ -83,6 +83,10 @@ class Labelizer():
                 self.labels = self._create_labels()
             else:
                 self._get_next()
+        if isinstance(self.vedaset, store.vedabase.VedaBase):
+            if self.vedaset._root.metadata.cols.flagged_for_removal[self.index] == 1:
+                self._get_next() ##skip tiles that have already been flagged
+
 
     def _check_for_background_tile(self):
         '''
