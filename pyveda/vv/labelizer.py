@@ -52,6 +52,7 @@ class Labelizer():
             except:
                 self.count = len(self.vedaset)
         self.index = None
+        self.counting_index = -1
         self.mltype = mltype
         self.classes = classes
         self.flagged_tiles = []
@@ -63,6 +64,11 @@ class Labelizer():
             self.vb_vcp = main.from_id(self.vb_vcp_id)
         self._get_next()  #create images, labels, and datapoint
 
+    def _make_tile(self):
+        _img = self._create_images()
+        _lbl = self._create_labels()
+        self.counting_index += 1
+        return(_img, _lbl)
 
     def _get_next(self):
         '''
@@ -73,21 +79,21 @@ class Labelizer():
         else:
             self.index = 0
         self.datapoint = next(self.vedaset)
-        if self.include_background_tiles:
-            self.image = self._create_images()
-            self.labels = self._create_labels()
+        if isinstance(self.vedaset, store.vedabase.VedaBase):
+            if self.vedaset._root.metadata.cols.flagged_for_removal[self.index] == 0:
+                self.image, self.labels = self._make_tile()
+            else:
+                self._get_next()
+        elif self.include_background_tiles:
+            self.image, self.labels = self._make_tile()
         else:
             _check_for_background_tile = self._check_for_background_tile()
             if _check_for_background_tile:
-                self.image = self._create_images()
-                self.labels = self._create_labels()
+                print('in line 93')
+                self.image, self.labels = self._make_tile()
             else:
                 self._get_next()
-        if isinstance(self.vedaset, store.vedabase.VedaBase):
-            if self.vedaset._root.metadata.cols.flagged_for_removal[self.index] == 1:
-                self._get_next() ##skip tiles that have already been flagged
-
-
+                
     def _check_for_background_tile(self):
         '''
         Determines if a datapoint has data or is a background tile.
@@ -185,7 +191,7 @@ class Labelizer():
             self.flagged_index.append(self.index)
             self._get_next()
         elif b.description == 'Exit':
-            self.index = self.count
+            self.counting_index = self.count
         self.clean()
 
     def _handle_preview_buttons(self, b):
@@ -375,9 +381,9 @@ class Labelizer():
         buttons = self._create_buttons()
         for b in buttons:
             b.on_click(self._handle_buttons)
-        if self.image is not None and self.index != self.count:
+        if self.image is not None and self.counting_index != self.count:
             print("%0.f tiles out of %0.f tiles have been cleaned" %
-                 (self.index, self.count))
+                 (self.counting_index, self.count))
             display(HBox(buttons))
             self._display_image()
             if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
