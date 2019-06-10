@@ -52,7 +52,7 @@ class Labelizer():
             except:
                 self.count = len(self.vedaset)
         self.index = None
-        self.counting_index = -1
+        self.counting_index = 0
         self.mltype = mltype
         self.classes = classes
         self.flagged_tiles = []
@@ -67,7 +67,6 @@ class Labelizer():
     def _make_tile(self):
         _img = self._create_images()
         _lbl = self._create_labels()
-        self.counting_index += 1
         return(_img, _lbl)
 
     def _get_next(self):
@@ -93,7 +92,7 @@ class Labelizer():
                 self.image, self.labels = self._make_tile()
             else:
                 self._get_next()
-                
+
     def _check_for_background_tile(self):
         '''
         Determines if a datapoint has data or is a background tile.
@@ -186,10 +185,12 @@ class Labelizer():
         """
         if b.description == 'Yes':
             self._get_next()
+            self.counting_index += 1
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
             self.flagged_index.append(self.index)
             self._get_next()
+            self.counting_index += 1
         elif b.description == 'Exit':
             self.counting_index = self.count
         self.clean()
