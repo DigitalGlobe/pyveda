@@ -86,16 +86,18 @@ The end result will be collection of 256x256 pixel image tiles extracted from ca
 (more stuff about creating VCs)
 
 
-Creating a Collection from a Compressed Archive
+Creating a Collection using the Bulk Import API
 ---------------------------------------------------
 
-If you would like to import existing image and label data, you can have Veda download and process a compressed version of the data:
+If you would like to import existing image and label data, you can have Veda download and process a compressed archive of the data using the Bulk Import API:
 
 .. code-block:: python
 
     pv.create_from_tarball('s3://path/to/tarball', 'Collection Name')
 
-The compressed archive needs to follow the pyveda Release format, as described in the :ref:`Releases for Importing` section. This will create a new collection in Veda and it can be accessed with the standard access methods of :meth:`pyveda.main.open` and :meth:`pyveda.main.store`.
+The compressed archive needs to follow the pyveda Release format, as described in the :ref:`Releases for Importing` section. It also has to be stored in Amazon S3. The path should be given as a `s3://bucket/prefix/file` path.
+
+ Running this command will create a new collection in Veda and it can be accessed with the standard access methods of :meth:`pyveda.main.open` and :meth:`pyveda.main.store`.
 
 Adding Data to Existing Collections
 -------------------------------------

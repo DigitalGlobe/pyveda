@@ -206,14 +206,32 @@ This means that a typical training example might look like:
 Batching and Transforming Data
 -------------------------------
 
-Pyveda includes tools for batching and transforming data. 
+Pyveda includes tools for batching and transforming data. The three groups have a ``batch_generator`` method that returns a generator that emits batches of data. Optionally the generator can randomly flip the sample, rescale the values of the image, and move the channel data to the end of the numpy array. The basic use of the generator is to pass the size of the batch.
 
 .. code-block:: python
 
-    gen = vb.train.batch_generator(6, shuffle = True, rescale = True)
+    # generate batches of 32 samples
+    gen = vb.train.batch_generator(32)
     
     for x, y in gen:
-        print(x)
+        # x and y will have a length of 32
+
+The batcher takes the following optional arguments:
+
+* shuffle (Boolean): return the samples in the group in random order. Default is True.
+* channels_last (Boolean): return image data as Height-Width-Depth. Default is False (RDA returns imagery with the bands last).
+* rescale (Boolean): rescale image values between 0 and 1. Default is False.
+* flip_horizontal: Boolean. Randomly flip image and labels horizontally. Default is False.
+* flip_vertical: Boolean. Randomly flip the image and labels vertically. Default is False.
+
+When using either flip option there is a 50% chance an image will be flipped in a given direction.
+
+To create a batcher that will return 16 samples at a time, rescaled to a range of 0 to 1, and flipped randomly in either direction:
+
+.. code-block:: python
+
+    gen = vb.train.batch_generator(16, rescale=True, flip_horizontal=True, flip_vertical=True)
+
 
 
 Streaming Remote Data
