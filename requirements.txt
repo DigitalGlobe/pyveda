@@ -1,13 +1,13 @@
 gbdx-auth>=0.2.6
+numpy
+numexpr
 h5py
 tables
 requests
 requests_toolbelt
 ujson
 shapely
-numpy
 scikit-image
-pycurl
 affine
 pytest
 vcrpy

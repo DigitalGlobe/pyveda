@@ -7,13 +7,12 @@ with open(req_path) as f:
     reqs = f.read().splitlines()
 
 setup(name='pyveda',
-      version='0.0.6',
+      version='0.0.7',
       author='DigitalGlobe',
       author_email='',
       description='Python API for interfacing with veda',
       url='https://github.com/DigitalGlobe/pyveda',
       license='MIT',
-     # packages=['pyveda', "pyveda.vedaset", "pyveda.veda", "pyveda.fetch", "pyveda.fetch.compat", "pyveda.fetch.aiohttp", "pyveda.fetch.diagnostics"],
       packages=find_packages(exclude=['docs','tests']),
       zip_safe=False,
       install_requires=reqs
