@@ -62,7 +62,7 @@ class Labelizer():
         if isinstance(self.vedaset, store.vedabase.VedaBase):
             self.vb_vcp_id = self.vedaset.dataset_id
             self.vb_vcp = main.from_id(self.vb_vcp_id)
-        self._get_next()  #create images, labels, and datapoint
+        self._get_next()  #create images, labels, and datapointhttps://maxar.zoom.us/my/chloe.hampton
 
     def _make_tile(self):
         _img = self._create_images()
@@ -88,7 +88,6 @@ class Labelizer():
         else:
             _check_for_background_tile = self._check_for_background_tile()
             if _check_for_background_tile:
-                print('in line 93')
                 self.image, self.labels = self._make_tile()
             else:
                 self._get_next()
