@@ -156,8 +156,7 @@ _vdataprops = (SampleCountTyped,
               PartitionedTyped,
               MLtypeTyped,
               ImageShapedTyped,
-              NumpyDataTyped,)
+              NumpyDataTyped,
+              )
 
 VDATAPROPS = dict([(kls.__vname__, kls) for kls in _vdataprops])
-
-

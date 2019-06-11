@@ -81,21 +81,6 @@ class H5SampleArray(BaseSampleArray):
                                 image_transform=image_transform,
                                 pad=pad, **kwargs)
 
-    def clean(self, count=None, include_background_tiles=True):
-        """
-        Page through VedaStream data and flag bad data.
-        Params:
-            count: the number of tiles to clean
-        """
-        classes = self._vset.classes
-        mltype = self._vset.mltype
-        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles).clean()
-
-    def preview(self, count=10, include_background_tiles=True):
-        classes = self._vset.classes
-        mltype = self._vset.mltype
-        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles).preview()
-
 class H5DataBase(BaseDataSet):
     """
     An interface for consuming and reading local data intended to be used with
@@ -106,7 +91,6 @@ class H5DataBase(BaseDataSet):
     _frozen = ("mltype", "image_shape", "image_dtype", "classes")
 
     def __init__(self, fname, title="SBWM", overwrite=False, mode="a", **kwargs):
-
         if not fname.endswith('.h5'):
             raise ValueError("filename must end in .h5")
         exists = False
@@ -118,7 +102,6 @@ class H5DataBase(BaseDataSet):
             if mode == "w" and exists:
                 raise IOError(
                     "Opening the file in write mode will overwrite the file")
-
         self._fileh = tables.open_file(fname, mode=mode, title=title)
         props = self._get_fprops()
         kwargs = update_options(props, kwargs, immutable=self._frozen)
@@ -214,9 +197,23 @@ class H5DataBase(BaseDataSet):
 
 
 class VedaBase(H5DataBase):
-
     class _MetaSample(tables.IsDescription):
         vid = tables.StringCol(36)
+        flagged_for_removal = tables.Int32Col()
+
+    def __init__(self, *args, dataset_id=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if dataset_id is not None:
+            self._root._v_attrs["dataset_id"] = dataset_id
+
+    def __iter__(self):
+        img_iter = self._root.images.iterrows()
+        lbl_iter = self._root.labels.iterrows()
+        self._itr = zip(img_iter, lbl_iter)
+        return self
+
+    def __next__(self):
+       return next(self._itr)
 
     @ignore_nnw
     def _build_tables(self):
@@ -229,6 +226,14 @@ class VedaBase(H5DataBase):
     def metadata(self):
         return self._root.metadata
 
+    @property
+    def dataset_id(self):
+        try:
+            _id = self._root._v_attrs.dataset_id
+        except AttributeError:
+            return None
+        return _id
+
     @classmethod
     def from_path(cls, fname, **kwargs):
         inst = cls(fname, **kwargs)
@@ -237,3 +242,28 @@ class VedaBase(H5DataBase):
     @classmethod
     def from_vtype(cls, fname, **vtype):
         return cls(fname, **vtype)
+
+    def clean(self, count=None, include_background_tiles=True):
+        """
+        Page through VedaBase data, flag it, then remove it from the server.
+        Note: this method does not allow the user to remove data from the VedaBase itself.
+        Params:
+            count: the number of tiles to clean
+            include_background_tiles: Whether or not to include tiles that do not
+            have an object in them.
+        """
+        classes = self._attrs.classes
+        mltype = self._attrs.mltype
+        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles).clean()
+
+    def preview(self, count=10, include_background_tiles=True):
+        """
+        Page through VedaBase data and preview each datapoint.
+        Params:
+            count: the number of tiles to display at once
+            include_background_tiles: Whether or not to include tiles that do not
+            have an object in them.
+        """
+        classes = self._attrs.classes
+        mltype = self._attrs.mltype
+        vv.labelizer.Labelizer(self, mltype, count, classes, include_background_tiles).preview()

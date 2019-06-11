@@ -102,6 +102,19 @@ Object Detection
 
 Input features for object detection share the same label requirements as for classification. The objects will be stored as the bounding box of the feature's geometry. The geometry must be of type Polygon but does not need to be a rectangle. Point and Polyline geometries will need to be buffered by an appropriate amount first.
 
+.. code-block:: python
+
+    "Properties": {
+        "label": {
+            "car": [
+                {"type": "Polygon", "coordinates": [[[...]]]},
+                {"type": "Polygon", "coordinates": [[[...]]]}
+            ],
+            "house": [
+                {"type": "Polygon", "coordinates": [[[...]]]}
+            ]
+        }
+
 **DataPoint Output**
 
 The `label` property of the DataPoint is similar in structure to the Classification case, with keys representing  classes. The value of each class is a list of features representing the bounding box of the input geometries. The features use GeoJSON structure, but use the NumPy convention of the origin at top left, and uses units of pixels.
@@ -117,7 +130,7 @@ The `label` property of the DataPoint is similar in structure to the Classificat
 
 
 
-** VedaBase Output**
+**VedaBase Output**
 
 
 Object detection classes are stored in the `classes` property in the same manner as Classification data. Because object bounding boxes can overlap, the labels are in the form of a list of lists of bounding boxes. The bounding boxes are lists of `[minx, miny, maxx, maxy]` in pixel coordinates with the origin at top left. The position of the classes and labels lists match.

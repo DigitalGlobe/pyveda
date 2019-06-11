@@ -26,6 +26,7 @@ import requests
 from pyveda.auth import Auth
 from pyveda.vedaset import stream, store
 from pyveda.vedaset import veda, abstract
+from pyveda import main
 
 class Labelizer():
     def __init__(self, vset, mltype=None, count=None, classes=None, include_background_tiles=None):
@@ -42,8 +43,7 @@ class Labelizer():
         assert has_plt, 'Labelizer requires matplotlib to be installed'
 
         self.vedaset = vset
-        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
-            self.vedaset = iter(self.vedaset)
+        self.vedaset = iter(self.vedaset)
         if count is not None:
             self.count = count
         else:
@@ -52,33 +52,52 @@ class Labelizer():
             except:
                 self.count = len(self.vedaset)
         self.index = None
+        self.counting_index = 0
         self.mltype = mltype
         self.classes = classes
         self.flagged_tiles = []
         self.iflagged_tiles = []
         self.include_background_tiles = include_background_tiles
-        self.id = []
-        self._get_next()  #create images, labels, and datapoint
+        self.flagged_index = []
+        if isinstance(self.vedaset, store.vedabase.VedaBase):
+            self.vb_vcp_id = self.vedaset.dataset_id
+            self.vb_vcp = main.from_id(self.vb_vcp_id)
+        self._get_next()  #create images, labels, and datapointhttps://maxar.zoom.us/my/chloe.hampton
 
+    def _make_tile(self):
+        _img = self._create_images()
+        _lbl = self._create_labels()
+        return(_img, _lbl)
 
     def _get_next(self):
+        '''
+        Fetches the next point in the dataset and updates the index.
+        '''
         if self.index is not None:
             self.index +=1
         else:
             self.index = 0
-        self.datapoint = self.vedaset[self.index] ###get next item in index
-        if self.include_background_tiles:
-            self.image = self._create_images()
-            self.labels = self._create_labels()
+        self.datapoint = next(self.vedaset)
+        if isinstance(self.vedaset, store.vedabase.VedaBase):
+            if self.vedaset._root.metadata.cols.flagged_for_removal[self.index] == 0:
+                self.image, self.labels = self._make_tile()
+            else:
+                self._get_next()
+        elif self.include_background_tiles:
+            self.image, self.labels = self._make_tile()
         else:
             _check_for_background_tile = self._check_for_background_tile()
             if _check_for_background_tile:
-                self.image = self._create_images()
-                self.labels = self._create_labels()
+                self.image, self.labels = self._make_tile()
             else:
                 self._get_next()
 
     def _check_for_background_tile(self):
+        '''
+        Determines if a datapoint has data or is a background tile.
+        Returns:
+            bool: True if a background tile is present, else False
+        '''
         lbl = self._create_labels()
         if self.mltype == 'object_detection' or self.mltype == 'segmentation':
             for i, shp in enumerate(lbl):
@@ -102,7 +121,7 @@ class Labelizer():
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             img = self.datapoint.image
         elif isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
-                      store.vedabase.H5SampleArray)):
+                      store.vedabase.VedaBase)):
             img = np.moveaxis(self.datapoint[0], 0, -1)
         return img
 
@@ -115,13 +134,13 @@ class Labelizer():
         if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
             labels = self.datapoint.label.values()
         elif isinstance(self.vedaset, (stream.vedastream.BufferedSampleArray,
-                      store.vedabase.H5SampleArray)):
+                      store.vedabase.VedaBase)):
             labels = self.datapoint[1]
         return labels
 
     def _create_buttons(self):
         """
-        Creates ipywidget widget buttons
+        Creates ipywidget widget buttons for the clean method
         Returns:
             buttons: A list of ipywidget Button() objects
         """
@@ -133,6 +152,12 @@ class Labelizer():
         return buttons
 
     def _create_preview_buttons(self):
+        """
+        Creates ipywidget widget buttons for the preview method
+        Returns:
+            buttons: A list of ipywidget Button() objects
+        """
+
         buttons = []
         actions = ['Show next tile set', 'Exit']
         for b in actions:
@@ -159,11 +184,14 @@ class Labelizer():
         """
         if b.description == 'Yes':
             self._get_next()
+            self.counting_index += 1
         elif b.description == 'No':
             self.flagged_tiles.append(self.datapoint)
+            self.flagged_index.append(self.index)
             self._get_next()
+            self.counting_index += 1
         elif b.description == 'Exit':
-            self.index = self.count
+            self.counting_index = self.count
         self.clean()
 
     def _handle_preview_buttons(self, b):
@@ -183,7 +211,7 @@ class Labelizer():
                 self.image = self._create_images()
                 self.labels = self._create_labels()
             elif b.description == 'Remove':
-                self.datapoint.remove() ##only works for VCP, currently
+                self.remove_dp()
                 self.datapoint = next(self.iflagged_tiles)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
@@ -191,7 +219,32 @@ class Labelizer():
         except StopIteration:
             print("All flagged tiles have been cleaned.")
 
+    def remove_dp(self):
+        """
+        Removes a flagged datapoint from the server.
+        If the vedaset object is a VedaBase, this method also updates the
+        'flagged_for_removal' column of the VedaBase metdata. Points flagged for
+        removal will be cast as 1s. This method does not remove the flagged
+        datapoint from a VedaBase.
+        """
+        if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
+            self.datapoint.remove()
+        elif isinstance(self.vedaset,  store.vedabase.VedaBase):
+            i = next(self.flagged_index)
+            self.vedaset._root.metadata.cols.flagged_for_removal[i] = 1
+            try:
+                vb_dp_id = self.vedaset.metadata[i][1].decode('utf-8')
+                vb_dp = self.vb_vcp.fetch_sample_from_id(vb_dp_id)
+                vb_dp.remove()
+            except:
+                print('already removed from server')
+                pass
+
+
     def _recolor_images(self):
+        """
+        Re-formats/re-colors uint16 data so it can be displayed optimally.
+        """
         img = self.image.astype('float32')
         img[:,:,0] /= np.max(img[:,:,0])
         img[:,:,1] /= np.max(img[:,:,1])
@@ -320,14 +373,17 @@ class Labelizer():
         Displays a polygon overlayed on image chip with associated ipywidget
         buttons. Allows user to click through each vedaset object and decide
         whether to keep or remove the object.
+
+        Note: If removing the object from a VedaBase, the object is removed on
+        the server only. Not the h5 file associated with the VedaBase.
         """
         clear_output()
         buttons = self._create_buttons()
         for b in buttons:
             b.on_click(self._handle_buttons)
-        if self.image is not None and self.index != self.count:
+        if self.image is not None and self.counting_index != self.count:
             print("%0.f tiles out of %0.f tiles have been cleaned" %
-                 (self.index, self.count))
+                 (self.counting_index, self.count))
             display(HBox(buttons))
             self._display_image()
             if isinstance(self.vedaset, veda.api.VedaCollectionProxy):
@@ -349,6 +405,7 @@ class Labelizer():
                 print("You've flagged %0.f bad tiles. Review them now" %len(self.flagged_tiles))
                 self.iflagged_tiles = iter(self.flagged_tiles)
                 self.datapoint = next(self.iflagged_tiles)
+                self.flagged_index = iter(self.flagged_index)
                 self.image = self._create_images()
                 self.labels = self._create_labels()
                 self.clean_flags()
@@ -356,6 +413,12 @@ class Labelizer():
                 print("All tiles have been cleaned.")
 
     def preview(self):
+        """
+        Method for previewing each vedaset object as image data with associated polygons.
+        Displays a polygon overlayed on image chip with associated ipywidget
+        buttons. Allows user to click through each vedaset object for viewing.
+
+        """
         clear_output()
         buttons = self._create_preview_buttons()
         for b in buttons:
@@ -381,6 +444,10 @@ class Labelizer():
             self._get_next()
 
     def remove_black_tiles(self):
+        """
+        Removes black tiles (tiles outside or bordering the catalog image) from a
+        Vedaset.
+        """
         for c in range(self.count):
             if np.amax(self.image) == 0:
                 self.datapoint.remove()
